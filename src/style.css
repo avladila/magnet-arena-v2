@@ -53,6 +53,21 @@ p {
 }
 
 .touch-guide { display: none; }
+.mass-hud {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: baseline;
+  gap: .4rem;
+  margin: 0;
+  padding: .35rem .65rem;
+  border: 1px solid #b7e0d5;
+  font-variant-numeric: tabular-nums;
+}
+
+.mass-hud strong { font-size: .95rem; }
+
 @media (pointer: coarse) {
   .mouse-guide { display: none; }
   .touch-guide { display: block; }

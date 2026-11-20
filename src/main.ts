@@ -1,20 +1,27 @@
 import Phaser from 'phaser';
 import { drawArena, drawMagnet } from './art';
+import { advanceAttraction } from './attraction';
 import { bindInput } from './browser-input';
 import { touch, viewConfig } from './config';
 import { advance, createPlayer, type Point } from './movement';
-import { ArenaCamera, Heading } from './view';
+import { ParticleView } from './particle-view';
+import { ParticlePool } from './particles';
+import { ArenaCamera, Heading, MagnetScale } from './view';
 import './style.css';
 
 const surface = document.querySelector<HTMLElement>('#arena')!;
 const stick = document.querySelector<HTMLElement>('#joystick')!;
 const knob = stick.firstElementChild as HTMLElement;
+const mass = document.querySelector<HTMLElement>('#mass')!;
 stick.style.setProperty('--joystick-size', touch.radius * 2 + 'px');
 
 class ArenaScene extends Phaser.Scene {
   private player = createPlayer();
   private heading = new Heading();
+  private magnetScale = new MagnetScale();
   private framing = new ArenaCamera(this.player.position);
+  private particles = new ParticlePool(Math.floor(Math.random() * 0x100000000), this.player);
+  private particleView!: ParticleView;
   private magnet!: Phaser.GameObjects.Graphics;
   private controls!: ReturnType<typeof bindInput>;
   private pixelRatio = 1;
@@ -23,6 +30,7 @@ class ArenaScene extends Phaser.Scene {
 
   create(): void {
     drawArena(this);
+    this.particleView = new ParticleView(this);
     this.magnet = drawMagnet(this);
     this.controls = bindInput(surface, (point) => this.screenToWorld(point));
     const observer = new ResizeObserver(() => this.resize());
@@ -33,14 +41,22 @@ class ArenaScene extends Phaser.Scene {
     });
     this.resize();
     this.renderPlayer();
+    mass.textContent = String(this.player.mass);
+    this.particleView.render(this.particles.slots, this.framing.bounds, [], 0);
   }
 
   update(_time: number, delta: number): void {
     this.resize();
     const seconds = delta / 1000;
     advance(this.player, this.controls.input.steering((point) => this.screenToWorld(point)), seconds);
+    const collections = advanceAttraction(this.particles, this.player, seconds);
     this.heading.update(this.player.velocity, seconds);
-    this.framing.follow(this.player.position, seconds);
+    this.magnetScale.update(this.player.physicalScale, seconds);
+    this.framing.follow(this.player.position, seconds, this.player.mass);
+    const bounds = this.framing.bounds;
+    this.particles.replenish(this.player, bounds);
+    this.particleView.render(this.particles.slots, bounds, collections, seconds);
+    if (collections.length) mass.textContent = String(this.player.mass);
     this.renderPlayer();
     this.positionCamera();
     this.renderJoystick();
@@ -67,21 +83,23 @@ class ArenaScene extends Phaser.Scene {
     this.game.canvas.style.width = width + 'px';
     this.game.canvas.style.height = height + 'px';
     this.framing.resize(width, height);
-    this.cameras.main.setZoom(
-      this.framing.zoom * backingWidth / width,
-      this.framing.zoom * backingHeight / height,
-    );
     this.positionCamera();
   }
 
   private positionCamera(): void {
+    if (!this.width || !this.height) return;
+    const camera = this.cameras.main;
+    const zoomX = this.framing.zoom * this.game.canvas.width / this.width;
+    const zoomY = this.framing.zoom * this.game.canvas.height / this.height;
+    if (camera.zoomX !== zoomX || camera.zoomY !== zoomY) camera.setZoom(zoomX, zoomY);
     const center = this.framing.midpoint;
-    this.cameras.main.centerOn(center.x, center.y);
+    camera.centerOn(center.x, center.y);
   }
 
   private renderPlayer(): void {
     this.magnet.setPosition(this.player.position.x, this.player.position.y);
     this.magnet.setRotation(this.heading.angle);
+    this.magnet.setScale(this.magnetScale.scale);
   }
 
   private renderJoystick(): void {

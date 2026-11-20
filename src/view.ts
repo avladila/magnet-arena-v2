@@ -1,5 +1,6 @@
-import { arena, viewConfig } from './config';
+import { arena, playerConfig, viewConfig } from './config';
 import { clamp, type Point } from './movement';
+import type { WorldBounds } from './particles';
 
 const smoothing = (rate: number, seconds: number) => 1 - Math.exp(-rate * seconds);
 
@@ -19,10 +20,30 @@ export class Heading {
   }
 }
 
+export class MagnetScale {
+  scale = 1;
+
+  update(physicalScale: number, seconds: number): void {
+    this.scale += (physicalScale - this.scale) * smoothing(viewConfig.scaleRate, seconds);
+  }
+}
+
+export function massZoomMultiplier(mass: number): number {
+  const { transitionMass, earlyExponent, lateExponent, minimum } = viewConfig.growthZoom;
+  const multiplier = mass <= transitionMass
+    ? (mass / playerConfig.initialMass) ** earlyExponent
+    : (transitionMass / playerConfig.initialMass) ** earlyExponent *
+      (mass / transitionMass) ** lateExponent;
+  return clamp(multiplier, minimum, 1);
+}
+
 export class ArenaCamera {
   private center: Point;
   private width = 1;
   private height = 1;
+  private baseline = 1;
+  private coverageFloor = 0;
+  private mass = playerConfig.initialMass;
   zoom = 1;
 
   constructor(position: Point) {
@@ -30,18 +51,19 @@ export class ArenaCamera {
   }
 
   resize(width: number, height: number): void {
+    if (width === this.width && height === this.height) return;
     this.width = width;
     this.height = height;
-    this.zoom = Math.max(
-      width / arena.width,
-      height / arena.height,
-      clamp(Math.min(width, height) / viewConfig.framingSize, viewConfig.minZoom, viewConfig.maxZoom),
-    );
+    this.coverageFloor = Math.max(width / arena.width, height / arena.height);
+    this.baseline = clamp(Math.min(width, height) / viewConfig.framingSize, viewConfig.minZoom, viewConfig.maxZoom);
+    this.zoom = this.targetZoom();
     this.constrain();
   }
 
-  follow(position: Point, seconds: number): void {
+  follow(position: Point, seconds: number, mass = this.mass): void {
+    this.mass = mass;
     const factor = smoothing(viewConfig.followRate, seconds);
+    this.zoom += (this.targetZoom() - this.zoom) * smoothing(viewConfig.zoomRate, seconds);
     this.center.x += (position.x - this.center.x) * factor;
     this.center.y += (position.y - this.center.y) * factor;
     this.constrain();
@@ -51,11 +73,28 @@ export class ArenaCamera {
     return { ...this.center };
   }
 
+  get bounds(): WorldBounds {
+    const topLeft = this.toWorld({ x: 0, y: 0 });
+    const bottomRight = this.toWorld({ x: this.width, y: this.height });
+    return { left: topLeft.x, top: topLeft.y, right: bottomRight.x, bottom: bottomRight.y };
+  }
+
+  toScreen(point: Point): Point {
+    return {
+      x: (point.x - this.center.x) * this.zoom + this.width / 2,
+      y: (point.y - this.center.y) * this.zoom + this.height / 2,
+    };
+  }
+
   toWorld(point: Point): Point {
     return {
       x: this.center.x + (point.x - this.width / 2) / this.zoom,
       y: this.center.y + (point.y - this.height / 2) / this.zoom,
     };
+  }
+
+  private targetZoom(): number {
+    return Math.max(this.coverageFloor, this.baseline * massZoomMultiplier(this.mass));
   }
 
   private constrain(): void {
