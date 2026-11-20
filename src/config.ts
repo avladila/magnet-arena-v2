@@ -13,15 +13,25 @@ export const growthConfig = {
 };
 export const scrapConfig = {
   capacity: 1500,
-  // Provisional population and pull speeds for single-player playtesting.
-  activeCount: 600,
+  activeCount: 720,
+  colorCount: 10 as const,
+  // Provisional pull speeds for single-player playtesting.
   pullMinSpeed: 300,
   pullMaxSpeed: 700,
   massPerPickup: 1,
   radius: 5,
 };
-export const scrapColors = [0x278982, 0x8055b2, 0x4574b4, 0x54824b];
 export const touch = { dragThreshold: 10, radius: 64, deadZone: 10, tapMaxMs: 350 };
+export const arenaArt = {
+  gridSpacing: 80,
+  referenceSpacing: 480,
+  referenceSize: 64,
+};
+export const growthFeedback = {
+  milestones: [50, 100, 200, 400],
+  haloRate: 10,
+  pulseSeconds: 0.34,
+};
 export const viewConfig = {
   followRate: 8,
   rotationRate: 14,

@@ -9,10 +9,17 @@
   <body>
     <main id="arena" aria-label="MAGNET game arena">
       <header class="game-guide">
-        <h1>MAGNET<span aria-hidden="true">.</span></h1>
+        <div class="guide-heading">
+          <h1>MAGNET<span aria-hidden="true">.</span></h1>
+          <div class="hud-controls">
+            <p class="mass-hud">Mass <strong id="mass">20</strong></p>
+            <button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false">
+              <span class="theme-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
         <p class="mouse-guide">Move your mouse to steer</p>
         <p class="touch-guide">Tap to move · Hold and drag to steer</p>
-        <p class="mass-hud">Mass <strong id="mass">20</strong></p>
       </header>
       <div id="joystick" hidden aria-hidden="true"><div></div></div>
     </main>
