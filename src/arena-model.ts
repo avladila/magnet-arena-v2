@@ -10,6 +10,7 @@ export class ArenaModel {
   readonly participants: readonly Participant[];
   readonly particles: ParticlePool;
   private readonly botAI = new BotAI();
+  private elapsedSinceReplenish = 0;
 
   constructor(seed: number) {
     this.bots = createBots(seed);
@@ -19,6 +20,7 @@ export class ArenaModel {
 
   step(steering: Steering, seconds: number): AttractionResult | undefined {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
+    this.elapsedSinceReplenish += seconds;
     this.botAI.update(this.bots, this.particles.slots, seconds);
     advance(this.player, steering, seconds);
     for (const bot of this.bots) {
@@ -28,6 +30,7 @@ export class ArenaModel {
   }
 
   replenish(view: WorldBounds): void {
-    this.particles.replenish(this.participants, view);
+    this.particles.replenish(this.participants, view, this.elapsedSinceReplenish);
+    this.elapsedSinceReplenish = 0;
   }
 }

@@ -37,7 +37,7 @@ test('joystick travel respects the physical radius and reports actual motion alo
   assert.equal(player.position.x, arena.width - 30);
   assert.equal(player.velocity.x, 0);
   near(player.velocity.y, -playerConfig.speed / 2);
-  advance(player, { kind: 'target', point: { x: -1000, y: 9000 } }, 20);
+  advance(player, { kind: 'target', point: { x: -1000, y: arena.height + 1000 } }, 50);
   assert.deepEqual(player.position, { x: 30, y: arena.height - 30 });
 });
 

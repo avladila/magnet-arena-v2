@@ -1,6 +1,7 @@
 import { ArenaModel } from '../src/arena-model';
 import { advanceAttraction } from '../src/attraction';
 import type { BotTarget } from '../src/bots';
+import { arena } from '../src/config';
 import { advance, type Point } from '../src/movement';
 import { ArenaCamera } from '../src/view';
 
@@ -8,6 +9,7 @@ const fps = 30;
 const seconds = 60;
 const segmentSeconds = 6;
 const checkpoints = new Set([10, 20, 40, 60]);
+const offset = { x: arena.width / 2 - 2400, y: arena.height / 2 - 1600 };
 
 const crossTargets = [
   [2720, 630], [3650, 820], [2610, 1600], [3440, 2300], [2110, 2630],
@@ -50,7 +52,7 @@ function measure(route: typeof routes[number], competing: boolean) {
 
   for (let frame = 1; frame <= seconds * fps; frame++) {
     const [x, y] = route.targets[Math.floor((frame - 1) / (segmentSeconds * fps))];
-    const steering = { kind: 'target', point: { x, y } } as const;
+    const steering = { kind: 'target', point: { x: x + offset.x, y: y + offset.y } } as const;
     const delta = 1 / fps;
     if (competing) {
       contested += model.step(steering, delta)!.contestedCollections;
@@ -67,7 +69,8 @@ function measure(route: typeof routes[number], competing: boolean) {
 
     camera.follow(player.position, delta, player.mass);
     phone.follow(player.position, delta, player.mass);
-    particles.replenish(participants, camera.bounds);
+    if (competing) model.replenish(camera.bounds);
+    else particles.replenish(participants, camera.bounds, delta);
     if (competing) {
       if (firstDesktop === undefined && model.bots.some((bot) => visible(bot.position, camera))) {
         firstDesktop = frame / fps;

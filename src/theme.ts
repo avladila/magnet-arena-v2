@@ -3,7 +3,7 @@ import type { scrapConfig } from './config';
 export type ThemeMode = 'light' | 'dark';
 
 export type ThemePalette = {
-  arena: { background: number; grid: number; boundary: number; markings: number };
+  arena: { background: number; grid: number; markings: number };
   field: { edge: number; pulse: number };
   scrap: readonly number[] & { length: typeof scrapConfig.colorCount };
   scrapHighlight: number;
@@ -12,7 +12,7 @@ export type ThemePalette = {
 
 export const themes = {
   light: {
-    arena: { background: 0xdef5ee, grid: 0xb7e0d5, boundary: 0xa3d8cb, markings: 0x79b4a8 },
+    arena: { background: 0xdef5ee, grid: 0xb7e0d5, markings: 0x79b4a8 },
     field: { edge: 0x247e77, pulse: 0x258a7e },
     scrap: [
       0x278982, 0x8055b2, 0x4574b4, 0x54824b, 0xa64286,
@@ -32,7 +32,7 @@ export const themes = {
     },
   },
   dark: {
-    arena: { background: 0x142735, grid: 0x244454, boundary: 0x326075, markings: 0x47778b },
+    arena: { background: 0x142735, grid: 0x244454, markings: 0x47778b },
     field: { edge: 0x65d5cf, pulse: 0x75dccd },
     scrap: [
       0x38cdb4, 0xb18df3, 0x68abf6, 0x91d978, 0xe67bc5,

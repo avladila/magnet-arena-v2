@@ -145,15 +145,16 @@ test('one shared pool starts and replenishes at 720 active pieces outside all fi
   }
 
   // A clustered, large group must still leave legal offscreen respawns.
+  const center = model.player.position;
   for (const [index, bot] of bots.entries()) {
-    bot.position = { x: 2440 + index * 20, y: 1650 + index * 10 };
+    bot.position = { x: center.x + 40 + index * 20, y: center.y + 50 + index * 10 };
     addMass(bot, 2500);
   }
   const slot = particles.slots[0];
   Object.assign(slot, bots[0].position);
   const result = advanceAttraction(particles, participants, 0);
   assert.ok(result.collections.length > 0);
-  const view = { left: 1900, top: 1000, right: 3000, bottom: 2200 };
+  const view = { left: center.x - 500, top: center.y - 600, right: center.x + 600, bottom: center.y + 600 };
   model.replenish(view);
   const bySlot = new Map(result.collections.map((event) => [event.id, event]));
   for (const [id, event] of bySlot) {
@@ -166,7 +167,7 @@ test('one shared pool starts and replenishes at 720 active pieces outside all fi
   assert.equal(particles.slots.filter((piece) => piece.state === 'active').length, 720);
 });
 
-test('blocked random candidates terminate at a safe legal fallback near arena limits', (t) => {
+test('the fully visible fallback still excludes all grown attraction fields', () => {
   const participants = [createPlayer(), ...createBots(10)];
   participants.forEach((participant, i) => {
     participant.position = { x: 120, y: Math.max(120, 5 + 461 * i) };
@@ -174,9 +175,8 @@ test('blocked random candidates terminate at a safe legal fallback near arena li
   });
   const pool = withScrap(participants, participants[0].position);
   assert.equal(advanceAttraction(pool, participants, 0).collections.length, 1);
-  const random = t.mock.method(pool as unknown as { random: () => number }, 'random', () => 0);
   pool.replenish(participants, fullArena);
-  assert.equal(random.mock.callCount(), 49);
+  assert.equal(pool.regionStats.visibleFallbacks, 1);
   assertSafeSpawn(pool.slots[0], participants);
   assert.equal(pool.slots[0].state, 'active');
 });
@@ -184,9 +184,10 @@ test('blocked random candidates terminate at a safe legal fallback near arena li
 test('seeded multi-magnet runs repeat the movement, ownership events, and recycled positions', () => {
   function run(seed: number) {
     const model = new ArenaModel(seed);
+    const { x, y } = model.player.position;
     const events: AttractionResult[] = [];
     for (let frame = 0; frame < 360; frame++) {
-      const steering = { kind: 'target', point: { x: 4300, y: frame < 180 ? 900 : 2500 } } as const;
+      const steering = { kind: 'target', point: { x: x + 1900, y: y + (frame < 180 ? -700 : 900) } } as const;
       const result = model.step(steering, 1 / 30)!;
       if (result.collections.length) events.push(result);
       model.replenish(fullArena);

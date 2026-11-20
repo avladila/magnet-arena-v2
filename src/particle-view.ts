@@ -4,6 +4,7 @@ import type { Collection, Scrap, WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 
 const effectDuration = viewConfig.collectionEffectSeconds;
+const glintWidth = 1.5;
 
 export class ParticleView {
   private readonly pieces: Phaser.GameObjects.Graphics;
@@ -46,8 +47,12 @@ export class ParticleView {
     for (const effect of this.effects) {
       if (effect.remaining <= 0) continue;
       const opacity = effect.remaining / effectDuration;
-      this.glints.lineStyle(1.5, palette.scrap[effect.colorIndex], 0.8 * opacity);
-      this.glints.strokeCircle(effect.x, effect.y, 5 + (1 - opacity) * 8);
+      const radius = 5 + (1 - opacity) * 8;
+      const extent = radius + glintWidth / 2;
+      if (effect.x + extent < view.left || effect.x - extent > view.right ||
+          effect.y + extent < view.top || effect.y - extent > view.bottom) continue;
+      this.glints.lineStyle(glintWidth, palette.scrap[effect.colorIndex], 0.8 * opacity);
+      this.glints.strokeCircle(effect.x, effect.y, radius);
     }
   }
 }

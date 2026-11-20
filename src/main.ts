@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { ArenaModel } from './arena-model';
-import { drawArena, drawMagnet } from './art';
+import { ArenaFloor, drawMagnet } from './art';
 import { bindInput } from './browser-input';
 import { BotView } from './bot-view';
 import { touch, viewConfig } from './config';
@@ -28,6 +28,7 @@ class ArenaScene extends Phaser.Scene {
   private heading = new Heading();
   private magnetScale = new MagnetScale();
   private framing = new ArenaCamera(this.model.player.position);
+  private floor!: ArenaFloor;
   private particleView!: ParticleView;
   private botViews!: BotView[];
   private readonly botNames: WorldBounds[] = [];
@@ -39,8 +40,7 @@ class ArenaScene extends Phaser.Scene {
   private height = 0;
 
   create(): void {
-    const arenaArt = this.add.graphics();
-    drawArena(arenaArt, theme.palette);
+    this.floor = new ArenaFloor(this.add.graphics());
     const player = this.model.player;
     this.field = new GrowthFeedbackView(this, player);
     this.particleView = new ParticleView(this);
@@ -49,7 +49,7 @@ class ArenaScene extends Phaser.Scene {
     const unbindTheme = bindThemeToggle(themeButton, () => {
       theme.toggle();
       applyThemeToPage(themeButton, theme);
-      drawArena(arenaArt, theme.palette);
+      this.floor.render(this.framing.bounds, theme.palette);
       this.cameras.main.setBackgroundColor(theme.palette.arena.background);
     });
     this.controls = bindInput(surface, (point) => this.screenToWorld(point));
@@ -64,6 +64,7 @@ class ArenaScene extends Phaser.Scene {
     this.renderPlayer();
     mass.textContent = String(player.mass);
     const bounds = this.framing.bounds;
+    this.floor.render(bounds, theme.palette);
     this.field.render(player, 0, theme.palette, reducedMotion.matches);
     this.particleView.render(this.model.particles.slots, bounds, [], 0, theme.palette);
     this.renderBots(0, bounds);
@@ -81,6 +82,7 @@ class ArenaScene extends Phaser.Scene {
     this.framing.follow(player.position, seconds, player.mass);
     const bounds = this.framing.bounds;
     this.model.replenish(bounds);
+    this.floor.render(bounds, theme.palette);
     this.field.render(player, seconds, theme.palette, reducedMotion.matches);
     this.particleView.render(this.model.particles.slots, bounds, result.collections, seconds, theme.palette);
     this.renderBots(seconds, bounds);
