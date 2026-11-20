@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feat/foundation-v2, feat/magnetic-growth-v2, feat/visual-growth-v2, feat/autonomous-bots-v2, feat/world-infrastructure-v2]
+    branches: [main, feat/foundation-v2, feat/magnetic-growth-v2, feat/visual-growth-v2, feat/autonomous-bots-v2, feat/world-infrastructure-v2, feat/giant-growth-v2]
 
 permissions:
   contents: read

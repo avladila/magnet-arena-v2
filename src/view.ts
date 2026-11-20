@@ -1,4 +1,5 @@
 import { arena, playerConfig, viewConfig } from './config';
+import { attractionReach, physicalScaleForMass } from './growth';
 import { clamp, type Point } from './movement';
 import type { WorldBounds } from './particles';
 
@@ -90,7 +91,10 @@ export class ArenaCamera {
   }
 
   private targetZoom(): number {
-    return Math.max(this.coverageFloor, this.baseline * massZoomMultiplier(this.mass));
+    const massZoom = this.baseline * massZoomMultiplier(this.mass);
+    const reach = attractionReach(physicalScaleForMass(this.mass));
+    const fieldZoom = Math.min(this.width, this.height) * viewConfig.growthZoom.fieldDiameterFraction / (2 * reach);
+    return Math.max(this.coverageFloor, Math.min(massZoom, fieldZoom));
   }
 
   private constrain(): void {

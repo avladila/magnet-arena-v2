@@ -142,8 +142,8 @@ test('growth invalidates an old wall endpoint even while its commitment timer is
   bot.position = { x: arena.width - 390, y: arena.height - 400 };
   bot.target = { kind: 'region', cell: 279, point: { x: arena.width - 95, y: arena.height - 95 } };
   bot.decisionIn = botConfig.collector.decisionSeconds;
-  addMass(bot, 2500);
-  assert.equal(bot.radius, 120);
+  addMass(bot, 4332);
+  assert.equal(bot.radius, 360);
   const pool = new ParticlePool(7, [bot], 1);
   Object.assign(pool.slots[0], { x: arena.width - 5, y: arena.height - 5 });
   new BotAI().update([bot], pool.slots, delta);
@@ -183,7 +183,7 @@ test('a wall-shortened region route has enough runway to stay committed until ar
 
 test('Roamers continually leave corners for legal waypoints at the shared, steady speed', () => {
   const roamer = createBots(12)[2];
-  addMass(roamer, 2500);
+  addMass(roamer, 4332);
   roamer.position = { x: roamer.radius, y: arena.height - roamer.radius };
   const ai = new BotAI();
   let pathLength = 0;

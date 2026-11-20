@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
-import { botRimRadius, drawMagnet } from './art';
+import { drawMagnet } from './art';
 import type { Bot } from './bots';
-import { viewConfig } from './config';
+import { playerConfig, viewConfig } from './config';
 import { clamp, type Participant } from './movement';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
@@ -21,7 +21,7 @@ export class BotView {
       fontSize: '12px',
       fontStyle: 'bold',
       resolution: viewConfig.maxPixelRatio,
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0.5, 0).setDepth(2);
   }
 
   render(
@@ -36,7 +36,7 @@ export class BotView {
     this.scale.update(this.bot.physicalScale, seconds);
 
     const { x, y } = this.bot.position;
-    const bodyRadius = botRimRadius * this.scale.scale;
+    const bodyRadius = playerConfig.radius * this.scale.scale;
     const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
     this.body.setVisible(visible);
@@ -53,7 +53,7 @@ export class BotView {
     const height = this.label.height / zoom;
     const offset = bodyRadius + 5 / zoom;
     const labelX = clamp(x, view.left + halfWidth, view.right - halfWidth);
-    for (const top of [y + offset, y - offset - height]) {
+    for (const top of [y - offset - height, y + offset]) {
       const box = { left: labelX - halfWidth, right: labelX + halfWidth, top, bottom: top + height };
       if (box.right > view.right || top < view.top || box.bottom > view.bottom) continue;
       if (names.some((other) => box.left < other.right && box.right > other.left &&
@@ -66,8 +66,7 @@ export class BotView {
   }
 
   private bodyCovers(participant: Participant, box: WorldBounds): boolean {
-    const { x, y } = participant.position;
-    const radius = (participant.kind === 'bot' ? botRimRadius : 33) * participant.physicalScale;
+    const { position: { x, y }, radius } = participant;
     return (x - clamp(x, box.left, box.right)) ** 2 + (y - clamp(y, box.top, box.bottom)) ** 2 < radius ** 2;
   }
 }

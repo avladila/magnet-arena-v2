@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { arena } from '../src/config';
 import { SteeringInput } from '../src/gestures';
+import { addMass, attractionReach } from '../src/growth';
 import { advance, createPlayer, type Point } from '../src/movement';
 import { ArenaCamera, massZoomMultiplier } from '../src/view';
 
@@ -43,6 +44,57 @@ for (const [width, height, baseline] of [[1280, 800, 1.1], [390, 844, 0.65], [84
     assert.ok(1.46 * camera.zoom > baseline);
   });
 }
+
+for (const [width, height, baseline] of [[1280, 800, 1.1], [320, 680, 0.65], [844, 390, 0.65]]) {
+  test(`apparent size grows while the field stays framed at ${width}×${height}`, () => {
+    const player = createPlayer();
+    const camera = new ArenaCamera(player.position);
+    camera.resize(width, height);
+    let previousRadius = 0;
+    const shortSide = Math.min(width, height);
+    for (const mass of [20, 100, 400, 800, 2000, 4000, 4352]) {
+      addMass(player, mass - player.mass);
+      const fieldDiameter = 2 * attractionReach(player.physicalScale);
+      const targetZoom = Math.min(baseline * massZoomMultiplier(mass), 0.7 * shortSide / fieldDiameter);
+      const previousZoom = camera.zoom;
+      camera.follow(player.position, 1 / 60, player.mass);
+      assert.ok(camera.zoom >= targetZoom - 1e-7 && camera.zoom <= previousZoom + 1e-7);
+      if (previousZoom > targetZoom + 1e-7) assert.ok(camera.zoom > targetZoom && camera.zoom < previousZoom);
+      camera.follow(player.position, 10);
+      near(camera.zoom, targetZoom);
+      const screenRadius = player.radius * camera.zoom;
+      assert.ok(screenRadius > previousRadius);
+      previousRadius = screenRadius;
+      const tap = { x: width * 0.18, y: height * 0.74 };
+      const roundTrip = camera.toScreen(camera.toWorld(tap));
+      near(roundTrip.x, tap.x);
+      near(roundTrip.y, tap.y);
+    }
+    near(2 * attractionReach(player.physicalScale) * camera.zoom / shortSide, 0.7);
+    assert.ok(previousRadius > 3 * 30 * baseline && 2 * previousRadius < 0.5 * shortSide);
+  });
+}
+
+test('a giant stays entirely in the camera at each corner in portrait and landscape', () => {
+  const player = createPlayer();
+  addMass(player, 4332);
+  const camera = new ArenaCamera(player.position);
+  for (const [width, height] of [[390, 844], [844, 390]]) {
+    camera.resize(width, height);
+    for (const x of [0, arena.width]) {
+      for (const y of [0, arena.height]) {
+        advance(player, { kind: 'target', point: { x, y } }, 50);
+        camera.follow(player.position, 10, player.mass);
+        const { left, right, top, bottom } = camera.bounds;
+        const radius = player.radius;
+        assert.ok(left >= -1e-7 && right <= arena.width + 1e-7);
+        assert.ok(top >= -1e-7 && bottom <= arena.height + 1e-7);
+        assert.ok(player.position.x - radius >= left - 1e-7 && player.position.x + radius <= right + 1e-7);
+        assert.ok(player.position.y - radius >= top - 1e-7 && player.position.y + radius <= bottom + 1e-7);
+      }
+    }
+  }
+});
 
 test('zoom-out and orientation changes keep world coverage and corner framing legal', () => {
   const camera = new ArenaCamera(center);

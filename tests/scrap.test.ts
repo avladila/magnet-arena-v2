@@ -25,29 +25,47 @@ function assertLegalSpawn(point: Point, player: Player) {
   assert.ok(distance > Math.max(player.radius + 5, attractionReach(player.physicalScale)));
 }
 
-test('physical growth starts at mass 20, follows the continuous formula, and caps at scale four', () => {
+test('physical growth starts at mass 20, follows the continuous formula, and caps at scale twelve', () => {
   const player = createPlayer();
   assert.equal(player.mass, 20);
   assert.equal(player.physicalScale, 1);
   assert.equal(player.radius, 30);
   let previous = 1;
-  for (const mass of [21, 80, 120, 620, 2000, 2500, 1e6]) {
+  for (const mass of [21, 100, 400, 800, 2000, 4000, 4351, 4352, 1e6]) {
     addMass(player, mass - player.mass);
     assert.equal(player.mass, mass);
-    assert.ok(player.physicalScale >= previous && player.physicalScale <= 4);
-    near(player.physicalScale, Math.min(4, 1 + 0.32 * (Math.sqrt(mass / 20) - 1)));
+    assert.ok(player.physicalScale >= previous && player.physicalScale <= 12);
+    near(player.physicalScale, Math.min(12, 1 + 0.8 * (Math.sqrt(mass / 20) - 1)));
     near(player.radius, 30 * physicalScaleForMass(mass));
     previous = player.physicalScale;
   }
-  assert.equal(player.physicalScale, 4);
-  assert.equal(player.radius, 120);
+  assert.equal(player.physicalScale, 12);
+  assert.equal(player.radius, 360);
 });
 
-test('normal reach starts at 118 and scales according to the approved capped formula', () => {
-  assert.equal(attractionReach(1), 118);
-  near(attractionReach(2), 118 * Math.sqrt(2));
+test('each additional mass gives less radius near the continuous cap', () => {
+  let previousGain = Infinity;
+  for (const mass of [20, 50, 100, 400, 800, 2000, 4000, 4351, 4352]) {
+    const gain = 30 * (physicalScaleForMass(mass + 1) - physicalScaleForMass(mass));
+    assert.ok(gain >= 0 && gain < previousGain);
+    previousGain = gain;
+  }
+  assert.ok(physicalScaleForMass(4351) < 12);
+  assert.equal(physicalScaleForMass(4352), 12);
+  near(physicalScaleForMass(4351.25 - 1e-6), physicalScaleForMass(4351.25 + 1e-6));
+});
+
+test('reach keeps the original curve through 4× and extends continuously to 12×', () => {
+  for (let step = 0; step <= 110; step++) {
+    const scale = 1 + step / 10;
+    if (scale <= 4) near(attractionReach(scale), Math.min(230, 118 * Math.sqrt(scale)));
+    else near(attractionReach(scale), 30 * scale + 110 * Math.sqrt(scale / 4));
+    assert.ok(attractionReach(scale) > 30 * scale + scrapConfig.radius);
+  }
   assert.equal(attractionReach(4), 230);
-  assert.equal(attractionReach(100), 230);
+  near(attractionReach(4 + 1e-9), attractionReach(4 - 1e-9));
+  near(attractionReach(12), 360 + 110 * Math.sqrt(3));
+  assert.equal(attractionReach(100), attractionReach(12));
 });
 
 test('the center-based field starts pulling at the reach boundary and leaves farther scrap alone', () => {
@@ -66,7 +84,7 @@ test('the enlarged field attracts scrap that was outside the starting reach', ()
   const pool = withScrap(player, { x: x + 180, y });
   advanceAttraction(pool, [player], 1 / 60);
   assert.equal(pool.slots[0].x, x + 180);
-  addMass(player, 2480);
+  addMass(player, 180);
   advanceAttraction(pool, [player], 1 / 60);
   assert.ok(pool.slots[0].x < x + 180);
 });
@@ -84,6 +102,27 @@ test('inward pull accelerates and integrates consistently across stationary time
   near(single.slots[1].x, split.slots[1].x);
   assert.ok(close.x - single.slots[1].x > far.x - single.slots[0].x);
   assert.equal(player.mass, 20);
+});
+
+test('giant pull preserves its speed range and step integration at the reach transition and cap', () => {
+  for (const mass of [450, 452, 4352]) {
+    const player = createPlayer();
+    addMass(player, mass - player.mass);
+    const { x, y } = player.position;
+    const reach = attractionReach(player.physicalScale);
+    const atReach = { x: x + reach - 0.000001, y };
+    const outside = { x: x + reach + 0.000001, y };
+    const single = withScrap(player, atReach, outside);
+    const split = withScrap(player, atReach, outside);
+    const delta = 0.04;
+    advanceAttraction(single, [player], delta);
+    for (let step = 0; step < 8; step++) advanceAttraction(split, [player], delta / 8);
+    near(single.slots[0].x, split.slots[0].x);
+    const speed = (atReach.x - single.slots[0].x) / delta;
+    assert.ok(speed >= scrapConfig.pullMinSpeed && speed < scrapConfig.pullMaxSpeed);
+    assert.equal(single.slots[1].x, outside.x);
+    assert.equal(player.mass, mass);
+  }
 });
 
 test('a moving collector pulls toward its latest position at common simulation rates', () => {
@@ -284,7 +323,7 @@ test('the same seed and input reproduce attraction, collection, and recycled spa
   assert.notDeepEqual(run(2027), first);
 });
 
-for (const mass of [20, 620, 2500]) {
+for (const mass of [20, 400, 800, 2000, 4352]) {
   test(`all walls and corners remain collectible at mass ${mass}`, () => {
     const min = scrapConfig.radius;
     const right = arena.width - min;
@@ -317,11 +356,22 @@ for (const mass of [20, 620, 2500]) {
 
 test('maximum radius clamps movement at exact right and bottom limits without changing speed', () => {
   const player = createPlayer();
-  addMass(player, 2480);
+  addMass(player, 4332);
   advance(player, { kind: 'joystick', point: { x: 1, y: 0 } }, 0.5);
   assert.equal(player.velocity.x, 460);
   advance(player, { kind: 'target', point: { x: arena.width, y: arena.height } }, 30);
-  assert.deepEqual(player.position, { x: 15240, y: 9880 });
+  assert.deepEqual(player.position, { x: 15000, y: 9640 });
+});
+
+test('growth at a wall moves the center inward and retains motion and heading', () => {
+  const player = createPlayer();
+  player.position = { x: player.radius, y: arena.height - player.radius };
+  advance(player, { kind: 'joystick', point: { x: -0.6, y: -0.8 } }, 0.1);
+  const { velocity, heading } = player;
+  addMass(player, 4332);
+  assert.deepEqual(player.position, { x: 360, y: 9640 });
+  assert.deepEqual(player.velocity, velocity);
+  assert.equal(player.heading, heading);
 });
 
 test('collision uses physical growth while the drawing scale is still catching up', () => {
