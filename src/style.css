@@ -1,0 +1,80 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #def5ee;
+  color: #173f3d;
+}
+
+body { margin: 0; overflow: hidden; }
+
+#arena {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+#arena canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.game-guide {
+  position: absolute;
+  z-index: 1;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(20px, env(safe-area-inset-left));
+  right: max(20px, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 2.8rem);
+  font-weight: 950;
+  letter-spacing: -.07em;
+  line-height: 1;
+}
+
+h1 span { color: #d84a55; }
+
+p {
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: .6rem 0 0;
+  padding: .35rem .65rem;
+  border-radius: .65rem;
+  background: #f6fffa;
+  font-size: .83rem;
+  font-weight: 650;
+}
+
+.touch-guide { display: none; }
+@media (pointer: coarse) {
+  .mouse-guide { display: none; }
+  .touch-guide { display: block; }
+}
+
+#joystick {
+  position: absolute;
+  z-index: 2;
+  width: 128px;
+  height: 128px;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  border: 2px solid #23746680;
+  border-radius: 50%;
+  background: #f5fffa66;
+  pointer-events: none;
+}
+
+#joystick div {
+  position: absolute;
+  inset: calc(50% - 16px);
+  border-radius: 50%;
+  background: #237466;
+  border: 2px solid #f5fffa;
+}
