@@ -1,6 +1,10 @@
 import { growthConfig, playerConfig } from './config';
 import { clampToArena, type Participant } from './movement';
 
+const { baseReach, normalReachCap, reachTransitionScale } = growthConfig;
+const reachAtTransition = Math.min(normalReachCap, baseReach * Math.sqrt(reachTransitionScale));
+const fieldMarginAtTransition = reachAtTransition - playerConfig.radius * reachTransitionScale;
+
 export function physicalScaleForMass(mass: number): number {
   return Math.min(
     growthConfig.maxScale,
@@ -9,13 +13,15 @@ export function physicalScaleForMass(mass: number): number {
 }
 
 export function attractionReach(physicalScale: number): number {
-  return Math.min(growthConfig.maxReach, growthConfig.baseReach * Math.sqrt(physicalScale));
+  const scale = Math.min(physicalScale, growthConfig.maxScale);
+  if (scale <= reachTransitionScale) return Math.min(normalReachCap, baseReach * Math.sqrt(scale));
+  return playerConfig.radius * scale + fieldMarginAtTransition * Math.sqrt(scale / reachTransitionScale);
 }
 
-export function addMass(player: Participant, mass: number): void {
-  player.mass += mass;
-  player.physicalScale = physicalScaleForMass(player.mass);
-  player.radius = playerConfig.radius * player.physicalScale;
+export function addMass(participant: Participant, mass: number): void {
+  participant.mass += mass;
+  participant.physicalScale = physicalScaleForMass(participant.mass);
+  participant.radius = playerConfig.radius * participant.physicalScale;
   // Growth at a wall moves the center into bounds without changing steering velocity.
-  player.position = clampToArena(player.position, player.radius);
+  participant.position = clampToArena(participant.position, participant.radius);
 }

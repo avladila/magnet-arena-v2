@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { ArenaModel } from '../src/arena-model';
 import { advanceAttraction } from '../src/attraction';
 import { arena, botConfig, regionConfig, scrapConfig } from '../src/config';
-import { attractionReach } from '../src/growth';
+import { addMass, attractionReach } from '../src/growth';
 import { createPlayer, type Point } from '../src/movement';
 import { ParticlePool, type Scrap, type WorldBounds } from '../src/particles';
 import { regionAt, regionBounds } from '../src/regions';
@@ -238,5 +238,51 @@ test('continuous corner travel streams offscreen and distant bots keep collectin
   assert.ok(player.pickupsCollected >= 40);
   assert.deepEqual([...offscreenOwners].sort(), bots.map(({ id }) => id));
   assert.deepEqual([...outsideOldArea].sort(), ['collector', 'roamer']);
+  assert.equal(particles.regionStats.visibleFallbacks, 0);
+});
+
+test('overlapping giant fields reserve safe scrap as the player grows and travels to a wall', () => {
+  const model = new ArenaModel(2026);
+  const { player, bots, participants, particles } = model;
+  for (const participant of participants) addMass(participant, (participant === player ? 3900 : 4352) - participant.mass);
+  bots[0].position = { x: player.position.x + 200, y: player.position.y };
+  const camera = new ArenaCamera(player.position);
+  camera.resize(390, 844);
+  camera.follow(player.position, 10, player.mass);
+
+  const generations = new Uint32Array(scrapConfig.capacity);
+  const offscreenOwners = new Set<string>();
+  let contested = 0;
+  for (let frame = 0; frame < 30 * 30; frame++) {
+    const corner = frame < 22 * 30 ? { x: 0, y: 0 } : { x: arena.width, y: 0 };
+    const result = model.step({ kind: 'target', point: corner }, delta)!;
+    contested += result.contestedCollections;
+    camera.follow(player.position, delta, player.mass);
+    const view = camera.bounds;
+    const visible = particles.slots.filter((slot) => slot.state === 'active' && inside(slot, view, slot.radius));
+    const before = visible.map(({ id, generation }) => [id, generation]);
+    for (const slot of particles.slots) generations[slot.id] = slot.generation;
+    model.replenish(view);
+    const active = checkBudget(particles);
+    assert.deepEqual(active.filter((slot) => inside(slot, view, slot.radius)).map(({ id, generation }) => [id, generation]), before);
+    for (const slot of active) {
+      if (slot.generation === generations[slot.id]) continue;
+      for (const participant of participants) {
+        const { x, y } = participant.position;
+        assert.ok((x - slot.x) ** 2 + (y - slot.y) ** 2 > attractionReach(participant.physicalScale) ** 2);
+      }
+    }
+    for (const event of result.collections) {
+      assert.equal(particles.collect(event.id, event.generation, player.id), undefined);
+      const bot = bots.find(({ id }) => id === event.ownerId);
+      if (bot && !inside(bot.position, view, bot.radius)) offscreenOwners.add(bot.id);
+    }
+  }
+  assert.equal(player.position.y, player.radius);
+  assert.ok(player.mass > 4000);
+  assert.ok(contested > 0);
+  assert.deepEqual([...offscreenOwners].sort(), bots.map(({ id }) => id));
+  assert.ok(particles.regionStats.peakCachedRegions <= regionConfig.cacheLimit);
+  assert.equal(particles.regionStats.duplicateActivations, 0);
   assert.equal(particles.regionStats.visibleFallbacks, 0);
 });

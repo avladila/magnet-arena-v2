@@ -6,10 +6,12 @@ export const playerConfig = {
   speed: 460,
 };
 export const growthConfig = {
-  scaleFactor: 0.32,
-  maxScale: 4,
+  // Experimental growth values for Task 005B playtesting.
+  scaleFactor: 0.8,
+  maxScale: 12,
   baseReach: 118,
-  maxReach: 230,
+  reachTransitionScale: 4,
+  normalReachCap: 230,
 };
 export const scrapConfig = {
   capacity: 1500,
@@ -85,5 +87,6 @@ export const viewConfig = {
     earlyExponent: -0.075,
     lateExponent: -0.17,
     minimum: 0.58,
+    fieldDiameterFraction: 0.7,
   },
 };

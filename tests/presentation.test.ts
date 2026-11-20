@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type Phaser from 'phaser';
-import { ArenaFloor, drawArena } from '../src/art';
+import { ArenaFloor, drawArena, drawMagnet } from '../src/art';
 import { advanceAttraction } from '../src/attraction';
-import { arena, arenaArt, growthFeedback } from '../src/config';
+import { BotView } from '../src/bot-view';
+import { createBots } from '../src/bots';
+import { arena, arenaArt, growthFeedback, scrapConfig } from '../src/config';
 import { addMass, attractionReach } from '../src/growth';
 import { GrowthFeedback, GrowthFeedbackView } from '../src/growth-feedback';
 import { createPlayer, type Point } from '../src/movement';
 import { ParticleView } from '../src/particle-view';
-import { ParticlePool } from '../src/particles';
+import { ParticlePool, type WorldBounds } from '../src/particles';
 import { themes } from '../src/theme';
 import { bindThemeToggle, ThemePreference } from '../src/theme-control';
 import { ArenaCamera } from '../src/view';
@@ -20,6 +22,8 @@ class GraphicsRecorder {
   readonly circles: { x: number; y: number; radius: number; color: number }[] = [];
   clears = 0;
   rectangularStrokes = 0;
+  canvasScale = 1;
+  furthestFill = 0;
   position: Point = { x: 0, y: 0 };
   private lineColor = 0;
 
@@ -37,6 +41,25 @@ class GraphicsRecorder {
     this.rectangles.push({ x, y, width, height });
     return this;
   }
+  scaleCanvas(x: number, y: number) {
+    assert.equal(x, y);
+    this.canvasScale = x;
+    return this;
+  }
+  fillCircle(x: number, y: number, radius: number) {
+    this.furthestFill = Math.max(this.furthestFill, (Math.hypot(x, y) + radius) * this.canvasScale);
+    return this;
+  }
+  fillRoundedRect(x: number, y: number, width: number, height: number, radius: number | {
+    tl: number; tr: number; bl: number; br: number;
+  }) {
+    const { tl, tr, bl, br } = typeof radius === 'number' ? { tl: radius, tr: radius, bl: radius, br: radius } : radius;
+    this.fillCircle(x + tl, y + tl, tl);
+    this.fillCircle(x + width - tr, y + tr, tr);
+    this.fillCircle(x + bl, y + height - bl, bl);
+    this.fillCircle(x + width - br, y + height - br, br);
+    return this;
+  }
   lineStyle(_width: number, color: number) { this.lineColor = color; return this; }
   strokeRect() { this.rectangularStrokes++; return this; }
   beginPath() { return this; }
@@ -49,6 +72,9 @@ class GraphicsRecorder {
   }
 
   setDepth() { return this; }
+  setScale() { return this; }
+  setRotation() { return this; }
+  setVisible() { return this; }
   setPosition(x: number, y: number) { this.position = { x, y }; return this; }
 }
 
@@ -188,7 +214,7 @@ test('halo eases toward the current world-space reach without changing contact g
   const player = createPlayer();
   const feedback = new GrowthFeedback(player);
   assert.equal(feedback.haloRadius, 118);
-  for (const mass of [200, 2500]) {
+  for (const mass of [200, 4352]) {
     const previousRadius = feedback.haloRadius;
     addMass(player, mass - player.mass);
     const state = structuredClone(player);
@@ -199,12 +225,68 @@ test('halo eases toward the current world-space reach without changing contact g
     assert.equal(feedback.haloRadius, reach);
     assert.deepEqual(player, state);
   }
-  assert.equal(feedback.haloRadius, 230);
+  assert.equal(feedback.haloRadius, attractionReach(12));
 
   const pool = new ParticlePool(7, [player], 1);
   Object.assign(pool.slots[0], { x: player.position.x + player.radius + 6, y: player.position.y });
   assert.equal(advanceAttraction(pool, [player], 0).collections.length, 0);
   assert.equal(advanceAttraction(pool, [player], 1).collections.length, 1);
+});
+
+test('a growth jump keeps the halo and existing pulse outside the giant body', () => {
+  const player = createPlayer();
+  const recorder = new GraphicsRecorder();
+  const view = new GrowthFeedbackView(sceneWithGraphics(recorder), player);
+  addMass(player, 4332);
+  view.render(player, 1 / 120, themes.light, false);
+  assert.equal(recorder.circles.length, 2);
+  assert.ok(recorder.circles.every(({ radius }) => radius >= player.radius + scrapConfig.radius));
+  assert.ok(recorder.circles[0].radius < attractionReach(12));
+  view.render(player, 0.1, themes.dark, true);
+  assert.equal(recorder.circles.length, 1);
+  assert.ok(recorder.circles[0].radius > player.radius);
+});
+
+test('the player backing and all bot accents fit inside their physical circles', () => {
+  for (const accent of [undefined, ...createBots(11).map((bot) => bot.accent)]) {
+    const recorder = new GraphicsRecorder();
+    drawMagnet(sceneWithGraphics(recorder), accent);
+    assert.ok(Math.abs(recorder.furthestFill - 30) < 1e-12);
+    if (accent !== undefined) assert.ok(recorder.fills.includes(accent));
+  }
+});
+
+test('a giant bot label stays at CSS size and chooses room clear of the player and other labels', () => {
+  const [bot] = createBots(11);
+  const player = createPlayer();
+  addMass(bot, 4332);
+  addMass(player, 4332);
+  bot.position = { x: 2000, y: 2000 };
+  player.position = { x: 860, y: 2000 };
+  const label = {
+    width: 48, height: 14, top: 0, scale: 0, visible: false,
+    setOrigin() { return this; }, setDepth() { return this; }, setColor() { return this; }, setStroke() { return this; },
+    setPosition(_x: number, y: number) { this.top = y; return this; },
+    setScale(scale: number) { this.scale = scale; return this; },
+    setVisible(visible: boolean) { this.visible = visible; return this; },
+  };
+  const scene = { add: { graphics: () => new GraphicsRecorder(), text: () => label } } as unknown as Phaser.Scene;
+  const view = new BotView(scene, bot);
+  const bounds = { left: 500, top: 1250, right: 3500, bottom: 2750 };
+  const names: WorldBounds[] = [];
+  view.render(5, 0.25, bounds, themes.light, [player, bot], names);
+  assert.ok(label.visible && label.top + label.height / 0.25 < bot.position.y - bot.radius);
+  assert.equal(label.scale * 0.25, 1);
+  const [above] = names;
+  view.render(5, 0.25, bounds, themes.dark, [player, bot], names);
+  assert.ok(label.visible && label.top > bot.position.y + bot.radius);
+  assert.equal(names.length, 2);
+
+  player.position = { x: bot.position.x, y: 2500 };
+  const occupied = [above];
+  view.render(5, 0.25, bounds, themes.dark, [player, bot], occupied);
+  assert.equal(label.visible, false);
+  assert.equal(occupied.length, 1);
 });
 
 test('milestones pulse once as mass crosses 50, 100, 200 and 400', () => {

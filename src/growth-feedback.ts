@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { growthFeedback } from './config';
+import { growthFeedback, scrapConfig } from './config';
 import { attractionReach } from './growth';
 import type { Player } from './movement';
 import type { ThemePalette } from './theme';
@@ -16,7 +16,8 @@ export class GrowthFeedback {
 
   update(player: Player, seconds: number, reducedMotion: boolean): number | undefined {
     const reach = attractionReach(player.physicalScale);
-    this.haloRadius += (reach - this.haloRadius) * -Math.expm1(-growthFeedback.haloRate * seconds);
+    const eased = this.haloRadius + (reach - this.haloRadius) * -Math.expm1(-growthFeedback.haloRate * seconds);
+    this.haloRadius = Math.max(player.radius + scrapConfig.radius, eased);
 
     let milestone: number | undefined;
     for (const threshold of growthFeedback.milestones) {
@@ -59,7 +60,8 @@ export class GrowthFeedbackView {
     const pulse = this.feedback.pulseProgress;
     if (pulse === undefined) return;
     const remaining = 1 - pulse;
-    const pulseRadius = player.radius + (radius + 12 - player.radius) * (1 - remaining ** 2);
+    const innerRadius = player.radius + scrapConfig.radius;
+    const pulseRadius = innerRadius + (radius + 12 - innerRadius) * (1 - remaining ** 2);
     this.rings.lineStyle(2.5, palette.field.pulse, 0.52 * remaining).strokeCircle(0, 0, pulseRadius);
   }
 }

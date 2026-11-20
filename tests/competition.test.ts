@@ -31,7 +31,7 @@ test('contested pull uses one integration toward the closest surface rather than
   const [bot] = createBots(4);
   player.position = { x: 905, y: 1000 };
   bot.position = { x: 1070, y: 1000 };
-  addMass(player, 300);
+  addMass(player, 80);
   const contest = withScrap([player, bot], { x: 1000, y: 1000 });
   const onlyWinner = withScrap([player], { x: 1000, y: 1000 });
   // The bot is 70 units from the center, but the larger player's surface is closer.
@@ -148,7 +148,7 @@ test('one shared pool starts and replenishes at 720 active pieces outside all fi
   const center = model.player.position;
   for (const [index, bot] of bots.entries()) {
     bot.position = { x: center.x + 40 + index * 20, y: center.y + 50 + index * 10 };
-    addMass(bot, 2500);
+    addMass(bot, 4332);
   }
   const slot = particles.slots[0];
   Object.assign(slot, bots[0].position);
@@ -171,7 +171,7 @@ test('the fully visible fallback still excludes all grown attraction fields', ()
   const participants = [createPlayer(), ...createBots(10)];
   participants.forEach((participant, i) => {
     participant.position = { x: 120, y: Math.max(120, 5 + 461 * i) };
-    addMass(participant, 2500);
+    addMass(participant, 4332);
   });
   const pool = withScrap(participants, participants[0].position);
   assert.equal(advanceAttraction(pool, participants, 0).collections.length, 1);
@@ -195,10 +195,11 @@ test('seeded multi-magnet runs repeat the movement, ownership events, and recycl
     for (const participant of model.participants) {
       assert.ok(participant.pickupsCollected > 0);
       assert.equal(participant.mass, 20 + participant.pickupsCollected);
-      const scale = Math.min(4, 1 + 0.32 * (Math.sqrt(participant.mass / 20) - 1));
+      const scale = Math.min(12, 1 + 0.8 * (Math.sqrt(participant.mass / 20) - 1));
       assert.equal(participant.physicalScale, scale);
       assert.equal(participant.radius, 30 * scale);
-      assert.equal(attractionReach(scale), Math.min(230, 118 * Math.sqrt(scale)));
+      const reach = scale <= 4 ? Math.min(230, 118 * Math.sqrt(scale)) : 30 * scale + 110 * Math.sqrt(scale / 4);
+      assert.equal(attractionReach(scale), reach);
     }
     assert.equal(events.flatMap((result) => result.collections).length,
       model.participants.reduce((sum, participant) => sum + participant.pickupsCollected, 0));

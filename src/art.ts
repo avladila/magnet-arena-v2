@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { arena, arenaArt } from './config';
+import { arena, arenaArt, playerConfig } from './config';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 
@@ -61,13 +61,15 @@ export class ArenaFloor {
   }
 }
 
-export const botRimRadius = 37;
-
 export function drawMagnet(scene: Phaser.Scene, accent?: number) {
   const art = scene.add.graphics();
-  art.fillStyle(0x397b74, 0.18).fillEllipse(0, 5, 66, 66);
-  if (accent !== undefined) art.fillStyle(accent).fillCircle(0, 0, botRimRadius);
-  art.fillStyle(0xf5fffa).fillCircle(0, 0, 33);
+  const backingRadius = 33;
+  const accentRadius = 37;
+  const normalization = playerConfig.radius / (accent === undefined ? backingRadius : accentRadius);
+  art.scaleCanvas(normalization, normalization);
+  if (accent !== undefined) art.fillStyle(accent).fillCircle(0, 0, accentRadius);
+  art.fillStyle(0xf5fffa).fillCircle(0, 0, backingRadius);
+  art.fillStyle(0x397b74, 0.18).fillRoundedRect(-26, -21, 52, 46, 18);
   art.fillStyle(0x23494d).fillRoundedRect(-26, -23, 50, 46, 18);
   art.fillStyle(0xeb6170).fillRoundedRect(-23, -20, 43, 17, {
     tl: 11, tr: 4, bl: 0, br: 2,
