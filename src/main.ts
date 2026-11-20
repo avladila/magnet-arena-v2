@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { drawArena, drawMagnet } from './art';
 import { bindInput } from './browser-input';
-import { viewConfig } from './config';
+import { touch, viewConfig } from './config';
 import { advance, createPlayer, type Point } from './movement';
 import { ArenaCamera, Heading } from './view';
 import './style.css';
@@ -9,6 +9,7 @@ import './style.css';
 const surface = document.querySelector<HTMLElement>('#arena')!;
 const stick = document.querySelector<HTMLElement>('#joystick')!;
 const knob = stick.firstElementChild as HTMLElement;
+stick.style.setProperty('--joystick-size', touch.radius * 2 + 'px');
 
 class ArenaScene extends Phaser.Scene {
   private player = createPlayer();

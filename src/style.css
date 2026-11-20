@@ -61,8 +61,8 @@ p {
 #joystick {
   position: absolute;
   z-index: 2;
-  width: 128px;
-  height: 128px;
+  width: var(--joystick-size);
+  height: var(--joystick-size);
   box-sizing: border-box;
   transform: translate(-50%, -50%);
   border: 2px solid #23746680;

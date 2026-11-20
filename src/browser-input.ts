@@ -22,7 +22,7 @@ export function bindInput(surface: HTMLElement, toWorld: (point: Point) => Point
       input.mouseMove(point(event));
       return;
     }
-    if (!input.press(event.pointerId, point(event))) return;
+    if (!input.press(event.pointerId, point(event), event.timeStamp)) return;
     owner = event.pointerId;
     surface.setPointerCapture(event.pointerId);
   }, options);
@@ -36,7 +36,7 @@ export function bindInput(surface: HTMLElement, toWorld: (point: Point) => Point
   surface.addEventListener('pointerup', (event) => {
     if (owner !== event.pointerId) return;
     owner = undefined;
-    input.release(event.pointerId, point(event), toWorld);
+    input.release(event.pointerId, point(event), event.timeStamp, toWorld);
   }, options);
   const cancel = (event: PointerEvent) => {
     if (owner !== event.pointerId) return;

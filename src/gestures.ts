@@ -1,7 +1,7 @@
 import { touch } from './config';
 import type { Point, Steering } from './movement';
 
-type Gesture = { id: number; anchor: Point; current: Point; dragging: boolean };
+type Gesture = { id: number; anchor: Point; current: Point; startedAt: number; dragging: boolean };
 
 export class SteeringInput {
   private mouse?: Point;
@@ -18,10 +18,10 @@ export class SteeringInput {
     this.mouse = undefined;
   }
 
-  press(id: number, point: Point): boolean {
+  press(id: number, point: Point, time: number): boolean {
     if (this.gesture) return false;
     this.clear();
-    this.gesture = { id, anchor: point, current: point, dragging: false };
+    this.gesture = { id, anchor: point, current: point, startedAt: time, dragging: false };
     return true;
   }
 
@@ -33,10 +33,12 @@ export class SteeringInput {
     gesture.dragging ||= distance > touch.dragThreshold;
   }
 
-  release(id: number, point: Point, toWorld: (point: Point) => Point): void {
+  release(id: number, point: Point, time: number, toWorld: (point: Point) => Point): void {
     if (this.gesture?.id !== id) return;
     this.move(id, point);
-    if (!this.gesture.dragging) this.destination = toWorld(point);
+    if (!this.gesture.dragging && time - this.gesture.startedAt <= touch.tapMaxMs) {
+      this.destination = toWorld(point);
+    }
     this.gesture = undefined;
   }
 

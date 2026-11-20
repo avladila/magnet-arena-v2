@@ -45,9 +45,9 @@ test('a tap converts its release position once and mouse steering reprojects as 
   const input = new SteeringInput();
   let x = 100;
   const toWorld = (point: Point) => ({ x: point.x + x, y: point.y });
-  input.press(1, origin);
+  input.press(1, origin, 0);
   assert.deepEqual(input.steering(toWorld), { kind: 'idle' });
-  input.release(1, { x: 10, y: 0 }, toWorld);
+  input.release(1, { x: 10, y: 0 }, 100, toWorld);
   x = 200;
   assert.deepEqual(input.steering(toWorld), { kind: 'target', point: { x: 110, y: 0 } });
   input.mouseMove({ x: 10, y: 0 });
@@ -56,11 +56,14 @@ test('a tap converts its release position once and mouse steering reprojects as 
   assert.deepEqual(input.steering(toWorld), { kind: 'target', point: { x: 310, y: 0 } });
   input.mouseLeave();
   assert.deepEqual(input.steering(toWorld), { kind: 'idle' });
+  input.press(2, origin, 1000);
+  input.release(2, origin, 2000, toWorld);
+  assert.deepEqual(input.steering(toWorld), { kind: 'idle' });
 });
 
 test('joystick strength scales outside the dead zone and neutral or release stops movement', () => {
   const input = new SteeringInput();
-  input.press(1, origin);
+  input.press(1, origin, 0);
   input.move(1, { x: 10, y: 0 });
   assert.equal(input.joystick, undefined);
   input.move(1, { x: 37, y: 0 });
@@ -69,27 +72,27 @@ test('joystick strength scales outside the dead zone and neutral or release stop
   assert.deepEqual(input.steering(identity), { kind: 'joystick', point: { x: 0, y: -1 } });
   input.move(1, origin);
   assert.deepEqual(input.steering(identity), { kind: 'idle' });
-  input.release(1, origin, identity);
+  input.release(1, origin, 100, identity);
   assert.deepEqual(input.steering(identity), { kind: 'idle' });
 });
 
 test('only the first touch can move, release, or cancel its gesture', () => {
   const input = new SteeringInput();
-  assert.equal(input.press(1, origin), true);
-  assert.equal(input.press(2, origin), false);
+  assert.equal(input.press(1, origin, 0), true);
+  assert.equal(input.press(2, origin, 0), false);
   input.move(2, { x: 100, y: 0 });
-  input.release(2, origin, identity);
+  input.release(2, origin, 100, identity);
   input.cancel(2);
   assert.equal(input.joystick, undefined);
   input.move(1, { x: 64, y: 0 });
   assert.equal(input.steering(identity).kind, 'joystick');
   input.cancel(1);
   assert.deepEqual(input.steering(identity), { kind: 'idle' });
-  input.release(1, origin, identity);
+  input.release(1, origin, 100, identity);
   assert.deepEqual(input.steering(identity), { kind: 'idle' });
-  assert.equal(input.press(2, origin), true);
+  assert.equal(input.press(2, origin, 0), true);
   input.cancel(2);
-  assert.equal(input.press(3, origin), true);
+  assert.equal(input.press(3, origin, 0), true);
 });
 
 test('angle wraps across ±π and heading ignores tiny or stationary displacement', () => {

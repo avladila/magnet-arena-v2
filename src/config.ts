@@ -5,7 +5,7 @@ export const playerConfig = {
   // Provisional world units per second, pending playtesting.
   speed: 460,
 };
-export const touch = { dragThreshold: 10, radius: 64, deadZone: 10 };
+export const touch = { dragThreshold: 10, radius: 64, deadZone: 10, tapMaxMs: 350 };
 export const viewConfig = {
   followRate: 8,
   rotationRate: 14,
