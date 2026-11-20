@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ArenaModel } from '../src/arena-model';
 import { BotAI } from '../src/bot-ai';
-import { createBots } from '../src/bots';
+import { createBots, type BotTarget } from '../src/bots';
 import { arena, botConfig, playerConfig } from '../src/config';
 import { addMass } from '../src/growth';
 import { advance, createPlayer, type Point } from '../src/movement';
@@ -43,7 +43,7 @@ test('four seeded bots have stable, legal, separated starting positions and dist
   }
 });
 
-test('Collectors favor nearby dense live scrap while Roamers keep seeded waypoints independent of scrap', () => {
+test('Collectors route through dense regions while Roamers keep waypoints independent of scrap', () => {
   const [collector, , roamer] = createBots(6);
   const roamWithoutScrap = createBots(6)[2];
   collector.position = { x: 1200, y: 1200 };
@@ -57,14 +57,18 @@ test('Collectors favor nearby dense live scrap while Roamers keep seeded waypoin
   const ai = new BotAI();
   ai.update([collector, roamer], pool.slots, delta);
   ai.update([roamWithoutScrap], [], delta);
-  assert.equal(collector.target?.kind, 'scrap');
-  assert.ok(collector.target.id > 0);
+  assert.equal(collector.target?.kind, 'region');
+  const columns = Math.ceil(arena.width / botConfig.collector.cellSize);
+  assert.equal(collector.target.cell, 5 * columns + 6);
+  const { x, y } = collector.target.point;
+  assert.ok(x > 1560 && y > 1320);
+  assert.ok(Math.abs((x - 1200) / (y - 1200) - 3) < 1e-8);
   assert.equal(roamer.target?.kind, 'waypoint');
   assert.deepEqual(roamer.target, roamWithoutScrap.target);
   assert.ok(distance(roamer.target.point, roamer.position) >= botConfig.roamer.waypointMinDistance);
 });
 
-test('Collectors retain a viable target until a meaningfully better option and reject stale generations', () => {
+test('a pickup and a newly available region leave the current route intact until the decision expires', () => {
   const [bot] = createBots(10);
   bot.position = { x: 1000, y: 1000 };
   const pool = new ParticlePool(50, [bot], 2);
@@ -73,38 +77,92 @@ test('Collectors retain a viable target until a meaningfully better option and r
   Object.assign(second, { x: 3500, y: 1600 });
   const ai = new BotAI();
   ai.update([bot], pool.slots, delta);
-  assert.equal(bot.target?.kind, 'scrap');
-  assert.equal(bot.target.id, first.id);
-  const retained = bot.target;
+  const route = bot.target;
+  assert.equal(route?.kind, 'region');
+  const destination = { ...route.point };
+  assert.equal(bot.decisionIn, botConfig.collector.decisionSeconds);
+  assert.ok(distance(bot.position, route.point) >=
+    playerConfig.speed * botConfig.collector.minCommitmentSeconds);
 
-  Object.assign(second, { x: 1320, y: 1000 });
-  ai.update([bot], pool.slots, botConfig.collector.decisionSeconds);
-  assert.equal(bot.target, retained);
-
-  Object.assign(second, { x: 1060, y: 1000 });
-  ai.update([bot], pool.slots, botConfig.collector.decisionSeconds);
-  assert.equal(bot.target?.kind, 'scrap');
-  assert.equal(bot.target.id, second.id);
-  const oldTarget = bot.target;
-  const claim = pool.collect(second.id, second.generation, bot.id);
+  const claim = pool.collect(first.id, first.generation, bot.id);
   assert.ok(claim);
   pool.replenish([bot], fullArena);
-  Object.assign(second, { x: 4600, y: 1800 });
-  assert.deepEqual(oldTarget.point, { x: 1060, y: 1000 });
-  ai.update([bot], pool.slots, delta);
-  assert.equal(bot.target?.kind, 'scrap');
-  assert.equal(bot.target.id, first.id);
+  Object.assign(first, { x: 3800, y: 1750 });
+  Object.assign(second, { x: 650, y: 1000 });
+  ai.update([bot], pool.slots, botConfig.collector.minCommitmentSeconds);
+  assert.equal(bot.target, route);
+  assert.deepEqual(route.point, destination);
+
+  ai.update([bot], pool.slots, bot.decisionIn + delta);
+  assert.equal(bot.target?.kind, 'region');
+  assert.notEqual(bot.target.cell, route.cell);
+  assert.ok(bot.target.point.x < bot.position.x);
 });
 
-test('Collectors index the exact right and bottom limits when evaluating an edge region', () => {
+test('a spent region falls back to a moving waypoint at the next decision', () => {
+  const [bot] = createBots(17);
+  bot.position = { x: 1400, y: 1400 };
+  const pool = new ParticlePool(51, [bot], 1);
+  const [slot] = pool.slots;
+  Object.assign(slot, { x: 1770, y: 1390 });
+  const ai = new BotAI();
+  ai.update([bot], pool.slots, delta);
+  assert.equal(bot.target?.kind, 'region');
+  const route = bot.target;
+  assert.ok(pool.collect(slot.id, slot.generation, bot.id));
+
+  ai.update([bot], pool.slots, bot.decisionIn - delta);
+  assert.equal(bot.target, route);
+  ai.update([bot], pool.slots, 2 * delta);
+  const fallback = bot.target as BotTarget | undefined;
+  assert.equal(fallback?.kind, 'waypoint');
+  const previous = bot.position;
+  advance(bot, { kind: 'target', point: fallback.point }, delta);
+  assert.ok(Math.abs(distance(bot.position, previous) - playerConfig.speed * delta) < 1e-8);
+});
+
+test('growth invalidates an old wall endpoint even while its commitment timer is active', () => {
   const [bot] = createBots(5);
-  bot.position = { x: arena.width - 100, y: arena.height - 100 };
+  bot.position = { x: 4410, y: 2800 };
+  bot.target = { kind: 'region', cell: 279, point: { x: arena.width - 95, y: arena.height - 95 } };
+  bot.decisionIn = botConfig.collector.decisionSeconds;
+  addMass(bot, 2500);
+  assert.equal(bot.radius, 120);
   const pool = new ParticlePool(7, [bot], 1);
   Object.assign(pool.slots[0], { x: arena.width - 5, y: arena.height - 5 });
   new BotAI().update([bot], pool.slots, delta);
-  assert.equal(bot.target?.kind, 'scrap');
-  assert.equal(bot.target.id, 0);
-  assert.deepEqual(bot.target.point, { x: 4795, y: 3195 });
+  const fallback = bot.target as BotTarget | undefined;
+  assert.equal(fallback?.kind, 'waypoint');
+  const { x, y } = fallback.point;
+  assert.ok(x >= bot.radius && x <= arena.width - bot.radius);
+  assert.ok(y >= bot.radius && y <= arena.height - bot.radius);
+  assert.ok(distance(bot.position, fallback.point) >= botConfig.roamer.waypointMinDistance);
+  advance(bot, { kind: 'target', point: fallback.point }, delta);
+  assert.ok(Math.abs(Math.hypot(bot.velocity.x, bot.velocity.y) - playerConfig.speed) < 1e-8);
+});
+
+test('a wall-shortened region route has enough runway to stay committed until arrival', () => {
+  const [bot] = createBots(7);
+  bot.position = { x: 3920, y: 1800 };
+  const pool = new ParticlePool(9, [bot], 7);
+  for (const slot of pool.slots.slice(0, 7)) {
+    Object.assign(slot, { x: 4440 + slot.id, y: 1800 });
+  }
+  const ai = new BotAI();
+  ai.update([bot], pool.slots, delta);
+  const route = bot.target;
+  assert.equal(route?.kind, 'region');
+  const arrival = bot.radius * botConfig.collector.arrivalRadiusRatio;
+  const travelUntilArrival = distance(bot.position, route.point) - arrival;
+  assert.ok(travelUntilArrival >= playerConfig.speed * botConfig.collector.minCommitmentSeconds);
+  assert.ok(travelUntilArrival < playerConfig.speed * botConfig.collector.decisionSeconds);
+  assert.ok(route.point.x <= arena.width - bot.radius - botConfig.collector.wallMargin);
+  for (let frames = 0; bot.target === route; frames++) {
+    assert.ok(frames <= Math.ceil(botConfig.collector.decisionSeconds / delta));
+    advance(bot, { kind: 'target', point: route.point }, delta);
+    ai.update([bot], pool.slots, delta);
+  }
+  assert.ok(bot.target);
 });
 
 test('Roamers continually leave corners for legal waypoints at the shared, steady speed', () => {

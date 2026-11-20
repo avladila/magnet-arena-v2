@@ -1,5 +1,5 @@
-import type { Bot } from './bots';
-import { arena, botConfig } from './config';
+import type { Bot, BotTarget } from './bots';
+import { arena, botConfig, playerConfig } from './config';
 import { clampToArena, type Point } from './movement';
 import type { Scrap } from './particles';
 
@@ -15,6 +15,20 @@ function cell({ x, y }: Point): number {
   const column = Math.min(Math.floor(x / collector.cellSize), columns - 1);
   const row = Math.min(Math.floor(y / collector.cellSize), rows - 1);
   return row * columns + column;
+}
+
+function cellCenter(index: number): Point {
+  const left = (index % columns) * collector.cellSize;
+  const top = Math.floor(index / columns) * collector.cellSize;
+  return {
+    x: (left + Math.min(left + collector.cellSize, arena.width)) / 2,
+    y: (top + Math.min(top + collector.cellSize, arena.height)) / 2,
+  };
+}
+
+function distanceToWall(position: number, direction: number, limit: number, margin: number): number {
+  if (direction === 0) return Infinity;
+  return ((direction > 0 ? limit - margin : margin) - position) / direction;
 }
 
 function waypoint(bot: Bot): Point {
@@ -39,9 +53,11 @@ export class BotAI {
     let densityReady = false;
     for (const bot of bots) {
       bot.decisionIn -= seconds;
-      const current = this.liveTarget(bot, slots);
-      const onRoute = current !== undefined || (bot.target?.kind === 'waypoint' &&
-        distanceSquared(bot.position, bot.target.point) > roamer.arrivalRadius ** 2);
+      const arrival = bot.strategy === 'collector' ? bot.radius * collector.arrivalRadiusRatio : roamer.arrivalRadius;
+      const goal = bot.target?.point;
+      const onRoute = goal !== undefined && distanceSquared(bot.position, goal) > arrival ** 2 &&
+        (bot.strategy === 'roamer' || (goal.x >= bot.radius && goal.x <= arena.width - bot.radius &&
+          goal.y >= bot.radius && goal.y <= arena.height - bot.radius));
       if (onRoute && bot.decisionIn > 0) continue;
 
       if (bot.strategy === 'collector') {
@@ -52,12 +68,10 @@ export class BotAI {
           }
           densityReady = true;
         }
-        const target = this.pickScrap(bot, slots, current);
-        if (target && target !== current) {
-          bot.target = {
-            kind: 'scrap', point: { x: target.x, y: target.y }, id: target.id, generation: target.generation,
-          };
-        } else if (!onRoute) {
+        const target = this.pickRoute(bot, arrival);
+        if (target) {
+          bot.target = target;
+        } else if (!onRoute || bot.target?.kind === 'region') {
           bot.target = { kind: 'waypoint', point: waypoint(bot) };
         }
         bot.decisionIn = collector.decisionSeconds;
@@ -69,38 +83,43 @@ export class BotAI {
     }
   }
 
-  private liveTarget(bot: Bot, slots: readonly Scrap[]): Scrap | undefined {
-    const target = bot.target;
-    if (target?.kind !== 'scrap') return;
-    const slot = slots[target.id];
-    if (slot?.state === 'active' && slot.generation === target.generation &&
-        distanceSquared(bot.position, slot) <= collector.searchRadius ** 2) {
-      target.point.x = slot.x;
-      target.point.y = slot.y;
-      return slot;
-    }
-    bot.target = undefined;
-  }
+  private pickRoute(bot: Bot, arrival: number): BotTarget | undefined {
+    const { x, y } = bot.position;
+    const forwardX = Math.cos(bot.heading);
+    const forwardY = Math.sin(bot.heading);
+    const moving = bot.velocity.x !== 0 || bot.velocity.y !== 0;
+    const margin = bot.radius + collector.wallMargin;
+    const minimum = playerConfig.speed * collector.minCommitmentSeconds + arrival;
+    const preferred = playerConfig.speed * collector.decisionSeconds + arrival;
+    let best: BotTarget | undefined;
+    let bestScore = 0;
 
-  private pickScrap(bot: Bot, slots: readonly Scrap[], current?: Scrap): Scrap | undefined {
-    let best = current;
-    let bestScore = current ? this.score(current, distanceSquared(bot.position, current)) : 0;
-    const switchScore = bestScore * collector.switchRatio;
-    for (const slot of slots) {
-      if (slot.state !== 'active') continue;
-      const range = distanceSquared(bot.position, slot);
-      if (range > collector.searchRadius ** 2) continue;
-      const score = this.score(slot, range);
-      if (score >= switchScore && score > bestScore) {
-        best = slot;
-        bestScore = score;
-      }
+    for (let index = 0; index < this.density.length; index++) {
+      const population = this.density[index];
+      if (population === 0) continue;
+      const center = cellCenter(index);
+      const dx = center.x - x;
+      const dy = center.y - y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < collector.cellSize / 2 || distance > collector.searchRadius) continue;
+      const ux = dx / distance;
+      const uy = dy / distance;
+      // Continue through the cell so nearby pickups do not end the route.
+      // Reject directions without enough room to commit before the wall.
+      const travel = Math.min(
+        Math.max(preferred, distance),
+        distanceToWall(x, ux, arena.width, margin),
+        distanceToWall(y, uy, arena.height, margin),
+      );
+      if (travel < Math.max(minimum, distance - arrival)) continue;
+
+      const alignment = moving ? (1 + ux * forwardX + uy * forwardY) / 2 : 1;
+      const score = (1 + collector.densityWeight * (population - 1)) *
+        (1 - collector.turnPenalty * (1 - alignment)) / (1 + distance / collector.distanceBias);
+      if (score <= bestScore) continue;
+      bestScore = score;
+      best = { kind: 'region', cell: index, point: { x: x + ux * travel, y: y + uy * travel } };
     }
     return best;
-  }
-
-  private score(slot: Scrap, range: number): number {
-    const neighbors = this.density[cell(slot)] - 1;
-    return (1 + collector.densityWeight * neighbors) / (1 + Math.sqrt(range) / collector.distanceBias);
   }
 }

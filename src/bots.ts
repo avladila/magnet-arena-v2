@@ -3,7 +3,7 @@ import { createParticipant, type Participant, type Point } from './movement';
 import { seedRandom } from './random';
 
 export type BotTarget = { kind: 'waypoint'; point: Point } |
-  { kind: 'scrap'; point: Point; id: number; generation: number };
+  { kind: 'region'; point: Point; cell: number };
 
 export type Bot = Participant<'bot'> & {
   readonly strategy: 'collector' | 'roamer';

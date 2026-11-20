@@ -25,12 +25,15 @@ export const botConfig = {
   // Provisional AI tuning. All magnets use the shared movement speed.
   spawnJitter: 100,
   collector: {
-    decisionSeconds: 0.7,
+    decisionSeconds: 2.3,
+    minCommitmentSeconds: 1.5,
     searchRadius: 720,
     cellSize: 240,
     densityWeight: 0.28,
     distanceBias: 300,
-    switchRatio: 1.25,
+    turnPenalty: 0.4,
+    wallMargin: 60,
+    arrivalRadiusRatio: 0.4,
   },
   roamer: {
     waypointMinDistance: 600,
