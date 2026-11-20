@@ -34,9 +34,12 @@ export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: T
   art.strokePath();
 }
 
-export function drawMagnet(scene: Phaser.Scene) {
+export const botRimRadius = 37;
+
+export function drawMagnet(scene: Phaser.Scene, accent?: number) {
   const art = scene.add.graphics();
   art.fillStyle(0x397b74, 0.18).fillEllipse(0, 5, 66, 66);
+  if (accent !== undefined) art.fillStyle(accent).fillCircle(0, 0, botRimRadius);
   art.fillStyle(0xf5fffa).fillCircle(0, 0, 33);
   art.fillStyle(0x23494d).fillRoundedRect(-26, -23, 50, 46, 18);
   art.fillStyle(0xeb6170).fillRoundedRect(-23, -20, 43, 17, {

@@ -1,14 +1,19 @@
-import { arena, playerConfig } from './config';
+import { arena, playerConfig, viewConfig } from './config';
 
 export type Point = { x: number; y: number };
 export type Steering = { kind: 'idle' } | { kind: 'target' | 'joystick'; point: Point };
-export type Player = {
+export type Participant<Kind extends 'player' | 'bot' = 'player' | 'bot'> = {
+  readonly id: string;
+  readonly kind: Kind;
   position: Point;
   velocity: Point;
+  heading: number;
   mass: number;
   physicalScale: number;
   radius: number;
+  pickupsCollected: number;
 };
+export type Player = Participant<'player'>;
 
 export const clamp = (value: number, low: number, high: number) =>
   Math.max(low, Math.min(value, high));
@@ -21,17 +26,27 @@ export function clampToArena({ x, y }: Point, radius: number): Point {
 }
 
 export function createPlayer(): Player {
+  return createParticipant('player', 'player', { x: arena.width / 2, y: arena.height / 2 });
+}
+
+export function createParticipant<Kind extends Participant['kind']>(
+  id: string, kind: Kind, position: Point,
+): Participant<Kind> {
   return {
-    position: { x: arena.width / 2, y: arena.height / 2 },
+    id,
+    kind,
+    position: { ...position },
     velocity: { x: 0, y: 0 },
+    heading: 0,
     mass: playerConfig.initialMass,
     physicalScale: 1,
     radius: playerConfig.radius,
+    pickupsCollected: 0,
   };
 }
 
-export function advance(player: Player, steering: Steering, seconds: number): void {
-  if (seconds <= 0) return;
+export function advance(player: Participant, steering: Steering, seconds: number): void {
+  if (!(seconds > 0) || !Number.isFinite(seconds)) return;
   const previous = player.position;
   const travel = playerConfig.speed * seconds;
   let dx = 0;
@@ -56,4 +71,7 @@ export function advance(player: Player, steering: Steering, seconds: number): vo
     x: (player.position.x - previous.x) / seconds,
     y: (player.position.y - previous.y) / seconds,
   };
+  if (Math.hypot(player.velocity.x, player.velocity.y) >= viewConfig.headingMinSpeed) {
+    player.heading = Math.atan2(player.velocity.y, player.velocity.x);
+  }
 }

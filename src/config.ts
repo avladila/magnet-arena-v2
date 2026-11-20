@@ -15,11 +15,34 @@ export const scrapConfig = {
   capacity: 1500,
   activeCount: 720,
   colorCount: 10 as const,
-  // Provisional pull speeds for single-player playtesting.
+  // Provisional pull speeds for playtesting.
   pullMinSpeed: 300,
   pullMaxSpeed: 700,
   massPerPickup: 1,
   radius: 5,
+};
+export const botConfig = {
+  // Provisional AI tuning. All magnets use the shared movement speed.
+  spawnJitter: 100,
+  collector: {
+    decisionSeconds: 2.3,
+    minCommitmentSeconds: 1.5,
+    searchRadius: 720,
+    cellSize: 240,
+    densityWeight: 0.28,
+    distanceBias: 300,
+    turnPenalty: 0.4,
+    wallMargin: 60,
+    arrivalRadiusRatio: 0.4,
+  },
+  roamer: {
+    waypointMinDistance: 600,
+    waypointMaxDistance: 1500,
+    wallInset: 100,
+    arrivalRadius: 12,
+    reconsiderMinSeconds: 2.6,
+    reconsiderMaxSeconds: 4.2,
+  },
 };
 export const touch = { dragThreshold: 10, radius: 64, deadZone: 10, tapMaxMs: 350 };
 export const arenaArt = {
