@@ -36,9 +36,9 @@ npm run build
 
 ## Growth and balance
 
-The simulation owns position, velocity, mass, size, and scrap. Each collected slot pays out once before it respawns, preferably outside the camera. Growth uses `min(4, 1 + 0.32 × (sqrt(mass / 20) − 1))` for scale, `30 × scale` for physical radius, and `min(230, 118 × sqrt(scale))` for pull reach. At maximum scale, the farthest corner scrap is about 163 world units from the nearest legal magnet center, within its 230-unit reach.
+The simulation owns position, velocity, mass, size, and scrap. Each collected slot pays out once before it respawns, preferably outside the camera. Experimental growth uses `min(12, 1 + 0.8 × (sqrt(mass / 20) − 1))` for all magnets, with radius `30 × scale`. Pull reach follows the original curve through 4× scale and extends beyond the body at larger sizes. At 12×, reach is about 551 world units and even the farthest corner scrap is about 502 units from the nearest legal magnet center.
 
-The camera applies the two-phase mass multiplier to its viewport baseline with a floor that keeps the view inside the arena. Camera zoom and eased drawing scale are separate from collision and input.
+The camera applies the two-phase mass multiplier to its viewport baseline. It eases out further as needed to fit the magnetic field within 70% of the shorter viewport side, subject to the floor that keeps the view inside the world. Camera zoom and eased drawing scale are separate from authoritative collision geometry. The proposed tuning, measurements and acceptance checks are recorded in [giant growth](docs/giant-growth.md).
 
 `src/config.ts` holds the 720 active pieces in a 1,500-slot pool, pull speeds of 300–700 world units per second, and presentation timing. The 460 world-unit-per-second movement speed carries forward from Task 001. Future shared-economy context is 94% ordinary scrap, 1% gold, and 5% energy. All active pickups in this milestone are ordinary scrap.
 
