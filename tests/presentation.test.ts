@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type Phaser from 'phaser';
-import { drawArena } from '../src/art';
+import { ArenaFloor, drawArena } from '../src/art';
 import { advanceAttraction } from '../src/attraction';
 import { arena, arenaArt, growthFeedback } from '../src/config';
 import { addMass, attractionReach } from '../src/growth';
@@ -16,21 +16,29 @@ import { ArenaCamera } from '../src/view';
 class GraphicsRecorder {
   readonly paths: Point[] = [];
   readonly fills: number[] = [];
+  readonly rectangles: { x: number; y: number; width: number; height: number }[] = [];
   readonly circles: { x: number; y: number; radius: number; color: number }[] = [];
+  clears = 0;
+  rectangularStrokes = 0;
   position: Point = { x: 0, y: 0 };
   private lineColor = 0;
 
   clear() {
+    this.clears++;
     this.paths.length = 0;
     this.fills.length = 0;
+    this.rectangles.length = 0;
     this.circles.length = 0;
     return this;
   }
 
   fillStyle(color: number) { this.fills.push(color); return this; }
-  fillRect() { return this; }
+  fillRect(x: number, y: number, width: number, height: number) {
+    this.rectangles.push({ x, y, width, height });
+    return this;
+  }
   lineStyle(_width: number, color: number) { this.lineColor = color; return this; }
-  strokeRect() { return this; }
+  strokeRect() { this.rectangularStrokes++; return this; }
   beginPath() { return this; }
   moveTo(x: number, y: number) { this.paths.push({ x, y }); return this; }
   lineTo(x: number, y: number) { return this.moveTo(x, y); }
@@ -245,7 +253,8 @@ test('a batch uses one pulse for the highest crossing and reduced motion clears 
 test('floor references reuse the same world geometry and only shrink with camera zoom', () => {
   const art = new GraphicsRecorder();
   const graphics = art as unknown as Phaser.GameObjects.Graphics;
-  drawArena(graphics, themes.light);
+  const bounds = { left: 0, top: 0, right: 1200, bottom: 720 };
+  drawArena(graphics, themes.light, bounds);
   const geometry = [...art.paths];
   const points = geometry.slice(0, 12);
   const left = Math.min(...points.map(({ x }) => x));
@@ -256,9 +265,40 @@ test('floor references reuse the same world geometry and only shrink with camera
   camera.resize(1280, 720);
   const initial = camera.toScreen({ x: right, y }).x - camera.toScreen({ x: left, y }).x;
   camera.follow({ x: left, y }, 10, 400);
-  drawArena(graphics, themes.dark);
+  drawArena(graphics, themes.dark, bounds);
   assert.deepEqual(art.paths, geometry);
   const grown = camera.toScreen({ x: right, y }).x - camera.toScreen({ x: left, y }).x;
   assert.ok(grown < initial);
   assert.ok(Math.abs(grown / camera.zoom - arenaArt.referenceSize) < 1e-7);
+});
+
+test('the buffered floor reuses world-anchored geometry, recolors and draws no perimeter at the corner', () => {
+  const art = new GraphicsRecorder();
+  const floor = new ArenaFloor(art as unknown as Phaser.GameObjects.Graphics);
+  const bounds = { left: 1000, top: 800, right: 2040, bottom: 1540 };
+  floor.render(bounds, themes.light);
+  const geometry = [...art.paths];
+  assert.ok(art.rectangles.length < 300);
+  floor.render({ ...bounds, left: 1050, right: 2090 }, themes.light);
+  assert.equal(art.clears, 1);
+  floor.render({ ...bounds, left: 1240, right: 2280 }, themes.light);
+  assert.equal(art.clears, 2);
+  const overlap = ({ x }: Point) => x >= 1240 && x <= 2040;
+  assert.ok(geometry.filter(overlap).length > 0);
+  assert.deepEqual(art.paths.filter(overlap), geometry.filter(overlap));
+
+  const corner = { left: arena.width - 1040, top: arena.height - 740, right: arena.width, bottom: arena.height };
+  floor.render(corner, themes.light);
+  const [background, ...dots] = art.rectangles;
+  assert.equal(background.x + background.width, arena.width);
+  assert.equal(background.y + background.height, arena.height);
+  assert.ok(dots.length > 0 && dots.length < 300);
+  for (const { x, y } of dots) {
+    assert.equal((x + 1.5) % arenaArt.gridSpacing, 40);
+    assert.equal((y + 1.5) % arenaArt.gridSpacing, 40);
+  }
+  floor.render(corner, themes.dark);
+  assert.equal(art.clears, 4);
+  assert.equal(art.fills[0], themes.dark.arena.background);
+  assert.equal(art.rectangularStrokes, 0);
 });

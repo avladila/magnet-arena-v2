@@ -1,4 +1,4 @@
-export const arena = { width: 4800, height: 3200 };
+export const arena = { width: 15360, height: 10000 };
 export const playerConfig = {
   initialMass: 20,
   radius: 30,
@@ -20,6 +20,17 @@ export const scrapConfig = {
   pullMaxSpeed: 700,
   massPerPickup: 1,
   radius: 5,
+};
+export const regionConfig = {
+  size: 960,
+  sitesPerUnitArea: 720 / (4800 * 3200),
+  planSeconds: 0.2,
+  reserveSites: 160,
+  cacheLimit: 80,
+  cacheSeconds: 30,
+  prefetchOffset: 620,
+  retentionMargin: 160,
+  visibilityMargin: 32,
 };
 export const botConfig = {
   // Provisional AI tuning. All magnets use the shared movement speed.
@@ -49,6 +60,7 @@ export const arenaArt = {
   gridSpacing: 80,
   referenceSpacing: 480,
   referenceSize: 64,
+  cacheSpacing: 240,
 };
 export const growthFeedback = {
   milestones: [50, 100, 200, 400],

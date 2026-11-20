@@ -46,7 +46,7 @@ for (const [width, height, baseline] of [[1280, 800, 1.1], [390, 844, 0.65], [84
 
 test('zoom-out and orientation changes keep world coverage and corner framing legal', () => {
   const camera = new ArenaCamera(center);
-  camera.resize(3500, 680);
+  camera.resize(12000, 680);
   const bottomRight = { x: arena.width, y: arena.height };
   for (let step = 0; step < 120; step++) {
     camera.follow(bottomRight, 1 / 60, 1e6);
@@ -55,12 +55,12 @@ test('zoom-out and orientation changes keep world coverage and corner framing le
     assert.ok(bounds.right <= arena.width + 1e-7 && bounds.bottom <= arena.height + 1e-7);
   }
   camera.follow(bottomRight, 10);
-  near(camera.zoom, 3500 / arena.width);
+  near(camera.zoom, 12000 / arena.width);
   near(camera.bounds.right, arena.width);
   near(camera.bounds.bottom, arena.height);
-  camera.resize(680, 3500);
+  camera.resize(680, 7500);
   camera.follow(origin, 1);
-  near(camera.zoom, 3500 / arena.height);
+  near(camera.zoom, 7500 / arena.height);
   near(camera.bounds.top, 0);
   near(camera.bounds.bottom, arena.height);
   near(camera.bounds.left, 0);

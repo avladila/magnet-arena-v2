@@ -68,6 +68,22 @@ test('Collectors route through dense regions while Roamers keep waypoints indepe
   assert.ok(distance(roamer.target.point, roamer.position) >= botConfig.roamer.waypointMinDistance);
 });
 
+test('a Collector picks a live local cell deep in the expanded arena', () => {
+  const [bot] = createBots(6);
+  bot.position = { x: 12000, y: 7200 };
+  const pool = new ParticlePool(7, [bot], 20);
+  const [near, ...others] = pool.slots.slice(0, 20);
+  Object.assign(near, { x: 12365, y: 7260 });
+  for (const [index, slot] of others.entries()) {
+    Object.assign(slot, index < 9 ? { x: 11780 + index, y: 7050 } : { x: 13500 + index, y: 7450 });
+    if (index < 9) assert.ok(pool.collect(slot.id, slot.generation, bot.id));
+  }
+  new BotAI().update([bot], pool.slots, delta);
+  const size = botConfig.collector.cellSize;
+  assert.equal(bot.target?.kind, 'region');
+  assert.equal(bot.target.cell, Math.floor(near.y / size) * Math.ceil(arena.width / size) + Math.floor(near.x / size));
+});
+
 test('a pickup and a newly available region leave the current route intact until the decision expires', () => {
   const [bot] = createBots(10);
   bot.position = { x: 1000, y: 1000 };
@@ -123,7 +139,7 @@ test('a spent region falls back to a moving waypoint at the next decision', () =
 
 test('growth invalidates an old wall endpoint even while its commitment timer is active', () => {
   const [bot] = createBots(5);
-  bot.position = { x: 4410, y: 2800 };
+  bot.position = { x: arena.width - 390, y: arena.height - 400 };
   bot.target = { kind: 'region', cell: 279, point: { x: arena.width - 95, y: arena.height - 95 } };
   bot.decisionIn = botConfig.collector.decisionSeconds;
   addMass(bot, 2500);
@@ -143,10 +159,10 @@ test('growth invalidates an old wall endpoint even while its commitment timer is
 
 test('a wall-shortened region route has enough runway to stay committed until arrival', () => {
   const [bot] = createBots(7);
-  bot.position = { x: 3920, y: 1800 };
+  bot.position = { x: arena.width - 880, y: 1800 };
   const pool = new ParticlePool(9, [bot], 7);
   for (const slot of pool.slots.slice(0, 7)) {
-    Object.assign(slot, { x: 4440 + slot.id, y: 1800 });
+    Object.assign(slot, { x: arena.width - 360 + slot.id, y: 1800 });
   }
   const ai = new BotAI();
   ai.update([bot], pool.slots, delta);

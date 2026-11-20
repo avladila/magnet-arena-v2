@@ -1,6 +1,6 @@
 # MAGNET
 
-A top-down browser arena built with Phaser 3, TypeScript and Vite. Steer the magnet near colored scrap to pull it in. Each piece adds one mass, increasing the magnet's size and reach as the camera eases out. Copper, Spark, Drift, and Orbit collect from the same arena.
+A 15,360 × 10,000 top-down browser arena built with Phaser 3, TypeScript and Vite. Steer the magnet near colored scrap to pull it in. Each piece adds one mass, increasing the magnet's size and reach as the camera eases out. Copper, Spark, Drift, and Orbit collect from the same arena.
 
 ## Run locally
 
@@ -48,6 +48,6 @@ The magnetic halo eases toward the actual field reach in world units. The 64-uni
 
 Copper and Spark are Collectors. They score 240-unit regions within 720 units using live scrap counts, travel distance, and heading. They commit to a line through a selected region until a scheduled decision at 2.3 seconds or earlier arrival on a shorter safe route. A route needs about 1.5 seconds of travel to qualify. Individual pickups leave the route in place. Drift and Orbit are Roamers. They sample seeded waypoints 600–1,500 units out with a fallback away from walls, replace a waypoint within 12 units of arrival, and reconsider after 2.6–4.2 seconds. These provisional values live in `src/config.ts`.
 
-The arena model updates bot decisions and then moves all five magnets. Each piece picks one winner by smallest signed surface gap, which puts contact before pull. Ties use ascending participant ID. A slot's current generation accepts one claim, and mass is applied in a batch after all pieces have been resolved. Respawns use the latest player camera bounds to prefer offscreen areas, reject positions inside any participant's field, and fall back to a bounded grid of legal centers. The camera and HUD follow the player.
+The arena model updates bot decisions and then moves all five magnets. Each piece picks one winner by smallest signed surface gap, which puts contact before pull. Ties use ascending participant ID. A slot's current generation accepts one claim, and mass is applied in a batch after all pieces have been resolved. A shared region manager keeps the 720 active slots near all five magnets, with offscreen prefetch around the player's camera. See [world infrastructure and playtest results](docs/world-infrastructure.md).
 
-Run `npm exec -- tsx scripts/measure-competition.ts` to repeat five seeded 60-second runs at 30 Hz. Each solo and competitive pair begins with the same scrap layout and follows the same timed world targets. The script prints pickups and physical scales at 10, 20, 40, and 60 seconds, plus bot motion, target assignments, and encounter times. See [Collector balance results](docs/collector-balance.md) for the before/after comparison and remaining fairness concerns.
+Run `npm exec -- tsx scripts/measure-competition.ts` to repeat five seeded 60-second runs at 30 Hz. Each solo and competitive pair begins with the same scrap layout and follows the same timed, center-relative world targets. The script prints pickups and physical scales at 10, 20, 40, and 60 seconds, plus bot motion, target assignments, and encounter times. The earlier Collector correction is documented in [Collector balance results](docs/collector-balance.md).

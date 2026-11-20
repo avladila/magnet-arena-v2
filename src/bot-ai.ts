@@ -47,6 +47,7 @@ function waypoint(bot: Bot): Point {
 
 export class BotAI {
   private readonly density = new Uint16Array(columns * rows);
+  private readonly occupiedCells: number[] = [];
 
   update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number): void {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
@@ -62,9 +63,12 @@ export class BotAI {
 
       if (bot.strategy === 'collector') {
         if (!densityReady) {
-          this.density.fill(0);
+          for (const index of this.occupiedCells) this.density[index] = 0;
+          this.occupiedCells.length = 0;
           for (const scrap of slots) {
-            if (scrap.state === 'active') this.density[cell(scrap)]++;
+            if (scrap.state !== 'active') continue;
+            const index = cell(scrap);
+            if (this.density[index]++ === 0) this.occupiedCells.push(index);
           }
           densityReady = true;
         }
@@ -94,31 +98,38 @@ export class BotAI {
     let best: BotTarget | undefined;
     let bestScore = 0;
 
-    for (let index = 0; index < this.density.length; index++) {
-      const population = this.density[index];
-      if (population === 0) continue;
-      const center = cellCenter(index);
-      const dx = center.x - x;
-      const dy = center.y - y;
-      const distance = Math.hypot(dx, dy);
-      if (distance < collector.cellSize / 2 || distance > collector.searchRadius) continue;
-      const ux = dx / distance;
-      const uy = dy / distance;
-      // Continue through the cell so nearby pickups do not end the route.
-      // Reject directions without enough room to commit before the wall.
-      const travel = Math.min(
-        Math.max(preferred, distance),
-        distanceToWall(x, ux, arena.width, margin),
-        distanceToWall(y, uy, arena.height, margin),
-      );
-      if (travel < Math.max(minimum, distance - arrival)) continue;
+    const firstColumn = Math.max(0, Math.floor((x - collector.searchRadius) / collector.cellSize));
+    const lastColumn = Math.min(columns - 1, Math.floor((x + collector.searchRadius) / collector.cellSize));
+    const firstRow = Math.max(0, Math.floor((y - collector.searchRadius) / collector.cellSize));
+    const lastRow = Math.min(rows - 1, Math.floor((y + collector.searchRadius) / collector.cellSize));
+    for (let row = firstRow; row <= lastRow; row++) {
+      for (let column = firstColumn; column <= lastColumn; column++) {
+        const index = row * columns + column;
+        const population = this.density[index];
+        if (population === 0) continue;
+        const center = cellCenter(index);
+        const dx = center.x - x;
+        const dy = center.y - y;
+        const distance = Math.hypot(dx, dy);
+        if (distance < collector.cellSize / 2 || distance > collector.searchRadius) continue;
+        const ux = dx / distance;
+        const uy = dy / distance;
+        // Continue through the cell so nearby pickups do not end the route.
+        // Reject directions without enough room to commit before the wall.
+        const travel = Math.min(
+          Math.max(preferred, distance),
+          distanceToWall(x, ux, arena.width, margin),
+          distanceToWall(y, uy, arena.height, margin),
+        );
+        if (travel < Math.max(minimum, distance - arrival)) continue;
 
-      const alignment = moving ? (1 + ux * forwardX + uy * forwardY) / 2 : 1;
-      const score = (1 + collector.densityWeight * (population - 1)) *
-        (1 - collector.turnPenalty * (1 - alignment)) / (1 + distance / collector.distanceBias);
-      if (score <= bestScore) continue;
-      bestScore = score;
-      best = { kind: 'region', cell: index, point: { x: x + ux * travel, y: y + uy * travel } };
+        const alignment = moving ? (1 + ux * forwardX + uy * forwardY) / 2 : 1;
+        const score = (1 + collector.densityWeight * (population - 1)) *
+          (1 - collector.turnPenalty * (1 - alignment)) / (1 + distance / collector.distanceBias);
+        if (score <= bestScore) continue;
+        bestScore = score;
+        best = { kind: 'region', cell: index, point: { x: x + ux * travel, y: y + uy * travel } };
+      }
     }
     return best;
   }

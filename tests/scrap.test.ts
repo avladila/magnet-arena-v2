@@ -250,6 +250,20 @@ test('respawn prefers a small legal offscreen band and can fall back when the wh
   assertLegalSpawn(slot, player);
 });
 
+test('replenishment uses each eligible offscreen site before visible fallbacks', () => {
+  const player = createPlayer();
+  const pool = withScrap(player, ...Array.from({ length: 40 }, () => player.position));
+  const view = { ...fullArena, right: arena.width - 40 };
+  assert.equal(advanceAttraction(pool, [player], 0).collections.length, 40);
+  pool.replenish([player], view);
+  const active = pool.slots.filter((slot) => slot.state === 'active');
+  const offscreen = active.filter((slot) => slot.x - slot.radius > view.right).length;
+  assert.equal(active.length, 40);
+  assert.ok(offscreen > 0 && offscreen < 40);
+  assert.equal(pool.regionStats.visibleFallbacks, 40 - offscreen);
+  for (const slot of active) assertLegalSpawn(slot, player);
+});
+
 test('the same seed and input reproduce attraction, collection, and recycled spawn sequences', () => {
   function run(seed: number) {
     const player = createPlayer();
@@ -278,15 +292,15 @@ for (const mass of [20, 620, 2500]) {
     const positions = [
       { x: min, y: min }, { x: right, y: min },
       { x: min, y: bottom }, { x: right, y: bottom },
-      { x: min, y: 1600 }, { x: right, y: 1600 },
-      { x: 2400, y: min }, { x: 2400, y: bottom },
+      { x: min, y: arena.height / 2 }, { x: right, y: arena.height / 2 },
+      { x: arena.width / 2, y: min }, { x: arena.width / 2, y: bottom },
       { x: right - 0.001, y: bottom - 0.001 },
     ];
     for (const position of positions) {
       const player = createPlayer();
       addMass(player, mass - player.mass);
       const pool = withScrap(player, position);
-      advance(player, { kind: 'target', point: position }, 20);
+      advance(player, { kind: 'target', point: position }, 30);
       const reach = attractionReach(player.physicalScale);
       assert.ok(Math.hypot(position.x - player.position.x, position.y - player.position.y) <= reach);
       const [event] = advanceAttraction(pool, [player], 1).collections;
@@ -306,8 +320,8 @@ test('maximum radius clamps movement at exact right and bottom limits without ch
   addMass(player, 2480);
   advance(player, { kind: 'joystick', point: { x: 1, y: 0 } }, 0.5);
   assert.equal(player.velocity.x, 460);
-  advance(player, { kind: 'target', point: { x: arena.width, y: arena.height } }, 20);
-  assert.deepEqual(player.position, { x: 4680, y: 3080 });
+  advance(player, { kind: 'target', point: { x: arena.width, y: arena.height } }, 30);
+  assert.deepEqual(player.position, { x: 15240, y: 9880 });
 });
 
 test('collision uses physical growth while the drawing scale is still catching up', () => {
