@@ -121,3 +121,46 @@ test('camera smoothly follows, projects CSS coordinates and keeps arena edges in
   near(camera.toWorld(origin).x, 0);
   near(camera.toWorld(origin).y, 0);
 });
+
+test('a release beyond the drag threshold does not become a tap without a move event', () => {
+  const input = new SteeringInput();
+  input.press(1, origin, 0);
+  input.release(1, { x: 11, y: 0 }, 100, identity);
+  assert.deepEqual(input.steering(identity), { kind: 'idle' });
+});
+
+test('reset clears a pending tap destination and discards events from an interrupted drag', () => {
+  const input = new SteeringInput();
+  const target = { x: 64, y: 0 };
+  input.press(1, target, 0);
+  input.release(1, target, 100, identity);
+  assert.deepEqual(input.steering(identity), { kind: 'target', point: target });
+  input.clear();
+  assert.deepEqual(input.steering(identity), { kind: 'idle' });
+
+  input.press(2, origin, 200);
+  input.move(2, target);
+  assert.deepEqual(input.steering(identity), { kind: 'joystick', point: { x: 1, y: 0 } });
+  input.clear();
+  input.move(2, target);
+  input.release(2, origin, 300, identity);
+  assert.equal(input.joystick, undefined);
+  assert.deepEqual(input.steering(identity), { kind: 'idle' });
+  assert.equal(input.press(3, origin, 400), true);
+});
+
+test('heading follows wall slide and holds steady when movement is blocked at a corner', () => {
+  const player = createPlayer();
+  const heading = new Heading();
+  player.position = { x: arena.width - player.radius, y: 100 };
+  advance(player, { kind: 'joystick', point: { x: 0.6, y: -0.8 } }, 1);
+  assert.deepEqual(player.position, { x: arena.width - player.radius, y: player.radius });
+  assert.equal(player.velocity.x, 0);
+  assert.ok(player.velocity.y < 0);
+  heading.update(player.velocity, 2);
+
+  advance(player, { kind: 'joystick', point: { x: 0.6, y: -0.8 } }, 1);
+  assert.deepEqual(player.velocity, origin);
+  heading.update(player.velocity, 2);
+  near(heading.angle, -Math.PI / 2);
+});
