@@ -3,9 +3,12 @@ import { drawArena, drawMagnet } from './art';
 import { advanceAttraction } from './attraction';
 import { bindInput } from './browser-input';
 import { touch, viewConfig } from './config';
+import { GrowthFeedbackView } from './growth-feedback';
 import { advance, createPlayer, type Point } from './movement';
 import { ParticleView } from './particle-view';
 import { ParticlePool } from './particles';
+import { cssColor } from './theme';
+import { applyThemeToPage, bindThemeToggle, localThemePreference } from './theme-control';
 import { ArenaCamera, Heading, MagnetScale } from './view';
 import './style.css';
 
@@ -13,6 +16,10 @@ const surface = document.querySelector<HTMLElement>('#arena')!;
 const stick = document.querySelector<HTMLElement>('#joystick')!;
 const knob = stick.firstElementChild as HTMLElement;
 const mass = document.querySelector<HTMLElement>('#mass')!;
+const themeButton = document.querySelector<HTMLButtonElement>('#theme-toggle')!;
+const theme = localThemePreference();
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+applyThemeToPage(themeButton, theme);
 stick.style.setProperty('--joystick-size', touch.radius * 2 + 'px');
 
 class ArenaScene extends Phaser.Scene {
@@ -22,6 +29,7 @@ class ArenaScene extends Phaser.Scene {
   private framing = new ArenaCamera(this.player.position);
   private particles = new ParticlePool(Math.floor(Math.random() * 0x100000000), this.player);
   private particleView!: ParticleView;
+  private field!: GrowthFeedbackView;
   private magnet!: Phaser.GameObjects.Graphics;
   private controls!: ReturnType<typeof bindInput>;
   private pixelRatio = 1;
@@ -29,20 +37,30 @@ class ArenaScene extends Phaser.Scene {
   private height = 0;
 
   create(): void {
-    drawArena(this);
+    const arenaArt = this.add.graphics();
+    drawArena(arenaArt, theme.palette);
+    this.field = new GrowthFeedbackView(this, this.player);
     this.particleView = new ParticleView(this);
     this.magnet = drawMagnet(this);
+    const unbindTheme = bindThemeToggle(themeButton, () => {
+      theme.toggle();
+      applyThemeToPage(themeButton, theme);
+      drawArena(arenaArt, theme.palette);
+      this.cameras.main.setBackgroundColor(theme.palette.arena.background);
+    });
     this.controls = bindInput(surface, (point) => this.screenToWorld(point));
     const observer = new ResizeObserver(() => this.resize());
     observer.observe(surface);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       observer.disconnect();
       this.controls.destroy();
+      unbindTheme();
     });
     this.resize();
     this.renderPlayer();
     mass.textContent = String(this.player.mass);
-    this.particleView.render(this.particles.slots, this.framing.bounds, [], 0);
+    this.field.render(this.player, 0, theme.palette, reducedMotion.matches);
+    this.particleView.render(this.particles.slots, this.framing.bounds, [], 0, theme.palette);
   }
 
   update(_time: number, delta: number): void {
@@ -55,7 +73,8 @@ class ArenaScene extends Phaser.Scene {
     this.framing.follow(this.player.position, seconds, this.player.mass);
     const bounds = this.framing.bounds;
     this.particles.replenish(this.player, bounds);
-    this.particleView.render(this.particles.slots, bounds, collections, seconds);
+    this.field.render(this.player, seconds, theme.palette, reducedMotion.matches);
+    this.particleView.render(this.particles.slots, bounds, collections, seconds, theme.palette);
     if (collections.length) mass.textContent = String(this.player.mass);
     this.renderPlayer();
     this.positionCamera();
@@ -116,7 +135,7 @@ class ArenaScene extends Phaser.Scene {
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: surface,
-  backgroundColor: '#def5ee',
+  backgroundColor: cssColor(theme.palette.arena.background),
   scale: { mode: Phaser.Scale.NONE, width: 1, height: 1 },
   input: { mouse: false, touch: false, keyboard: false, gamepad: false },
   scene: ArenaScene,

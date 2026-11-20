@@ -164,7 +164,9 @@ test('default seeded scrap is spread across the arena and stays outside the init
   const pool = new ParticlePool(42, player);
   const active = pool.slots.filter(({ state }) => state === 'active');
   assert.equal(pool.slots.length, 1500);
-  assert.equal(active.length, 600);
+  assert.equal(active.length, 720);
+  assert.deepEqual([...new Set(active.map((slot) => slot.colorIndex))].sort((a, b) => a - b),
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   const quadrants = new Set(active.map(({ x, y }) =>
     `${x < arena.width / 2}:${y < arena.height / 2}`,
   ));
@@ -191,6 +193,45 @@ test('full-capacity recycling reuses the original slots without increasing popul
     });
   }
   assert.equal(player.mass, 4520);
+});
+
+test('ordinary replenishment restores 720 active pieces and reuses the same slots at the arena corners', () => {
+  const player = createPlayer();
+  const pool = new ParticlePool(24, player);
+  const originalSlot = pool.slots[0];
+  for (const target of [
+    { x: 0, y: 0 }, { x: arena.width, y: 0 },
+    { x: 0, y: arena.height }, { x: arena.width, y: arena.height },
+  ]) {
+    advance(player, { kind: 'target', point: target }, 20);
+    Object.assign(originalSlot, player.position);
+    const previousMass = player.mass;
+    const collections = advanceAttraction(pool, player, 0);
+    const collection = collections.find(({ id }) => id === originalSlot.id);
+    assert.ok(collection);
+    assert.equal(player.mass, previousMass + collections.length);
+    pool.replenish(player, fullArena);
+    assert.equal(pool.slots[0], originalSlot);
+    assert.equal(originalSlot.generation, collection.generation + 1);
+    assert.equal(pool.collect(collection.id, collection.generation), undefined);
+    assert.equal(pool.slots.filter(({ state }) => state === 'active').length, 720);
+    assertLegalSpawn(originalSlot, player);
+  }
+  assert.equal(pool.slots.length, 1500);
+});
+
+test('each of the ten ordinary scrap colors awards one mass', () => {
+  const player = createPlayer();
+  const pool = new ParticlePool(18, player, 10);
+  for (const slot of pool.slots.slice(0, 10)) {
+    const mass = player.mass;
+    Object.assign(slot, player.position, { colorIndex: slot.id });
+    const [collection] = advanceAttraction(pool, player, 0);
+    assert.equal(collection.colorIndex, slot.id);
+    assert.equal(player.mass, mass + 1);
+    pool.replenish(player, fullArena);
+  }
+  assert.equal(player.mass, 30);
 });
 
 test('respawn prefers a small legal offscreen band and can fall back when the whole arena is visible', () => {

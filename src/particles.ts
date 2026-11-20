@@ -1,4 +1,4 @@
-import { arena, scrapColors, scrapConfig } from './config';
+import { arena, scrapConfig } from './config';
 import { attractionReach } from './growth';
 import { clamp, type Player, type Point } from './movement';
 
@@ -119,7 +119,7 @@ export class ParticlePool {
   }
 
   private activate(scrap: Scrap): void {
-    scrap.colorIndex = Math.floor(this.random() * scrapColors.length);
+    scrap.colorIndex = Math.floor(this.random() * scrapConfig.colorCount);
     scrap.generation++;
     scrap.state = 'active';
   }

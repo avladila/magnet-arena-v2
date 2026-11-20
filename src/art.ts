@@ -1,16 +1,37 @@
-import Phaser from 'phaser';
-import { arena } from './config';
+import type Phaser from 'phaser';
+import { arena, arenaArt } from './config';
+import type { ThemePalette } from './theme';
 
-export function drawArena(scene: Phaser.Scene) {
-  const art = scene.add.graphics();
-  art.fillStyle(0xdef5ee).fillRect(0, 0, arena.width, arena.height);
-  art.fillStyle(0xb7e0d5);
-  const spacing = 80;
-  for (let x = spacing / 2; x < arena.width; x += spacing) {
-    for (let y = spacing / 2; y < arena.height; y += spacing) art.fillRect(x - 1.5, y - 1.5, 3, 3);
+export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: ThemePalette) {
+  art.clear().fillStyle(colors.background).fillRect(0, 0, arena.width, arena.height);
+  art.fillStyle(colors.grid);
+  const { gridSpacing, referenceSpacing, referenceSize } = arenaArt;
+  for (let x = gridSpacing / 2; x < arena.width; x += gridSpacing) {
+    for (let y = gridSpacing / 2; y < arena.height; y += gridSpacing) {
+      art.fillRect(x - 1.5, y - 1.5, 3, 3);
+    }
   }
-  art.lineStyle(6, 0xa3d8cb).strokeRect(7, 7, arena.width - 14, arena.height - 14);
-  art.lineStyle(2, 0xb7e0d5).strokeCircle(arena.width / 2, arena.height / 2, 114);
+  art.lineStyle(6, colors.boundary).strokeRect(7, 7, arena.width - 14, arena.height - 14);
+
+  // Open corners mark a fixed span on every sixth grid intersection.
+  const inset = (referenceSpacing - gridSpacing) / 2;
+  const half = referenceSize / 2;
+  const arm = referenceSize / 4;
+  art.lineStyle(2, colors.markings, 0.65).beginPath();
+  for (let x = inset; x < arena.width - half; x += referenceSpacing) {
+    for (let y = inset; y < arena.height - half; y += referenceSpacing) {
+      for (const horizontal of [-1, 1]) {
+        for (const vertical of [-1, 1]) {
+          const cornerX = x + horizontal * half;
+          const cornerY = y + vertical * half;
+          art.moveTo(cornerX - horizontal * arm, cornerY);
+          art.lineTo(cornerX, cornerY);
+          art.lineTo(cornerX, cornerY - vertical * arm);
+        }
+      }
+    }
+  }
+  art.strokePath();
 }
 
 export function drawMagnet(scene: Phaser.Scene) {

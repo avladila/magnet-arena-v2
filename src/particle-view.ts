@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
-import { scrapColors, viewConfig } from './config';
+import { viewConfig } from './config';
 import type { Collection, Scrap, WorldBounds } from './particles';
+import type { ThemePalette } from './theme';
 
 const effectDuration = viewConfig.collectionEffectSeconds;
 
@@ -17,13 +18,19 @@ export class ParticleView {
     this.glints = scene.add.graphics().setDepth(1);
   }
 
-  render(slots: readonly Scrap[], view: WorldBounds, collections: readonly Collection[], seconds: number) {
+  render(
+    slots: readonly Scrap[],
+    view: WorldBounds,
+    collections: readonly Collection[],
+    seconds: number,
+    palette: ThemePalette,
+  ) {
     this.pieces.clear();
     for (const { x, y, radius, state, colorIndex } of slots) {
       if (state !== 'active' || x + radius < view.left || x - radius > view.right ||
           y + radius < view.top || y - radius > view.bottom) continue;
-      this.pieces.fillStyle(scrapColors[colorIndex]).fillRect(x - 3.5, y - 3.5, 7, 7);
-      this.pieces.fillStyle(0xf5fffa, 0.78).fillRect(x - 2.5, y - 2.5, 3, 2);
+      this.pieces.fillStyle(palette.scrap[colorIndex]).fillRect(x - 3.5, y - 3.5, 7, 7);
+      this.pieces.fillStyle(palette.scrapHighlight, 0.78).fillRect(x - 2.5, y - 2.5, 3, 2);
     }
 
     for (const effect of this.effects) effect.remaining = Math.max(0, effect.remaining - seconds);
@@ -39,7 +46,7 @@ export class ParticleView {
     for (const effect of this.effects) {
       if (effect.remaining <= 0) continue;
       const opacity = effect.remaining / effectDuration;
-      this.glints.lineStyle(1.5, scrapColors[effect.colorIndex], 0.8 * opacity);
+      this.glints.lineStyle(1.5, palette.scrap[effect.colorIndex], 0.8 * opacity);
       this.glints.strokeCircle(effect.x, effect.y, 5 + (1 - opacity) * 8);
     }
   }
