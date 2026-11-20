@@ -1,5 +1,5 @@
 import { growthConfig, playerConfig } from './config';
-import { clampToArena, type Player } from './movement';
+import { clampToArena, type Participant } from './movement';
 
 export function physicalScaleForMass(mass: number): number {
   return Math.min(
@@ -12,7 +12,7 @@ export function attractionReach(physicalScale: number): number {
   return Math.min(growthConfig.maxReach, growthConfig.baseReach * Math.sqrt(physicalScale));
 }
 
-export function addMass(player: Player, mass: number): void {
+export function addMass(player: Participant, mass: number): void {
   player.mass += mass;
   player.physicalScale = physicalScaleForMass(player.mass);
   player.radius = playerConfig.radius * player.physicalScale;

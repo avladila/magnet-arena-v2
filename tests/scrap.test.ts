@@ -13,7 +13,7 @@ const near = (actual: number, expected: number, tolerance = 1e-7) => assert.ok(
 );
 
 function withScrap(player: Player, ...positions: Point[]) {
-  const pool = new ParticlePool(17, player, positions.length);
+  const pool = new ParticlePool(17, [player], positions.length);
   positions.forEach((position, id) => Object.assign(pool.slots[id], position));
   return pool;
 }
@@ -54,7 +54,7 @@ test('the center-based field starts pulling at the reach boundary and leaves far
   const player = createPlayer();
   const { x, y } = player.position;
   const pool = withScrap(player, { x: x + 118.01, y }, { x: x + 118, y });
-  assert.equal(advanceAttraction(pool, player, 1 / 60).length, 0);
+  assert.equal(advanceAttraction(pool, [player], 1 / 60).collections.length, 0);
   assert.equal(pool.slots[0].x, x + 118.01);
   assert.ok(pool.slots[1].x < x + 118);
   assert.ok(pool.slots[1].x > x + player.radius + pool.slots[1].radius);
@@ -64,10 +64,10 @@ test('the enlarged field attracts scrap that was outside the starting reach', ()
   const player = createPlayer();
   const { x, y } = player.position;
   const pool = withScrap(player, { x: x + 180, y });
-  advanceAttraction(pool, player, 1 / 60);
+  advanceAttraction(pool, [player], 1 / 60);
   assert.equal(pool.slots[0].x, x + 180);
   addMass(player, 2480);
-  advanceAttraction(pool, player, 1 / 60);
+  advanceAttraction(pool, [player], 1 / 60);
   assert.ok(pool.slots[0].x < x + 180);
 });
 
@@ -78,8 +78,8 @@ test('inward pull accelerates and integrates consistently across stationary time
   const close = { x: x + 65, y };
   const single = withScrap(player, far, close);
   const split = withScrap(player, far, close);
-  advanceAttraction(single, player, 0.04);
-  for (let i = 0; i < 8; i++) advanceAttraction(split, player, 0.005);
+  advanceAttraction(single, [player], 0.04);
+  for (let i = 0; i < 8; i++) advanceAttraction(split, [player], 0.005);
   near(single.slots[0].x, split.slots[0].x);
   near(single.slots[1].x, split.slots[1].x);
   assert.ok(close.x - single.slots[1].x > far.x - single.slots[0].x);
@@ -97,11 +97,11 @@ test('a moving collector pulls toward its latest position at common simulation r
 
   for (let i = 0; i < 4; i++) {
     advance(coarsePlayer, steering, 1 / 30);
-    advanceAttraction(coarse, coarsePlayer, 1 / 30);
+    advanceAttraction(coarse, [coarsePlayer], 1 / 30);
   }
   for (let i = 0; i < 16; i++) {
     advance(finePlayer, steering, 1 / 120);
-    advanceAttraction(fine, finePlayer, 1 / 120);
+    advanceAttraction(fine, [finePlayer], 1 / 120);
   }
   assert.ok(coarse.slots[0].x < piece.x && coarse.slots[0].y > piece.y);
   near(coarse.slots[0].x, fine.slots[0].x, 3);
@@ -114,7 +114,7 @@ test('pulling stops at contact even in a long step and a coincident pickup stays
   const player = createPlayer();
   const { x, y } = player.position;
   const pool = withScrap(player, { x: x + 118, y }, { x, y });
-  const events = advanceAttraction(pool, player, 1e3);
+  const events = advanceAttraction(pool, [player], 1e3).collections;
   assert.equal(events.length, 2);
   near(events[0].x, x + 35);
   near(events[0].y, y);
@@ -127,13 +127,13 @@ test('a collection batch pays one mass per pickup and uses one radius for all co
   const player = createPlayer();
   const { x, y } = player.position;
   const pool = withScrap(player, { x: x + 35, y }, { x, y: y - 35 }, { x: x + 35.1, y });
-  const events = advanceAttraction(pool, player, 0);
+  const events = advanceAttraction(pool, [player], 0).collections;
   assert.deepEqual(events.map(({ id }) => id), [0, 1]);
   assert.equal(player.mass, 22);
   assert.equal(pool.slots[2].state, 'active');
-  assert.deepEqual(advanceAttraction(pool, player, 0).map(({ id }) => id), [2]);
+  assert.deepEqual(advanceAttraction(pool, [player], 0).collections.map(({ id }) => id), [2]);
   assert.equal(player.mass, 23);
-  assert.equal(advanceAttraction(pool, player, 1).length, 0);
+  assert.equal(advanceAttraction(pool, [player], 1).collections.length, 0);
   assert.equal(player.mass, 23);
 });
 
@@ -142,26 +142,26 @@ test('a recycled slot rejects stale claims and collection events retain their co
   const position = { ...player.position };
   const pool = withScrap(player, position);
   const slot = pool.slots[0];
-  const [event] = advanceAttraction(pool, player, 1 / 60);
+  const [event] = advanceAttraction(pool, [player], 1 / 60).collections;
   assert.equal(slot.state, 'collected');
-  assert.equal(pool.collect(event.id, event.generation), undefined);
-  pool.replenish(player, fullArena);
+  assert.equal(pool.collect(event.id, event.generation, player.id), undefined);
+  pool.replenish([player], fullArena);
   assert.equal(pool.slots[0], slot);
   assert.equal(slot.state, 'active');
   assert.equal(slot.generation, event.generation + 1);
-  assert.equal(pool.collect(event.id, event.generation), undefined);
-  assert.equal(advanceAttraction(pool, player, 1 / 60).length, 0);
+  assert.equal(pool.collect(event.id, event.generation, player.id), undefined);
+  assert.equal(advanceAttraction(pool, [player], 1 / 60).collections.length, 0);
   assert.equal(player.mass, 21);
   assert.deepEqual({ x: event.x, y: event.y }, position);
   assertLegalSpawn(slot, player);
   Object.assign(slot, position);
-  assert.equal(advanceAttraction(pool, player, 1 / 60).length, 1);
+  assert.equal(advanceAttraction(pool, [player], 1 / 60).collections.length, 1);
   assert.equal(player.mass, 22);
 });
 
 test('default seeded scrap is spread across the arena and stays outside the initial field', () => {
   const player = createPlayer();
-  const pool = new ParticlePool(42, player);
+  const pool = new ParticlePool(42, [player]);
   const active = pool.slots.filter(({ state }) => state === 'active');
   assert.equal(pool.slots.length, 1500);
   assert.equal(active.length, 720);
@@ -176,13 +176,13 @@ test('default seeded scrap is spread across the arena and stays outside the init
 
 test('full-capacity recycling reuses the original slots without increasing population', () => {
   const player = createPlayer();
-  const pool = new ParticlePool(0, player, 2000);
+  const pool = new ParticlePool(0, [player], 2000);
   assert.equal(pool.slots.length, scrapConfig.capacity);
   const originalSlots = [...pool.slots];
   for (let cycle = 0; cycle < 3; cycle++) {
     for (const slot of pool.slots) Object.assign(slot, player.position);
-    assert.equal(advanceAttraction(pool, player, 0).length, 1500);
-    pool.replenish(player, fullArena);
+    assert.equal(advanceAttraction(pool, [player], 0).collections.length, 1500);
+    pool.replenish([player], fullArena);
     assert.equal(pool.slots.length, 1500);
     pool.slots.forEach((slot, id) => {
       assert.equal(slot, originalSlots[id]);
@@ -197,7 +197,7 @@ test('full-capacity recycling reuses the original slots without increasing popul
 
 test('ordinary replenishment restores 720 active pieces and reuses the same slots at the arena corners', () => {
   const player = createPlayer();
-  const pool = new ParticlePool(24, player);
+  const pool = new ParticlePool(24, [player]);
   const originalSlot = pool.slots[0];
   for (const target of [
     { x: 0, y: 0 }, { x: arena.width, y: 0 },
@@ -206,14 +206,14 @@ test('ordinary replenishment restores 720 active pieces and reuses the same slot
     advance(player, { kind: 'target', point: target }, 20);
     Object.assign(originalSlot, player.position);
     const previousMass = player.mass;
-    const collections = advanceAttraction(pool, player, 0);
+    const collections = advanceAttraction(pool, [player], 0).collections;
     const collection = collections.find(({ id }) => id === originalSlot.id);
     assert.ok(collection);
     assert.equal(player.mass, previousMass + collections.length);
-    pool.replenish(player, fullArena);
+    pool.replenish([player], fullArena);
     assert.equal(pool.slots[0], originalSlot);
     assert.equal(originalSlot.generation, collection.generation + 1);
-    assert.equal(pool.collect(collection.id, collection.generation), undefined);
+    assert.equal(pool.collect(collection.id, collection.generation, player.id), undefined);
     assert.equal(pool.slots.filter(({ state }) => state === 'active').length, 720);
     assertLegalSpawn(originalSlot, player);
   }
@@ -222,14 +222,14 @@ test('ordinary replenishment restores 720 active pieces and reuses the same slot
 
 test('each of the ten ordinary scrap colors awards one mass', () => {
   const player = createPlayer();
-  const pool = new ParticlePool(18, player, 10);
+  const pool = new ParticlePool(18, [player], 10);
   for (const slot of pool.slots.slice(0, 10)) {
     const mass = player.mass;
     Object.assign(slot, player.position, { colorIndex: slot.id });
-    const [collection] = advanceAttraction(pool, player, 0);
+    const [collection] = advanceAttraction(pool, [player], 0).collections;
     assert.equal(collection.colorIndex, slot.id);
     assert.equal(player.mass, mass + 1);
-    pool.replenish(player, fullArena);
+    pool.replenish([player], fullArena);
   }
   assert.equal(player.mass, 30);
 });
@@ -238,29 +238,29 @@ test('respawn prefers a small legal offscreen band and can fall back when the wh
   const player = createPlayer();
   const pool = withScrap(player, player.position);
   const view = { ...fullArena, right: arena.width - 40 };
-  assert.equal(advanceAttraction(pool, player, 0).length, 1);
-  pool.replenish(player, view);
+  assert.equal(advanceAttraction(pool, [player], 0).collections.length, 1);
+  pool.replenish([player], view);
   const slot = pool.slots[0];
   assert.ok(slot.x - slot.radius >= view.right);
   assertLegalSpawn(slot, player);
 
   Object.assign(slot, player.position);
-  assert.equal(advanceAttraction(pool, player, 0).length, 1);
-  pool.replenish(player, fullArena);
+  assert.equal(advanceAttraction(pool, [player], 0).collections.length, 1);
+  pool.replenish([player], fullArena);
   assertLegalSpawn(slot, player);
 });
 
 test('the same seed and input reproduce attraction, collection, and recycled spawn sequences', () => {
   function run(seed: number) {
     const player = createPlayer();
-    const pool = new ParticlePool(seed, player);
+    const pool = new ParticlePool(seed, [player]);
     const view = { left: 0, top: 0, right: 1600, bottom: 900 };
     const events = [];
     for (let i = 0; i < 480; i++) {
       const steering = { kind: 'joystick', point: i < 240 ? { x: 1, y: 0 } : { x: 0, y: 1 } } as const;
       advance(player, steering, 1 / 60);
-      events.push(...advanceAttraction(pool, player, 1 / 60));
-      pool.replenish(player, view);
+      events.push(...advanceAttraction(pool, [player], 1 / 60).collections);
+      pool.replenish([player], view);
     }
     assert.ok(events.length > 0);
     return { player, slots: pool.slots, events };
@@ -289,7 +289,7 @@ for (const mass of [20, 620, 2500]) {
       advance(player, { kind: 'target', point: position }, 20);
       const reach = attractionReach(player.physicalScale);
       assert.ok(Math.hypot(position.x - player.position.x, position.y - player.position.y) <= reach);
-      const [event] = advanceAttraction(pool, player, 1);
+      const [event] = advanceAttraction(pool, [player], 1).collections;
       assert.ok(event, `Expected scrap at (${position.x}, ${position.y}) to be collectible`);
       assert.equal(player.mass, mass + 1);
       const { x, y } = player.position;
@@ -321,7 +321,7 @@ test('collision uses physical growth while the drawing scale is still catching u
 
   const offset = (visual.scale * 30 + previousRadius) / 2 + 5;
   const pool = withScrap(player, { x: player.position.x + offset, y: player.position.y });
-  assert.equal(advanceAttraction(pool, player, 0).length, 1);
+  assert.equal(advanceAttraction(pool, [player], 0).collections.length, 1);
   assert.equal(player.mass, 121);
   visual.update(player.physicalScale, 5);
   near(visual.scale, player.physicalScale);

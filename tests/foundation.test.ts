@@ -98,12 +98,17 @@ test('only the first touch can move, release, or cancel its gesture', () => {
 test('angle wraps across ±π and heading ignores tiny or stationary displacement', () => {
   near(shortestAngle(Math.PI - 0.1, -Math.PI + 0.1), 0.2);
   near(shortestAngle(-Math.PI + 0.1, Math.PI - 0.1), -0.2);
+  const player = createPlayer();
   const heading = new Heading();
-  heading.update({ x: 0, y: 100 }, 0.05);
+  advance(player, { kind: 'joystick', point: { x: 0, y: 0.5 } }, 0.05);
+  heading.update(player.heading, 0.05);
   assert.ok(heading.angle > 0 && heading.angle < Math.PI / 2);
-  heading.update({ x: 0, y: -1 }, 10);
+  advance(player, { kind: 'joystick', point: { x: 0, y: -0.002 } }, 0.05);
+  assert.ok(player.velocity.y < 0);
+  heading.update(player.heading, 10);
   near(heading.angle, Math.PI / 2);
-  heading.update(origin, 10);
+  advance(player, { kind: 'idle' }, 0.05);
+  heading.update(player.heading, 10);
   near(heading.angle, Math.PI / 2);
 });
 
@@ -157,10 +162,10 @@ test('heading follows wall slide and holds steady when movement is blocked at a 
   assert.deepEqual(player.position, { x: arena.width - player.radius, y: player.radius });
   assert.equal(player.velocity.x, 0);
   assert.ok(player.velocity.y < 0);
-  heading.update(player.velocity, 2);
+  heading.update(player.heading, 2);
 
   advance(player, { kind: 'joystick', point: { x: 0.6, y: -0.8 } }, 1);
   assert.deepEqual(player.velocity, origin);
-  heading.update(player.velocity, 2);
+  heading.update(player.heading, 2);
   near(heading.angle, -Math.PI / 2);
 });

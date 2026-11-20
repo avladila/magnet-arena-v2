@@ -10,13 +10,9 @@ export function shortestAngle(from: number, to: number): number {
 
 export class Heading {
   angle = 0;
-  private target = 0;
 
-  update(velocity: Point, seconds: number): void {
-    if (Math.hypot(velocity.x, velocity.y) >= viewConfig.headingMinSpeed) {
-      this.target = Math.atan2(velocity.y, velocity.x);
-    }
-    this.angle += shortestAngle(this.angle, this.target) * smoothing(viewConfig.rotationRate, seconds);
+  update(target: number, seconds: number): void {
+    this.angle += shortestAngle(this.angle, target) * smoothing(viewConfig.rotationRate, seconds);
   }
 }
 

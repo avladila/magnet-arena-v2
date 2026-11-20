@@ -154,9 +154,9 @@ test('a second finger can toggle once on release inside the button', () => {
 
 test('repeated theme changes recolor pieces and live pickup glints without touching their model', () => {
   const player = createPlayer();
-  const pool = new ParticlePool(7, player, 2);
+  const pool = new ParticlePool(7, [player], 2);
   Object.assign(pool.slots[0], player.position, { colorIndex: 9 });
-  const collections = advanceAttraction(pool, player, 0);
+  const collections = advanceAttraction(pool, [player], 0).collections;
   const objects = [...pool.slots];
   const state = structuredClone({ player, slots: pool.slots, collections });
   const pieces = new GraphicsRecorder();
@@ -193,10 +193,10 @@ test('halo eases toward the current world-space reach without changing contact g
   }
   assert.equal(feedback.haloRadius, 230);
 
-  const pool = new ParticlePool(7, player, 1);
+  const pool = new ParticlePool(7, [player], 1);
   Object.assign(pool.slots[0], { x: player.position.x + player.radius + 6, y: player.position.y });
-  assert.equal(advanceAttraction(pool, player, 0).length, 0);
-  assert.equal(advanceAttraction(pool, player, 1).length, 1);
+  assert.equal(advanceAttraction(pool, [player], 0).collections.length, 0);
+  assert.equal(advanceAttraction(pool, [player], 1).collections.length, 1);
 });
 
 test('milestones pulse once as mass crosses 50, 100, 200 and 400', () => {
