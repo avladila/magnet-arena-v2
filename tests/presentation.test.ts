@@ -8,9 +8,9 @@ import { createBots } from '../src/bots';
 import { arena, arenaArt, growthFeedback, scrapConfig } from '../src/config';
 import { addMass, attractionReach } from '../src/growth';
 import { GrowthFeedback, GrowthFeedbackView } from '../src/growth-feedback';
-import { createPlayer, type Point } from '../src/movement';
+import { advance, createPlayer, type Point } from '../src/movement';
 import { ParticleView } from '../src/particle-view';
-import { ParticlePool, type WorldBounds } from '../src/particles';
+import { ParticlePool, type Collection, type WorldBounds } from '../src/particles';
 import { themes } from '../src/theme';
 import { bindThemeToggle, ThemePreference } from '../src/theme-control';
 import { ArenaCamera } from '../src/view';
@@ -208,6 +208,64 @@ test('repeated theme changes recolor pieces and live pickup glints without touch
   }
   assert.deepEqual({ player, slots: pool.slots, collections }, state);
   pool.slots.forEach((slot, id) => assert.equal(slot, objects[id]));
+});
+
+test('camera travel translates a static square on screen and redraws exactly one square and highlight', () => {
+  const player = createPlayer();
+  const camera = new ArenaCamera(player.position);
+  camera.resize(1280, 800);
+  const pool = new ParticlePool(2026, [player], 1);
+  const [slot] = pool.slots;
+  Object.assign(slot, { x: player.position.x + 50, y: player.position.y + 190 });
+  const world = { x: slot.x, y: slot.y };
+  const startCamera = camera.midpoint;
+  const startScreen = camera.toScreen(world);
+  const pieces = new GraphicsRecorder();
+  const glints = new GraphicsRecorder();
+  const view = new ParticleView(sceneWithGraphics(pieces, glints));
+
+  for (let step = 1; step <= 12; step++) {
+    const delta = 1 / 60;
+    advance(player, { kind: 'joystick', point: { x: 1, y: 0 } }, delta);
+    const { collections } = advanceAttraction(pool, [player], delta);
+    camera.follow(player.position, delta, player.mass);
+    view.render(pool.slots, camera.bounds, collections, delta, themes.light);
+    assert.deepEqual({ x: slot.x, y: slot.y }, world);
+    assert.deepEqual(pieces.rectangles, [
+      { x: world.x - 3.5, y: world.y - 3.5, width: 7, height: 7 },
+      { x: world.x - 2.5, y: world.y - 2.5, width: 3, height: 2 },
+    ]);
+    const screen = camera.toScreen(world);
+    assert.ok(Math.abs(screen.x - startScreen.x + (camera.midpoint.x - startCamera.x) * camera.zoom) < 1e-7);
+    assert.deepEqual(camera.toWorld(screen), world);
+    assert.equal(pieces.clears, step);
+    assert.equal(glints.circles.length, 0);
+  }
+
+  slot.x = camera.bounds.right + slot.radius + 1;
+  view.render(pool.slots, camera.bounds, [], 0, themes.light);
+  assert.deepEqual(pieces.rectangles, []);
+});
+
+test('glints use the bounded effect pool, cull by their extent and clear on expiration', () => {
+  const pieces = new GraphicsRecorder();
+  const glints = new GraphicsRecorder();
+  const view = new ParticleView(sceneWithGraphics(pieces, glints));
+  const bounds = { left: 100, top: 100, right: 240, bottom: 240 };
+  const collections: Collection[] = Array.from({ length: 25 }, (_, id) => ({
+    id, generation: 1, ownerId: 'player', colorIndex: 4, x: 140 + id, y: 180,
+  }));
+  view.render([], bounds, collections, 0, themes.light);
+  assert.deepEqual(pieces.rectangles, []);
+  assert.deepEqual(glints.circles.map(({ x }) => x).sort((a, b) => a - b), collections.slice(5).map(({ x }) => x));
+
+  view.render([], { ...bounds, left: 170 }, [], 0, themes.dark);
+  assert.equal(glints.circles.length, 0);
+  view.render([], bounds, [], 0.11, themes.dark);
+  assert.equal(glints.circles.length, 20);
+  assert.ok(glints.circles.every(({ radius, color }) => radius === 9 && color === themes.dark.scrap[4]));
+  view.render([], bounds, [], 0.12, themes.dark);
+  assert.equal(glints.circles.length, 0);
 });
 
 test('halo eases toward the current world-space reach without changing contact geometry', () => {
