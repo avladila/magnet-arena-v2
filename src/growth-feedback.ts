@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { pullMultiplier } from './combat';
 import { growthFeedback, scrapConfig } from './config';
 import { attractionReach } from './growth';
 import type { Player } from './movement';
@@ -15,7 +16,8 @@ export class GrowthFeedback {
   }
 
   update(player: Player, seconds: number, reducedMotion: boolean): number | undefined {
-    const reach = attractionReach(player.physicalScale);
+    const contact = player.radius + scrapConfig.radius;
+    const reach = contact + Math.max(0, attractionReach(player.physicalScale) - contact) * pullMultiplier(player);
     const eased = this.haloRadius + (reach - this.haloRadius) * -Math.expm1(-growthFeedback.haloRate * seconds);
     this.haloRadius = Math.max(player.radius + scrapConfig.radius, eased);
 
@@ -44,12 +46,14 @@ export class GrowthFeedback {
 
 export class GrowthFeedbackView {
   private readonly rings: Phaser.GameObjects.Graphics;
-  private readonly feedback: GrowthFeedback;
+  private feedback: GrowthFeedback;
 
   constructor(scene: Phaser.Scene, player: Player) {
     this.rings = scene.add.graphics();
     this.feedback = new GrowthFeedback(player);
   }
+
+  reset(player: Player) { this.feedback = new GrowthFeedback(player); }
 
   render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean): void {
     this.feedback.update(player, seconds, reducedMotion);

@@ -11,6 +11,7 @@ export type Bot = Participant<'bot'> & {
   readonly accent: number;
   readonly random: () => number;
   decisionIn: number;
+  thinkFor?: number;
   target?: BotTarget;
 };
 

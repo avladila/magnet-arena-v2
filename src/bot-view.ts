@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { drawMagnet } from './art';
+import { createMagnetSprite, renderMagnet } from './magnet-art';
 import type { Bot } from './bots';
 import { playerConfig, viewConfig } from './config';
 import { clamp, type Participant } from './movement';
@@ -8,20 +8,26 @@ import type { ThemePalette } from './theme';
 import { Heading, MagnetScale } from './view';
 
 export class BotView {
-  private readonly body: Phaser.GameObjects.Graphics;
+  private readonly body: Phaser.GameObjects.Sprite;
   private readonly label: Phaser.GameObjects.Text;
-  private readonly heading = new Heading();
-  private readonly scale = new MagnetScale();
+  private heading = new Heading();
+  private scale = new MagnetScale();
   private palette?: ThemePalette;
 
-  constructor(scene: Phaser.Scene, private readonly bot: Bot) {
-    this.body = drawMagnet(scene, bot.accent);
+  constructor(scene: Phaser.Scene, private bot: Bot) {
+    this.body = createMagnetSprite(scene, bot.id).setDepth(1);
     this.label = scene.add.text(0, 0, bot.name, {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '12px',
       fontStyle: 'bold',
       resolution: viewConfig.maxPixelRatio,
     }).setOrigin(0.5, 0).setDepth(2);
+  }
+
+  setBot(bot: Bot) {
+    this.bot = bot;
+    this.heading = new Heading();
+    this.scale = new MagnetScale();
   }
 
   render(
@@ -47,7 +53,7 @@ export class BotView {
       this.label.setColor(palette.ui['--hud-text']).setStroke(palette.ui['--hud-surface'], 4);
       this.palette = palette;
     }
-    this.body.setPosition(x, y).setRotation(this.heading.angle).setScale(this.scale.scale);
+    renderMagnet(this.body, this.bot, this.heading.angle, this.scale.scale);
 
     const halfWidth = this.label.width / (2 * zoom);
     const height = this.label.height / zoom;

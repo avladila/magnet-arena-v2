@@ -1,3 +1,5 @@
+import { tacticsConfig } from './competition-config';
+import type { Difficulty } from './match';
 import type { Bot, BotTarget } from './bots';
 import { arena, botConfig, playerConfig } from './config';
 import { clampToArena, type Point } from './movement';
@@ -46,11 +48,13 @@ function waypoint(bot: Bot): Point {
 }
 
 export class BotAI {
-  private readonly density = new Uint16Array(columns * rows);
+  private readonly density = new Float32Array(columns * rows);
   private readonly occupiedCells: number[] = [];
 
-  update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number): void {
+  update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number, difficulty?: Difficulty, weight?: (scrap: Scrap) => number): void {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
+    const decision = difficulty ? tacticsConfig[difficulty].decision : collector.decisionSeconds;
+    const search = difficulty ? tacticsConfig[difficulty].search : collector.searchRadius;
     let densityReady = false;
     for (const bot of bots) {
       bot.decisionIn -= seconds;
@@ -60,25 +64,37 @@ export class BotAI {
         (bot.strategy === 'roamer' || (goal.x >= bot.radius && goal.x <= arena.width - bot.radius &&
           goal.y >= bot.radius && goal.y <= arena.height - bot.radius));
       if (onRoute && bot.decisionIn > 0) continue;
+      if (difficulty === 'easy') {
+        if (bot.thinkFor !== undefined) {
+          bot.thinkFor -= seconds;
+          if (bot.thinkFor > 0) continue;
+          bot.thinkFor = undefined;
+        } else if (bot.target) {
+          bot.target = undefined;
+          bot.thinkFor = 0.85 + bot.random() * 0.4;
+          continue;
+        }
+      }
 
-      if (bot.strategy === 'collector') {
+      if (bot.strategy === 'collector' || (weight && bot.random() < 0.55)) {
         if (!densityReady) {
           for (const index of this.occupiedCells) this.density[index] = 0;
           this.occupiedCells.length = 0;
           for (const scrap of slots) {
             if (scrap.state !== 'active') continue;
             const index = cell(scrap);
-            if (this.density[index]++ === 0) this.occupiedCells.push(index);
+            if (this.density[index] === 0) this.occupiedCells.push(index);
+            this.density[index] += weight?.(scrap) ?? 1;
           }
           densityReady = true;
         }
-        const target = this.pickRoute(bot, arrival);
+        const target = this.pickRoute(bot, arrival, search, decision);
         if (target) {
           bot.target = target;
         } else if (!onRoute || bot.target?.kind === 'region') {
           bot.target = { kind: 'waypoint', point: waypoint(bot) };
         }
-        bot.decisionIn = collector.decisionSeconds;
+        bot.decisionIn = decision;
       } else {
         bot.target = { kind: 'waypoint', point: waypoint(bot) };
         bot.decisionIn = roamer.reconsiderMinSeconds +
@@ -87,21 +103,21 @@ export class BotAI {
     }
   }
 
-  private pickRoute(bot: Bot, arrival: number): BotTarget | undefined {
+  private pickRoute(bot: Bot, arrival: number, search: number, decision: number): BotTarget | undefined {
     const { x, y } = bot.position;
     const forwardX = Math.cos(bot.heading);
     const forwardY = Math.sin(bot.heading);
     const moving = bot.velocity.x !== 0 || bot.velocity.y !== 0;
     const margin = bot.radius + collector.wallMargin;
     const minimum = playerConfig.speed * collector.minCommitmentSeconds + arrival;
-    const preferred = playerConfig.speed * collector.decisionSeconds + arrival;
+    const preferred = playerConfig.speed * decision + arrival;
     let best: BotTarget | undefined;
     let bestScore = 0;
 
-    const firstColumn = Math.max(0, Math.floor((x - collector.searchRadius) / collector.cellSize));
-    const lastColumn = Math.min(columns - 1, Math.floor((x + collector.searchRadius) / collector.cellSize));
-    const firstRow = Math.max(0, Math.floor((y - collector.searchRadius) / collector.cellSize));
-    const lastRow = Math.min(rows - 1, Math.floor((y + collector.searchRadius) / collector.cellSize));
+    const firstColumn = Math.max(0, Math.floor((x - search) / collector.cellSize));
+    const lastColumn = Math.min(columns - 1, Math.floor((x + search) / collector.cellSize));
+    const firstRow = Math.max(0, Math.floor((y - search) / collector.cellSize));
+    const lastRow = Math.min(rows - 1, Math.floor((y + search) / collector.cellSize));
     for (let row = firstRow; row <= lastRow; row++) {
       for (let column = firstColumn; column <= lastColumn; column++) {
         const index = row * columns + column;
@@ -111,7 +127,7 @@ export class BotAI {
         const dx = center.x - x;
         const dy = center.y - y;
         const distance = Math.hypot(dx, dy);
-        if (distance < collector.cellSize / 2 || distance > collector.searchRadius) continue;
+        if (distance < collector.cellSize / 2 || distance > search) continue;
         const ux = dx / distance;
         const uy = dy / distance;
         // Continue through the cell so nearby pickups do not end the route.

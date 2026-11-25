@@ -1,3 +1,5 @@
+import { pullMultiplier } from './combat';
+import { theftConfig } from './competition-config';
 import { scrapConfig } from './config';
 import { addMass, attractionReach } from './growth';
 import type { Participant, Point } from './movement';
@@ -30,12 +32,14 @@ export function advanceAttraction(
   if (!Number.isFinite(seconds) || seconds < 0) return noCollections;
   const candidates = participants.map((participant) => {
     const reach = attractionReach(participant.physicalScale);
-    return { participant, reach, reachSquared: reach ** 2, pickups: 0 };
+    return { participant, reach, modifier: pullMultiplier(participant), pickups: 0, gold: 0, energy: 0 };
   });
   let collections: Collection[] | undefined;
   let contestedCollections = 0;
   for (const scrap of pool.slots) {
     if (scrap.state !== 'active') continue;
+    const kind = pool.kind(scrap);
+    let winningReach = 0;
     let winner: typeof candidates[number] | undefined;
     let bestGap = Infinity;
     let bestDistance = 0;
@@ -44,32 +48,47 @@ export function advanceAttraction(
       const { id, position, radius } = candidate.participant;
       const distanceSquared = (position.x - scrap.x) ** 2 + (position.y - scrap.y) ** 2;
       const contact = radius + scrap.radius;
-      if (distanceSquared > candidate.reachSquared && distanceSquared > contact ** 2) continue;
+      const baseReach = kind === 'energy'
+        ? Math.max(contact + 20, 72, 156 / Math.sqrt(candidate.participant.physicalScale))
+        : candidate.reach;
+      const reach = contact + Math.max(0, baseReach - contact) * candidate.modifier;
+      if (distanceSquared > reach ** 2) continue;
       inRange++;
       const distance = Math.sqrt(distanceSquared);
       // Signed gaps rank physical contacts ahead of every non-contact candidate.
       const gap = distance - contact;
       if (gap < bestGap || (gap === bestGap && winner && id < winner.participant.id)) {
         winner = candidate;
+        winningReach = reach;
         bestGap = gap;
         bestDistance = distance;
       }
     }
     if (!winner) continue;
     const collector = winner.participant;
-    if (!pull(scrap, collector.position, bestDistance, collector.radius + scrap.radius, winner.reach, seconds)) continue;
+    if (!pull(scrap, collector.position, bestDistance, collector.radius + scrap.radius, winningReach, seconds * winner.modifier)) continue;
     const collection = pool.collect(scrap.id, scrap.generation, winner.participant.id);
     if (!collection) continue;
     (collections ??= []).push(collection);
-    winner.pickups++;
+    if (kind === 'gold') winner.gold++;
+    else if (kind === 'energy') winner.energy++;
+    else winner.pickups++;
     if (inRange > 1) contestedCollections++;
   }
   if (!collections) return noCollections;
   // Apply payouts after every contested pickup has used the same participant sizes and positions.
-  for (const { participant, pickups } of candidates) {
-    if (pickups === 0) continue;
-    participant.pickupsCollected += pickups;
-    addMass(participant, pickups * scrapConfig.massPerPickup);
+  for (const { participant, pickups, gold, energy } of candidates) {
+    if (!pickups && !gold && !energy) continue;
+    participant.pickupsCollected += pickups + gold + energy;
+    const state = participant.combat;
+    state.ordinary += pickups;
+    state.gold += gold;
+    state.cells += energy;
+    state.energy = Math.min(theftConfig.energy, state.energy +
+      energy * Math.max(4, Math.round(12 / Math.sqrt(participant.physicalScale))));
+    const mass = pickups * scrapConfig.massPerPickup + gold * 10;
+    state.resourceMass += mass;
+    if (mass) addMass(participant, mass);
   }
   return { collections, contestedCollections };
 }

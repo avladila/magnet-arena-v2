@@ -20,6 +20,7 @@ export function attractionReach(physicalScale: number): number {
 
 export function addMass(participant: Participant, mass: number): void {
   participant.mass += mass;
+  participant.combat.highest = Math.max(participant.combat.highest, participant.mass);
   participant.physicalScale = physicalScaleForMass(participant.mass);
   participant.radius = playerConfig.radius * participant.physicalScale;
   // Growth at a wall moves the center into bounds without changing steering velocity.
