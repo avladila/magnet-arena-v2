@@ -1,0 +1,65 @@
+[
+  {
+    "kind": "heat",
+    "exposed": {
+      "h": 0.9541666666666645,
+      "brittle": false,
+      "lost": 0,
+      "discharge": false
+    },
+    "recovered": true
+  },
+  {
+    "kind": "water",
+    "exposed": {
+      "h": 0,
+      "c": "water",
+      "brittle": false,
+      "lost": 5,
+      "discharge": false
+    },
+    "recovered": true
+  },
+  {
+    "kind": "acid",
+    "exposed": {
+      "h": 0,
+      "c": "acid",
+      "brittle": false,
+      "lost": 14,
+      "discharge": false
+    },
+    "recovered": true
+  },
+  {
+    "kind": "cold",
+    "exposed": {
+      "h": 0,
+      "brittle": true,
+      "lost": 0,
+      "discharge": false
+    },
+    "recovered": true
+  },
+  {
+    "kind": "flux",
+    "exposed": {
+      "h": 0,
+      "brittle": false,
+      "lost": 65,
+      "discharge": true
+    },
+    "recovered": true
+  },
+  {
+    "kind": "overlap",
+    "exposed": {
+      "h": 0.25000000000000033,
+      "c": "acid",
+      "brittle": false,
+      "lost": 14,
+      "discharge": false
+    },
+    "recovered": true
+  }
+]

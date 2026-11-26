@@ -1,0 +1,83 @@
+ci
+
+added 23 packages in 3s
+
+unit
+
+ℹ tests 152
+ℹ suites 0
+ℹ pass 152
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79788.998058
+
+types
+
+> magnet-arena-v2@0.1.0 typecheck
+> tsc --noEmit
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
+
+build
+
+> magnet-arena-v2@0.1.0 build
+> vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 53 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           7.10 kB │ gzip:   2.18 kB
+dist/assets/index-D173C8cJ.css           13.50 kB │ gzip:   3.60 kB
+dist/assets/result-stats-DQjDEpDP.js      1.07 kB │ gzip:   0.62 kB
+dist/assets/index-CYjYbEM3.js           133.49 kB │ gzip:  46.73 kB
+dist/assets/phaser-Jt__PiWe.js        1,208.08 kB │ gzip: 332.18 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.02s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
+
+browser
+
+> magnet-arena-v2@0.1.0 test:e2e
+> playwright test --project=chromium --workers=1
+
+
+Running 14 tests using 1 worker
+
+  ✓   1 [chromium] › e2e/game.spec.ts:13:1 › Arena starts, steers and pauses; Endless reaches results and replays (11.0s)
+  ✓   2 [chromium] › e2e/game.spec.ts:41:1 › settings persist and both themes fit the HUD at nine sizes (5.3s)
+  ✓   3 [chromium] › e2e/game.spec.ts:69:1 › training advances after real steering (3.5s)
+Retained JavaScript heap after 50 replays (bytes): 1577508
+  ✓   4 [chromium] › e2e/game.spec.ts:78:1 › fifty replays reuse the canvas and continue to handle controls (34.1s)
+  ✓   5 [chromium] › e2e/game.spec.ts:102:1 › two real Chromium touch pointers steer and resolve one overridden attack (4.0s)
+  ✓   6 [chromium] › e2e/game.spec.ts:137:1 › full Arena simulation reaches results and Play Again through the UI (20.7s)
+  ✓   7 [chromium] › e2e/game.spec.ts:159:1 › training teaches each hazard through in-arena encounters without recording a match (9.1s)
+  ✓   8 [chromium] › e2e/game.spec.ts:193:1 › presentation pool stays within each quality cap and clears under reduced motion (2.0s)
+  ✓   9 [chromium] › e2e/game.spec.ts:216:1 › master mute keeps the live music and effects buses silent after hide and resume (2.1s)
+  ✓  10 [chromium] › e2e/game.spec.ts:243:1 › giant mobile energy stays recognizable in Low and reduced motion, then charges without growth (1.6s)
+  ✓  11 [chromium] › e2e/game.spec.ts:290:1 › live ranks stay compact and reveal the full twenty-place standings on desktop and mobile (2.0s)
+  ✓  12 [chromium] › e2e/game.spec.ts:319:1 › live release shrinks a giant, launches salvage and reports a guarded follow-up (2.8s)
+  ✓  13 [chromium] › e2e/game.spec.ts:358:1 › arena signals use one direction cue and results show recorded progression on a phone-sized viewport (3.2s)
+  ✓  14 [chromium] › e2e/game.spec.ts:416:1 › cartoon expressions follow a real attack and both Arena outcomes display matching art (2.8s)
+
+  14 passed (1.8m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

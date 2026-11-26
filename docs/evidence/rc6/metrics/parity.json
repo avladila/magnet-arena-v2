@@ -1,0 +1,62 @@
+[
+  {
+    "seed": 11216,
+    "difficulty": "normal",
+    "strategy": "balanced",
+    "width": 1366,
+    "height": 768,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "8569df666aba009035e427517be15f1c06c6676038b6212ee425e0cf0c1ed826"
+  },
+  {
+    "seed": 13547,
+    "difficulty": "normal",
+    "strategy": "salvage",
+    "width": 390,
+    "height": 844,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "6e090bae7c62586a1d057dc1fc8bd3ed4b212757c74575cba4ecca547e579478"
+  },
+  {
+    "seed": 46191,
+    "difficulty": "easy",
+    "strategy": "energy",
+    "width": 844,
+    "height": 390,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "067ef9588db46534efebe773fd0638abd7f7f5e15dc98945ee0b92d8be5e095a"
+  },
+  {
+    "seed": 68712,
+    "difficulty": "hard",
+    "strategy": "hunter",
+    "width": 1366,
+    "height": 768,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "8d1b2bc568d693fc5302ee417cd872abbe27b734ab19ed1a1c1b54f222f31b27"
+  },
+  {
+    "seed": 41011,
+    "difficulty": "hard",
+    "strategy": "defensive",
+    "width": 390,
+    "height": 844,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "2780f919fc29a807bbd89e3726b2c7c8ae34fdc84c460b5c4457db0f1109be75"
+  },
+  {
+    "seed": 7151,
+    "difficulty": "easy",
+    "strategy": "collector",
+    "width": 1366,
+    "height": 768,
+    "inputs": 18000,
+    "checkpoints": 31,
+    "final": "253348cfbf45cc91462442b89e96041d51234cc00037d5257eb8f20ea1c59432"
+  }
+]

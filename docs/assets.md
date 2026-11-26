@@ -2,21 +2,21 @@
 
 | Asset | Source | Runtime |
 | --- | --- | --- |
-| App mark, hero, social, victory, and defeat art | Original cel art composited at illustration resolution from the game character designs | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/social.webp`, `public/victory.webp`, `public/defeat.webp` |
-| Twenty characters, six shells each | Artwork uses the shared color tokens, roster accents, and individual decals | `public/magnets.webp` and `public/magnets.json` |
-| Ten expressions per character | Painted eyes, brows and mouths with two authored pupil anchors per face | `public/faces.webp`, `public/faces.json`, and `brand/face-anchors.json` |
-| Hazards and scenery | Inked furnaces, coolers, puddles, spikes, signs, drains, pipes, presses, and vents | `public/scenery.webp` and `public/scenery.json` |
-| Pickups, salvage, and status marks | Ten luminous scrap colors, gold nuggets, crimson charge cells with an orbit, four salvage tiers, pupils, and reaction effects | `public/workshop.webp` and `public/workshop.json` |
-| Field, footprint, and shockwave | Vector commands aligned with model radii and bearings | Phaser Canvas |
-| Soundtrack and cues | Original 16-bar loop and Web Audio envelopes with two-note confirmations | `public/soundtrack.ogg`, `src/audio.ts`, `brand/tokens.json` |
-| Early title illustration | Original ImageGen source illustration retained for provenance | `art-source/title.webp` |
+| App mark, title, social, victory, defeat, and Endless art | Original cel art composited at illustration resolution with the game cast. Title art has wide and portrait compositions. | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/hero-portrait.webp`, `public/social.webp`, `public/victory.webp`, `public/defeat.webp`, `public/endless.webp` |
+| Twenty characters, six shells each | 120 inked steel and enamel shells with roster-specific proportions, colors, and decals | `public/magnets.webp` and `public/magnets.json` |
+| Ten expressions and a blink per character | 220 painted faces and authored pupil placements | `public/faces.webp`, `public/faces.json`, and `brand/face-anchors.json` |
+| Hazards and scenery | 40 frames for five hazards, a discharged Flux state, four moving overlays per hazard, eight mechanical props, and six district floor stamps | `public/scenery.webp` and `public/scenery.json` |
+| Pickups, salvage, and character effects | 56 frames, including ten scrap colors, a faceted gold nugget, animated and static ringed charge cells, four claimable salvage tiers, three cosmetic fracture plates, pupils, and reactions | `public/workshop.webp` and `public/workshop.json` |
+| Floor, field, footprints, and shockwaves | World-anchored floor plates and boundaries. Vector effects use the model radii and bearings. | `src/art.ts`, `src/growth-feedback.ts`, `src/competition-view.ts` |
+| Soundtrack and cues | Original 114 BPM, 16-bar loop with synthesized instruments and Web Audio cue envelopes | `public/soundtrack.ogg`, `src/audio.ts`, `brand/tokens.json` |
+| Illustration sources | Original ImageGen scrapyard backdrop used under the generated foreground characters. The earlier title source is retained for provenance. | `art-source/assembly-bay.webp`, `art-source/title.webp` |
 
-The current artwork ships with the game. It is generated from `scripts/arcade_art.py`, `scripts/generate-brand-art.py`, `brand/roster.json`, and `brand/tokens.json`. The local Open Sans Regular and ExtraBold faces include their Apache-2.0 license in `public/fonts/`.
+The current artwork ships with the game. `scripts/arcade_art.py` draws shells and faces, `scripts/scrapyard_art.py` draws machinery and landscape details, and `scripts/generate-brand-art.py` packs the atlases and composes the illustrations. `brand/roster.json` and `brand/tokens.json` supply roster and palette data. The checked-in backdrop makes illustration generation local. Use Python 3 with Pillow and FFmpeg with `libvorbis`. The local Open Sans Regular and ExtraBold faces include their Apache-2.0 license in `public/fonts/`.
 
 ```sh
 python -B scripts/generate-brand-art.py
-python scripts/generate-soundtrack.py
+python -B scripts/generate-soundtrack.py
 ffmpeg -y -i /tmp/magnet-soundtrack.wav -c:a libvorbis -q:a 3 public/soundtrack.ogg
 ```
 
-[Asset manifest](../brand/asset-manifest.json) · [Visual identity](brand.md) · [Art sheet](evidence/visual-identity/artwork.webp) · [Roster sheet](evidence/visual-identity/roster.webp)
+[Asset manifest](../brand/asset-manifest.json) · [Visual identity](brand.md) · [Illustrations](evidence/rc6/artwork.webp) · [120 growth-stage shells](evidence/rc6/all-growth-stages.webp) · [200 expression frames](evidence/rc6/all-expressions.webp) · [Earlier art sheet](evidence/visual-identity/artwork.webp)

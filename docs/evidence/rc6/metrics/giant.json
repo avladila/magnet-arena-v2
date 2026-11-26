@@ -1,0 +1,831 @@
+{
+  "first": {
+    "loss": 3301,
+    "mass": 1051,
+    "radius": 179.97930911461856,
+    "chunks": 24,
+    "maxDistance": 488.00000000000006
+  },
+  "trace": [
+    {
+      "t": 0.06666666666666665,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.13333333333333347,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.20000000000000034,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.2666666666666672,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.3333333333333341,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.40000000000000097,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.46666666666666784,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.5333333333333348,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.6000000000000012,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.6666666666666676,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.4833333333333334,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 0.7333333333333341,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.416666666666667,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 0.8000000000000005,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.3500000000000005,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 0.8666666666666669,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.283333333333334,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 0.9333333333333333,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.2166666666666677,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 0.9999999999999998,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.1500000000000012,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 1.0666666666666662,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.0833333333333348,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 1.1333333333333326,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 1.0166666666666684,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 24
+    },
+    {
+      "t": 1.199999999999999,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.9500000000000016,
+      "victimSalvage": 0,
+      "attackerSalvage": 268,
+      "thirdSalvage": 145,
+      "chunks": 21
+    },
+    {
+      "t": 1.2666666666666655,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.8833333333333347,
+      "victimSalvage": 0,
+      "attackerSalvage": 1072,
+      "thirdSalvage": 145,
+      "chunks": 15
+    },
+    {
+      "t": 1.333333333333332,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.8166666666666679,
+      "victimSalvage": 0,
+      "attackerSalvage": 1072,
+      "thirdSalvage": 145,
+      "chunks": 15
+    },
+    {
+      "t": 1.3999999999999984,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.750000000000001,
+      "victimSalvage": 0,
+      "attackerSalvage": 1474,
+      "thirdSalvage": 145,
+      "chunks": 12
+    },
+    {
+      "t": 1.4666666666666648,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.6833333333333341,
+      "victimSalvage": 0,
+      "attackerSalvage": 1474,
+      "thirdSalvage": 145,
+      "chunks": 12
+    },
+    {
+      "t": 1.5333333333333312,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.6166666666666673,
+      "victimSalvage": 0,
+      "attackerSalvage": 1474,
+      "thirdSalvage": 145,
+      "chunks": 12
+    },
+    {
+      "t": 1.5999999999999976,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.5500000000000004,
+      "victimSalvage": 0,
+      "attackerSalvage": 1876,
+      "thirdSalvage": 145,
+      "chunks": 9
+    },
+    {
+      "t": 1.666666666666664,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.48333333333333356,
+      "victimSalvage": 0,
+      "attackerSalvage": 1876,
+      "thirdSalvage": 145,
+      "chunks": 9
+    },
+    {
+      "t": 1.7333333333333305,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.4166666666666669,
+      "victimSalvage": 0,
+      "attackerSalvage": 1876,
+      "thirdSalvage": 145,
+      "chunks": 9
+    },
+    {
+      "t": 1.799999999999997,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.35000000000000026,
+      "victimSalvage": 0,
+      "attackerSalvage": 1876,
+      "thirdSalvage": 145,
+      "chunks": 9
+    },
+    {
+      "t": 1.8666666666666634,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.2833333333333336,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 1.9333333333333298,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.21666666666666695,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 1.9999999999999962,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.1500000000000003,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.066666666666663,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.08333333333333365,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.1333333333333293,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0.016666666666666993,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.1999999999999957,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.266666666666662,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.3333333333333286,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.399999999999995,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.4666666666666615,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.533333333333328,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.5999999999999943,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.6666666666666607,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.733333333333327,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.7999999999999936,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.86666666666666,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.9333333333333265,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 2.999999999999993,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.0666666666666593,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.1333333333333258,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.199999999999992,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.2666666666666586,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.333333333333325,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.3999999999999915,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.466666666666658,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.5333333333333243,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.599999999999991,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.6666666666666576,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.733333333333324,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.7999999999999905,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.866666666666657,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.9333333333333234,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 3.99999999999999,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.066666666666656,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.133333333333322,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.199999999999989,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.266666666666655,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.3333333333333215,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.399999999999988,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.466666666666654,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.533333333333321,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.599999999999987,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.666666666666654,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.73333333333332,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.7999999999999865,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.866666666666653,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.933333333333319,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 4.999999999999986,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.066666666666652,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.133333333333319,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.199999999999985,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.2666666666666515,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.333333333333318,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.399999999999984,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    },
+    {
+      "t": 5.466666666666651,
+      "mass": 1051,
+      "radius": 179.97930911461856,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 2021,
+      "thirdSalvage": 145,
+      "chunks": 8
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "browser": "156.0.8078.79",
+  "rows": {
+    "quality": "high",
+    "participants": 20,
+    "giantCount": 7,
+    "sites": 5,
+    "pickups": 115,
+    "machineOverlays": 0,
+    "maxPlates": 0,
+    "visibleHotspots": 4,
+    "signalFrames": 42,
+    "iterations": 118,
+    "capacity": 1024,
+    "peakActive": 1024,
+    "peakPending": 105,
+    "atEnd": 33,
+    "pending": 0,
+    "painted": 1009,
+    "lost": 23108,
+    "p95Update": 6.9,
+    "before": 30727,
+    "after": 35767
+  }
+}

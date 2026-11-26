@@ -1,0 +1,68 @@
+[
+  {
+    "stage": 20,
+    "start": 20,
+    "initialScale": 1,
+    "final": 33,
+    "finalScale": 1.2276186062932104,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  },
+  {
+    "stage": 50,
+    "start": 46,
+    "initialScale": 1.413260071048248,
+    "final": 59,
+    "finalScale": 1.5740451229854133,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  },
+  {
+    "stage": 100,
+    "start": 96,
+    "initialScale": 1.9527121840165313,
+    "final": 109,
+    "finalScale": 2.0676188047886006,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  },
+  {
+    "stage": 400,
+    "start": 396,
+    "initialScale": 3.7597752738059187,
+    "final": 409,
+    "finalScale": 3.817734097470405,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  },
+  {
+    "stage": 1500,
+    "start": 1496,
+    "initialScale": 7.11895945934069,
+    "final": 1509,
+    "finalScale": 7.14895675623327,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  },
+  {
+    "stage": 4352,
+    "start": 4348,
+    "initialScale": 11.995592397162596,
+    "final": 4361,
+    "finalScale": 12,
+    "energy": 100,
+    "cells": 1,
+    "gold": 1,
+    "ordinary": 3
+  }
+]

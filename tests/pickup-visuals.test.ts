@@ -92,25 +92,32 @@ test('energy keeps its brighter static orbit in Low and reduced motion, and anim
   const view = new ParticleView(scene, true);
   const effects = { trail() {}, glint() {} } as unknown as WorkshopParticles;
   const slot = { ...scrap, x: -22 };
-  const render = (quality: 'low' | 'balanced', reducedMotion: boolean, seconds: number) => {
-    view.render([slot], bounds, [], seconds, themes.light, (): ResourceKind => 'energy',
+  const render = (quality: 'low' | 'balanced', reducedMotion: boolean, seconds: number, slots = [slot]) => {
+    view.render(slots, bounds, [], seconds, themes.light, (): ResourceKind => 'energy',
       { mode: 'light', zoom: 0.22, quality, reducedMotion, effects });
   };
-  render('low', true, 0);
-  const core = images.find((image) => image.frame.name === 'energy' && image.visible)!;
-  const orbit = images.find((image) => image.frame.name === 'energy-orbit' && image.visible)!;
+  render('low', false, 0);
+  assert.equal(images.length, 1);
+  const [core] = images;
+  assert.equal(core.frame.name, 'energy-static');
   assert.equal(core.x, slot.x, 'the screen-size glow enters view before the physical radius');
-  assert.equal(orbit.rotation, 0);
+  render('balanced', false, 1 / 60);
+  const orbit = images.find((image) => image.frame.name === 'energy-orbit' && image.visible)!;
   assert.equal(orbit.x, slot.x);
   assert.equal(core.displayWidth, orbit.displayWidth);
-  assert.ok(orbit.alpha >= 0.9);
-  render('balanced', false, 1 / 60);
+  assert.equal(core.frame.name, 'energy');
   const angle = orbit.rotation;
   render('balanced', false, 0.1);
   assert.ok(orbit.rotation > angle);
   assert.equal(core.rotation, 0, 'the lightning mark does not rotate');
   assert.equal(core.x, slot.x);
   render('balanced', true, 0.1);
-  assert.equal(orbit.rotation, 0);
-  assert.ok(orbit.visible && core.visible);
+  assert.ok(!orbit.visible && core.visible);
+  assert.equal(core.frame.name, 'energy-static');
+
+  const cap = brand.pickups.energyOrbitPool;
+  const crowded = Array.from({ length: cap + 4 }, (_, id) => ({ ...slot, id, x: 10 + 3 * id }));
+  render('balanced', false, 0.1, crowded);
+  assert.equal(images.filter((image) => image.visible && image.frame.name === 'energy-orbit').length, cap);
+  assert.equal(images.filter((image) => image.visible && image.frame.name === 'energy-static').length, 4);
 });
