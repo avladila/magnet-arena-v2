@@ -117,13 +117,20 @@ def object_art(kind):
         d.line((27,43,46,35,64,42),fill=steel[0],width=5)
         for i in range(rank+1):
             d.ellipse((35+i*10,47,40+i*10,52),fill=ink)
-    elif kind in ('flux', 'cold'):
+    elif kind == 'flux':
         d.ellipse((10,10,86,86),outline=roles[kind],width=4)
         for angle in range(6):
             a = angle*pi/3
             d.polygon([(48+r*cos(a+b),48+r*sin(a+b)) for r,b in [(13,-.35),(36,0),(13,.35)]],
                       fill=roles[kind],outline=ink,width=2)
         d.polygon(radial(48,48,11,6),fill=steel[0],outline=ink,width=2)
+    elif kind == 'cold':
+        for x,y in radial(48,48,30,6,pi/6):
+            d.polygon(radial(x,y,12,6,pi/6),fill=roles['cold'],outline=ink,width=3)
+            d.line((x-4,y-5,x+4,y-5),fill=steel[0],width=2)
+        for x,y in radial(48,48,17,6,pi/6):
+            d.line((48,48,x,y),fill=roles['cold'],width=4)
+        d.ellipse((43,43,53,53),fill=steel[0],outline=ink,width=2)
     elif kind.startswith('prop'):
         d.rounded_rectangle((7,20,89,76),8,fill=steel[3],outline=ink,width=4)
         if kind == 'prop-drain':
@@ -137,8 +144,9 @@ def object_art(kind):
         for y in (30,42,54,66):
             d.line((25,y,71,y),fill=ink,width=4)
     else:
-        d.polygon([(13,46),(24,27),(48,19),(74,28),(85,48),(72,67),(42,76),(22,64)],
-                  fill=roles[kind],outline=ink,width=4)
+        outline = ([(13,46),(22,25),(44,28),(62,17),(79,27),(86,51),(69,63),(47,73),(31,68),(16,61)]
+                   if kind == 'acid' else [(10,42),(23,29),(48,24),(76,30),(88,50),(76,63),(47,73),(20,68)])
+        d.polygon(outline, fill=roles[kind],outline=ink,width=4)
         d.ellipse((26,36,69,61),outline=steel[0],width=3)
         if kind == 'acid':
             d.polygon(radial(48,48,12,6),fill=ink)
@@ -164,10 +172,11 @@ pack('workshop', frames)
 def pole_mark():
     im, d = tile()
     d.rounded_rectangle((14,16,82,79),18,fill=ink)
-    d.rounded_rectangle((26,30,72,66),11,fill=steel[0])
-    for x, pole in [(28,'coral'),(55,'cobalt')]:
-        d.rounded_rectangle((x,27,x+15,69),7,fill=roles[pole])
-        d.ellipse((x+3,27,x+12,36),fill=steel[0])
+    d.rounded_rectangle((23,25,73,70),16,fill=steel[0])
+    d.rounded_rectangle((39,14,57,52),8,fill=ink)
+    for x, pole in [(23,'coral'),(57,'cobalt')]:
+        d.rounded_rectangle((x,25,x+16,59),7,fill=roles[pole])
+        d.ellipse((x+3,27,x+13,37),fill=steel[0])
     return im
 
 
