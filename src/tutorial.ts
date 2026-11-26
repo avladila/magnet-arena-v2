@@ -1,6 +1,8 @@
+import { hazardConfig } from './competition-config';
+import type { Hazard, HazardKind } from './hazards';
 import type { ArenaModel } from './arena-model';
 import { addMass } from './growth';
-import type { Point } from './movement';
+import { clampToArena, type Point } from './movement';
 import { resourceKind, type ResourceKind } from './particles';
 
 export class Tutorial {
@@ -11,6 +13,9 @@ export class Tutorial {
   private nextResource = 0;
   readonly dummy;
   completed = false;
+  private station?: Hazard;
+  private stop = 0;
+  private readonly stations: readonly HazardKind[] = ['flux', 'heat', 'water', 'acid', 'cold'];
 
   constructor(private readonly model: ArenaModel) {
     this.origin = { ...model.player.position };
@@ -36,7 +41,12 @@ export class Tutorial {
       'Hold Space or Attack and aim at the training magnet.',
       'Release to fire at the training magnet.',
       'Collect one of the neutral salvage chunks after it lands.',
-      'Flux strips large shells. Heat weakens pull. Water and acid corrode. Cryogenic vents make you brittle. Pause to return to the menu.',
+      this.stop === 0 ? 'Touch the Flux device. It strips mass from larger magnets.'
+        : 'Enter the heat bay. Heat shrinks your pull field.',
+      ['Enter the water pool. Water corrodes your outer shell.',
+       'Enter the acid pool. Acid removes shell mass faster.',
+       'Stay inside the cryo vent until your shell becomes BRITTLE.'][this.stop - 2],
+      'Training complete. Open Pause to return to the menu.',
     ][this.stage];
   }
 
@@ -65,8 +75,33 @@ export class Tutorial {
       this.stage = 4;
     } else if (this.stage === 6 && state.salvage > 0) {
       this.stage++;
-      this.completed = true;
+      this.placeStation();
+    } else if ((this.stage === 7 || this.stage === 8) && this.station) {
+      const site = this.station;
+      const inside = Math.hypot(player.position.x - site.x, player.position.y - site.y) <= player.radius + site.radius;
+      const experienced = site.kind === 'flux' || (site.kind === 'heat' ? state.heat >= 0.14
+        : site.kind === 'cold' ? state.brittle : state.corrosion === site.kind);
+      if (!inside || !experienced) return;
+      this.stop++;
+      if (this.stop >= this.stations.length) {
+        this.stage = 9;
+        this.completed = true;
+      } else {
+        this.stage = this.stop < 2 ? 7 : 8;
+        this.placeStation();
+      }
     }
+  }
+
+  private placeStation(): void {
+    const kind = this.stations[this.stop];
+    const { position } = this.model.player;
+    const radius = hazardConfig[kind].radius;
+    this.station = {
+      kind, radius, ...clampToArena({ x: position.x + 280, y: position.y }, radius),
+      readyAt: 0, contacts: new Set(), victims: new Map(),
+    };
+    this.model.hazards!.sites.push(this.station);
   }
 
   private place(kind: ResourceKind, x: number, y: number): void {

@@ -1,15 +1,17 @@
 import { brand, color as rgb } from './brand';
 import type Phaser from 'phaser';
 import type { ArenaModel } from './arena-model';
-import { theftConfig } from './competition-config';
+import { hazardConfig, theftConfig } from './competition-config';
 import { districts } from './districts';
 import type { Quality } from './progress';
 import type { HazardKind } from './hazards';
 import type { Participant, Point } from './movement';
 import type { WorldBounds } from './particles';
 
+const debrisFrames = ['debris-0', 'debris-1', 'debris-2'];
+
 const colors: Record<HazardKind, number> = {
-  flux: rgb(brand.legacy.competition_view.color1), heat: rgb(brand.legacy.competition_view.color2), water: rgb(brand.legacy.competition_view.color3), acid: rgb(brand.legacy.competition_view.color4), cold: rgb(brand.legacy.competition_view.color5),
+  flux: rgb(brand.roles.flux), heat: rgb(brand.roles.heat), water: rgb(brand.roles.water), acid: rgb(brand.roles.acid), cold: rgb(brand.roles.cold),
 };
 
 function visible({ x, y }: Point, bounds: WorldBounds, radius: number) {
@@ -19,13 +21,21 @@ function visible({ x, y }: Point, bounds: WorldBounds, radius: number) {
 
 export class CompetitionView {
   private readonly structures: Phaser.GameObjects.Graphics;
+  private readonly props: Phaser.GameObjects.Image[];
   private readonly floor: Phaser.GameObjects.Graphics;
+  private readonly sites: Phaser.GameObjects.Image[];
+  private readonly shards: Phaser.GameObjects.Image[];
   private readonly effects: Phaser.GameObjects.Graphics;
   private readonly damageLabels: { text: Phaser.GameObjects.Text; total: number; elapsed: number }[];
 
   constructor(scene: Phaser.Scene) {
     this.structures = scene.add.graphics();
+    this.props = Array.from({ length: districts.length * 4 }, () => scene.add.image(0, 0, 'workshop', 'prop-grate')
+      .setAlpha(0.21).setVisible(false));
     this.floor = scene.add.graphics();
+    this.sites = Array.from({ length: Object.values(hazardConfig).reduce((count, hazard) => count + hazard.count, 5) }, () => scene.add.image(0, 0, 'workshop', 'flux').setVisible(false));
+    this.shards = Array.from({ length: theftConfig.debrisCapacity }, () =>
+      scene.add.image(0, 0, 'workshop', 'debris-0').setDepth(4).setVisible(false));
     this.effects = scene.add.graphics().setDepth(5);
     this.damageLabels = Array.from({ length: 5 }, () => ({
       text: scene.add.text(0, 0, '', {
@@ -42,41 +52,33 @@ export class CompetitionView {
     this.floor.clear();
     this.renderStructures(bounds, quality);
     this.effects.clear();
+    let siteIndex = 0;
     for (const site of model.hazards?.sites ?? []) {
+      const art = this.sites[siteIndex++];
       const { x, y, radius, kind } = site;
-      if (!visible(site, bounds, radius + 15)) continue;
-      const color = kind === 'flux' && model.hazards?.discharged(site) ? rgb(brand.legacy.competition_view.color8) : colors[kind];
-      this.floor.fillStyle(color, 0.24).fillCircle(x, y, radius);
-      this.floor.lineStyle(4, color, 0.85).strokeCircle(x, y, radius);
-      if (kind === 'flux' || kind === 'cold') {
-        this.floor.fillStyle(color, 0.9);
-        for (let side = 0; side < 6; side++) {
-          const a = side * Math.PI / 3;
-          this.floor.fillTriangle(x, y, x + radius * Math.cos(a), y + radius * Math.sin(a),
-            x + radius * 0.42 * Math.cos(a + 0.47), y + radius * 0.42 * Math.sin(a + 0.47));
-        }
-        this.floor.fillStyle(rgb(brand.legacy.competition_view.color9), 0.85).fillCircle(x, y, radius * 0.14);
-      } else if (kind === 'heat') {
-        for (let row = -3; row <= 3; row++) {
-          this.floor.lineStyle(9, color, 0.72).lineBetween(x - 100, y + row * 24, x + 100, y + row * 24);
-        }
-      } else {
-        for (let band = 1; band <= 3; band++) {
-          this.floor.lineStyle(kind === 'acid' ? 5 : 2, color, 0.6)
-            .strokeEllipse(x, y, radius * 0.55 * band, radius * 0.35 * band);
-        }
-        if (kind === 'acid') this.floor.fillStyle(color, 0.9).fillTriangle(x - 20, y + 14, x + 20, y + 14, x, y - 22);
-      }
+      art.setVisible(visible(site, bounds, radius + 15));
+      if (!art.visible) continue;
+      const cooling = kind === 'flux' && model.hazards?.discharged(site);
+      this.floor.fillStyle(colors[kind], 0.18).fillCircle(x, y, radius);
+      this.floor.lineStyle(3, colors[kind], 0.78).strokeCircle(x, y, radius);
+      art.setFrame(kind).setPosition(x, y).setDisplaySize(radius * 1.7, radius * 1.7)
+        .setAlpha(cooling ? 0.58 : 1);
+      if (kind === 'flux' && !reducedMotion) art.rotation += seconds * (cooling ? 2 : 0.3);
+      else art.rotation = 0;
     }
+    for (; siteIndex < this.sites.length; siteIndex++) this.sites[siteIndex].setVisible(false);
+    let shardIndex = 0;
     for (const chunk of model.salvage.chunks) {
       if (!visible(chunk, bounds, 40)) continue;
       const lift = chunk.age < theftConfig.flight ? 28 * Math.sin(Math.PI * chunk.age / theftConfig.flight) : 0;
-      const size = Math.min(14, 5 + Math.sqrt(chunk.value));
-      const y = chunk.y - lift;
-      this.effects.fillStyle(rgb(brand.legacy.competition_view.color10), 0.3).fillEllipse(chunk.x, chunk.y + 3, size * 2, size);
-      this.effects.fillStyle(rgb(brand.legacy.competition_view.color11)).fillTriangle(chunk.x - size, y, chunk.x + size, y - size, chunk.x + size * 0.6, y + size);
-      this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color12)).lineBetween(chunk.x - size, y, chunk.x + size, y - size);
+      const tier = chunk.value >= 20 ? 2 : chunk.value >= 5 ? 1 : 0;
+      const size = 13 + 5 * tier;
+      this.effects.fillStyle(rgb(brand.themes.light.ink), 0.25).fillEllipse(chunk.x, chunk.y + 3, size, size * 0.5);
+      const sprite = this.shards[shardIndex++];
+      sprite.setFrame(debrisFrames[tier]).setPosition(chunk.x, chunk.y - lift).setDisplaySize(size, size)
+        .setRotation(reducedMotion ? 0 : chunk.age * 4).setVisible(true);
     }
+    for (; shardIndex < this.shards.length; shardIndex++) this.shards[shardIndex].setVisible(false);
     if (model.signal && visible(model.signal, bounds, 160)) {
       this.effects.lineStyle(4, rgb(brand.legacy.competition_view.color13), 0.8).strokeCircle(model.signal.x, model.signal.y, 120);
       this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color13), 0.45).strokeCircle(model.signal.x, model.signal.y, 150);
@@ -100,6 +102,7 @@ export class CompetitionView {
   }
 
   reset(): void {
+    for (const sprite of this.shards) sprite.setVisible(false);
     for (const label of this.damageLabels) {
       label.total = 0;
       label.elapsed = Infinity;
@@ -118,12 +121,12 @@ export class CompetitionView {
     label.total = total;
     label.elapsed += seconds;
     const { x, y } = magnet.position;
-    const display = label.elapsed < 0.8 && visible(magnet.position, bounds, magnet.radius + 45);
+    const display = label.elapsed < brand.motion.damage / 1000 && visible(magnet.position, bounds, magnet.radius + 45);
     label.text.setVisible(display);
     if (!display) return;
     const rise = reducedMotion ? 0 : label.elapsed * 28;
     label.text.setPosition(x, y - magnet.radius - (18 + rise) / zoom).setScale(1 / zoom)
-      .setAlpha(reducedMotion ? 1 : Math.min(1, (0.8 - label.elapsed) * 3));
+      .setAlpha(reducedMotion ? 1 : Math.min(1, (brand.motion.damage / 1000 - label.elapsed) * 3));
     if (!reducedMotion && label.elapsed < 0.25) {
       this.effects.lineStyle(3, rgb(brand.legacy.competition_view.color16), 0.8 * (1 - label.elapsed / 0.25))
         .strokeCircle(x, y, magnet.radius + 6 + label.elapsed * 52);
@@ -132,7 +135,9 @@ export class CompetitionView {
 
   private renderStructures(bounds: WorldBounds, quality: Quality) {
     this.structures.clear();
+    for (const prop of this.props) prop.setVisible(false);
     if (quality === 'low') return;
+    let propIndex = 0;
     for (const { x, y, accent, mark } of districts) {
       if (!visible({ x, y }, bounds, 980)) continue;
       this.structures.lineStyle(12, accent, 0.14).strokeRoundedRect(x - 780, y - 560, 1560, 1120, 90);
@@ -140,15 +145,8 @@ export class CompetitionView {
       for (const dx of [-620, 620]) for (const dy of [-415, 415]) {
         const px = x + dx;
         const py = y + dy;
-        this.structures.fillStyle(accent, 0.08).fillRoundedRect(px - 130, py - 80, 260, 160, 24);
-        if (mark === 'cooling' || mark === 'chemical') {
-          this.structures.lineStyle(7, accent, 0.14).strokeCircle(px, py, 49).strokeCircle(px, py, 65);
-        } else {
-          const spacing = mark === 'assembly' ? 28 : mark === 'foundry' ? 17 : 38;
-          for (let bar = -85; bar < 95; bar += spacing) {
-            this.structures.lineStyle(5, accent, 0.16).lineBetween(px + bar - 20, py + 48, px + bar + 20, py - 48);
-          }
-        }
+        const frame = mark === 'cooling' || mark === 'chemical' ? 'prop-drain' : 'prop-grate';
+        this.props[propIndex++].setFrame(frame).setPosition(px, py).setDisplaySize(200, 144).setVisible(true);
       }
       if (quality === 'high') {
         this.structures.lineStyle(2, accent, 0.12);

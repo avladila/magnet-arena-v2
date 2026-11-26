@@ -4,7 +4,7 @@ const key = 'magnet.progress.v1';
 export type Quality = 'low' | 'balanced' | 'high';
 const defaults = {
   arenaMass: 0, endlessMass: 0, placement: 0, completed: 0, victories: 0, collected: 0,
-  difficulty: 'normal' as Difficulty, quality: 'balanced' as Quality, volume: 45, music: 28, reducedMotion: false, haptics: true, tutorialDone: false,
+  difficulty: 'normal' as Difficulty, quality: 'balanced' as Quality, volume: 45, music: 28, master: 80, reducedMotion: false, haptics: true, tutorialDone: false,
 };
 
 export function loadProgress() {
@@ -16,7 +16,7 @@ export function loadProgress() {
     }
     if (['low', 'balanced', 'high'].includes(data.quality)) progress.quality = data.quality;
     if (['easy', 'normal', 'hard'].includes(data.difficulty)) progress.difficulty = data.difficulty;
-    for (const field of ['volume', 'music'] as const) {
+    for (const field of ['volume', 'music', 'master'] as const) {
       if (typeof data[field] === 'number' && data[field] >= 0 && data[field] <= 100) progress[field] = data[field];
     }
     for (const field of ['reducedMotion', 'haptics', 'tutorialDone'] as const) {

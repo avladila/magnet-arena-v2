@@ -64,3 +64,150 @@ test('training advances after real steering', async ({ page }) => {
   await expect.poll(async () => Number(await page.locator('#mass').textContent())).toBeGreaterThan(20);
   await page.keyboard.up('KeyD');
 });
+
+test('fifty replays reuse the canvas and continue to handle controls', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  for (let i = 0; i < 50; i++) {
+    await page.getByRole('button', { name: 'Pause' }).click();
+    await page.getByRole('button', { name: 'End Session' }).click();
+    await page.getByRole('button', { name: 'Play Again' }).click();
+  }
+  await expect(page.locator('#arena > canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await expect(page.locator('#menu-title')).toHaveText('Paused');
+});
+
+test('two real Chromium touch pointers steer and resolve one overridden attack', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Requires Chromium CDP touch injection');
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  try {
+    const page = await context.newPage();
+    await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
+      const response = await route.fetch();
+      const original = await response.text();
+      const anchor = 'this.floor = new ArenaFloor';
+      expect(original).toContain(anchor);
+      await route.fulfill({ response, body: original.replace(anchor, 'window.trainingScene = this; ' + anchor) });
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Endless', exact: true }).tap();
+    await page.evaluate(() => {
+      const scene = Reflect.get(window, 'trainingScene');
+      scene.model.player.combat.energy = 100;
+    });
+    const cdp = await context.newCDPSession(page);
+    const box = (await page.locator('#attack').boundingBox())!;
+    const attack = { x: box.x + box.width / 2, y: box.y + box.height / 2, id: 2 };
+    const steer = { x: 65, y: 620, id: 1 };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [steer] });
+    steer.x += 48;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [steer] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [steer, attack] });
+    await expect(page.locator('#attack')).toHaveText('Release');
+    attack.x += 27;
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [steer, attack] });
+    await expect(page.locator('#joystick')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'trainingScene').playInput.aim())).toBeCloseTo(0);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(() => page.evaluate(() => {
+      const c = Reflect.get(window, 'trainingScene').model.player.combat;
+      return c.hits + c.misses;
+    })).toBe(1);
+  } finally {
+    await context.close();
+  }
+});
+
+test('full Arena simulation reaches results and Play Again through the UI', async ({ page }) => {
+  test.setTimeout(60_000);
+  const errors: Error[] = [];
+  page.on('pageerror', (error) => errors.push(error));
+  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
+    const response = await route.fetch();
+    const original = await response.text();
+    const anchor = 'this.floor = new ArenaFloor';
+    expect(original).toContain(anchor);
+    await route.fulfill({ response, body: original.replace(anchor, 'window.trainingScene = this; ' + anchor) });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Play Arena' }).click();
+  const elapsed = await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const start = performance.now();
+    for (let frame = 0; frame < 2200 && !scene.clock.ended; frame++) {
+      scene.update(start + frame * 145, 145);
+    }
+    return scene.clock.elapsed;
+  });
+  expect(elapsed).toBeCloseTo(300, 6);
+  await expect(page.locator('#result-ranking li')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Play Again' }).click();
+  await expect(page.locator('#clock')).toHaveText('5:00');
+  expect(errors).toEqual([]);
+});
+
+test('training teaches each hazard through in-arena encounters without recording a match', async ({ page }) => {
+  test.setTimeout(45_000);
+  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace('this.floor = new ArenaFloor', 'window.trainingScene = this; this.floor = new ArenaFloor'),
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Learn to Play' }).click();
+  await page.keyboard.down('KeyD');
+  await expect(page.locator('#energy-readout')).toHaveText('100%', { timeout: 15000 });
+  await page.keyboard.up('KeyD');
+  await page.keyboard.down('Space');
+  await expect(page.locator('#attack')).toHaveText('Release');
+  await page.keyboard.up('Space');
+  await expect(page.locator('#tutorial-task')).toContainText('neutral salvage');
+  await page.keyboard.down('KeyD');
+  for (const lesson of ['Flux device', 'heat bay', 'water pool', 'acid pool', 'cryo vent']) {
+    await expect(page.locator('#tutorial-task')).toContainText(lesson, { timeout: 8000 });
+  }
+  await expect.poll(() => page.evaluate(() => {
+    const model = Reflect.get(window, 'trainingScene').model;
+    const { x, y } = model.tutorial.station;
+    return Math.hypot(model.player.position.x - x, model.player.position.y - y);
+  }), { intervals: [20], timeout: 4000 }).toBeLessThan(85);
+  await page.keyboard.up('KeyD');
+  await expect(page.locator('#tutorial-task')).toContainText('Training complete');
+  const progress = await page.evaluate(() => JSON.parse(localStorage.getItem('magnet.progress.v1')!));
+  expect(progress.tutorialDone).toBe(true);
+  expect(progress.completed).toBe(0);
+  expect(progress.collected).toBe(0);
+});
+
+test('presentation pool stays within each quality cap and clears under reduced motion', async ({ page }) => {
+  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      body: (await response.text()).replace('this.floor = new ArenaFloor', 'window.trainingScene = this; this.floor = new ArenaFloor'),
+    });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  const measurements = await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const point = scene.model.player.position;
+    const bounds = { left: point.x - 500, right: point.x + 500, top: point.y - 500, bottom: point.y + 500 };
+    const run = (quality: string) => {
+      scene.effects.reset();
+      scene.effects.configure(quality, false);
+      for (let i = 0; i < 300; i++) scene.effects.burst(point, 'gold', 6, 270);
+      scene.effects.render(bounds, 0.01, point);
+      return scene.effects.peakVisible;
+    };
+    const result = ['high', 'balanced', 'low'].map(run);
+    scene.effects.configure('low', true);
+    const cleared = scene.effects.pool.every((fleck: { image: { visible: boolean } }) => !fleck.image.visible);
+    return { result, cleared };
+  });
+  expect(measurements).toEqual({ result: [600, 300, 120], cleared: true });
+});

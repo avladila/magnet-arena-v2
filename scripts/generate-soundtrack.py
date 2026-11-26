@@ -1,11 +1,13 @@
 """Generate MAGNET's original 16-bar soundtrack from synthesized instruments."""
+import json
 import math
 import struct
 import wave
 from pathlib import Path
 
 rate = 22050
-beat = 60 / 105
+sound = json.loads(Path('brand/tokens.json').read_text())['sound']
+beat = 60 / sound['tempo']
 samples = [0.0] * round(rate * beat * 64)
 progression = [(45, 52, 55, 60), (41, 48, 52, 55), (48, 55, 59, 62), (43, 50, 53, 57)]
 
@@ -45,6 +47,11 @@ for bar in range(16):
         layer(bar * 4 * beat, beat * 3.9, note(upper, beat * 3.9), 0.021)
 
 out = Path('/tmp/magnet-soundtrack.wav')
+for bar in (0, 8):
+    at = bar * 4 * beat + .25 * beat
+    layer(at, beat * .63, note(64, beat * .63, .2), .037)
+    layer(at + beat * .75, beat * .83, note(64 + sound['interval'], beat * .83, .2), .035)
+
 with wave.open(str(out), 'wb') as track:
     track.setparams((1, 2, rate, len(samples), 'NONE', ''))
     track.writeframes(b''.join(struct.pack('<h', round(max(-1, min(1, s)) * 32767)) for s in samples))

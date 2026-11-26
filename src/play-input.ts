@@ -10,7 +10,7 @@ const directions = new Map([
 export function bindPlayInput(
   surface: HTMLElement, button: HTMLButtonElement,
   participants: () => readonly Participant[], enabled: () => boolean,
-  world: (point: Point) => Point, clearMouseSteering: () => void, fired: () => void,
+  world: (point: Point) => Point, clearMouseSteering: () => void, fired: () => void, armed = () => {},
 ) {
   const subscriptions = new AbortController();
   const options = { signal: subscriptions.signal };
@@ -78,7 +78,7 @@ export function bindPlayInput(
     }
     if (event.code !== 'Space') return;
     event.preventDefault();
-    if (!event.repeat && owner === undefined && arm(player())) owner = 'space';
+    if (!event.repeat && owner === undefined && arm(player())) { owner = 'space'; armed(); }
   }, options);
   window.addEventListener('keyup', (event) => {
     if (keys.delete(event.code) && keys.size === 0) clearMouseSteering();
@@ -98,6 +98,7 @@ export function bindPlayInput(
         event.preventDefault();
         if (enabled() && owner === undefined && arm(player())) {
           owner = event.pointerId;
+          armed();
           anchor = { x: event.clientX, y: event.clientY };
           button.setPointerCapture(event.pointerId);
         }

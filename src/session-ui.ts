@@ -2,7 +2,6 @@ import type { ArenaModel } from './arena-model';
 import { matchConfig } from './competition-config';
 import type { GameAudio } from './audio';
 import { rankings, type Difficulty, type MatchClock, type Mode } from './match';
-import { physicalScaleForMass } from './growth';
 import type { WorldBounds } from './particles';
 import { Navigation } from './navigation';
 import { clearProgress, loadProgress, saveProgress, type Quality } from './progress';
@@ -47,7 +46,11 @@ export class SessionUI {
     });
     this.dialog.addEventListener('click', (event) => {
       const action = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')?.dataset.action;
-      if (action === 'arena' || action === 'endless' || action === 'tutorial' || action === 'replay') {
+      if (action) {
+        this.audio.unlock();
+        this.audio.play(this.page === 'home' && ['arena', 'endless', 'tutorial'].includes(action) ? 'title' : 'activate');
+      }
+      if (action === 'arena'  || action === 'endless' || action === 'tutorial' || action === 'replay') {
         this.mode = action === 'replay' ? this.mode : action;
         this.progress.difficulty = this.difficulty.value as Difficulty;
         saveProgress(this.progress);
@@ -74,6 +77,14 @@ export class SessionUI {
         this.syncSettings();
         this.show('settings');
       }
+    });
+    element<HTMLInputElement>('master').addEventListener('input', ({ target }) => {
+      this.progress.master = (target as HTMLInputElement).valueAsNumber;
+      this.audio.setMaster(this.progress.master / 100);
+      saveProgress(this.progress);
+    });
+    this.dialog.addEventListener('pointerover', (event) => {
+      if ((event.target as HTMLElement).closest('button')) this.audio.play('hover');
     });
     element<HTMLInputElement>('volume').addEventListener('input', ({ target }) => {
       this.progress.volume = (target as HTMLInputElement).valueAsNumber;
@@ -108,6 +119,7 @@ export class SessionUI {
       }
     });
     document.addEventListener('visibilitychange', () => {
+      this.audio.visibilityChanged();
       if (document.hidden && this.running) this.pause(actions.resetInput);
     });
     this.show('home');
@@ -125,6 +137,8 @@ export class SessionUI {
 
   private syncSettings() {
     this.difficulty.value = this.progress.difficulty;
+    element<HTMLInputElement>('master').value = String(this.progress.master);
+    this.audio.setMaster(this.progress.master / 100);
     element<HTMLInputElement>('volume').value = String(this.progress.volume);
     element<HTMLSelectElement>('quality').value = this.progress.quality;
     element<HTMLInputElement>('music').value = String(this.progress.music);
@@ -146,6 +160,11 @@ export class SessionUI {
     };
     this.title.textContent = titles[page];
     if (page === 'home') {
+      const mark = document.createElement('img');
+      mark.className = 'pole-mark';
+      mark.src = import.meta.env.BASE_URL + 'app-icon.png';
+      mark.alt = '';
+      this.title.prepend(mark);
       const punctuation = document.createElement('span');
       punctuation.textContent = '.';
       this.title.append(punctuation);
@@ -200,7 +219,11 @@ export class SessionUI {
       clock.mode === 'arena' && clock.elapsed < 0.85 ? 'GO' :
       clock.mode === 'arena' && remaining > 59 && remaining <= 60 ? 'FINAL MINUTE' :
       clock.mode === 'arena' && remaining <= 10 && remaining > 0 ? String(Math.ceil(remaining)) : '';
-    if (countdown.textContent !== message) countdown.textContent = message;
+    if (countdown.textContent !== message) {
+      if (message === 'GO') this.audio.play('start');
+      else if (Number(message) > 0) this.audio.play(clock.countdown > 0 ? 'countdown' : 'final');
+      countdown.textContent = message;
+    }
     countdown.hidden = !message;
     element<HTMLProgressElement>('energy').value = combat.energy;
     element('energy-readout').textContent = combat.energy + '%';
@@ -272,21 +295,10 @@ export class SessionUI {
       place === 1 ? 'Victory' : place === 2 ? 'Second place' : place === 3 ? 'Third place' : 'Place ' + place;
     element('result-summary').textContent = summary + ' · ' + player.mass + ' mass' + (best ? ' · Personal best' : '');
     this.list('result-ranking', this.rows(model));
-    const c = player.combat;
-    const stats = {
-      'Final mass': player.mass, 'Peak mass': c.highest,
-      'Maximum scale': physicalScaleForMass(c.highest).toFixed(2) + '×',
-      'Ordinary scrap': c.ordinary, 'Gold scrap': c.gold, 'Energy cells': c.cells,
-      'Successful attacks': c.hits, 'Missed attacks': c.misses, 'Mass detached': c.detached,
-      'Salvage collected': c.salvage, 'Lost to rivals': c.lostToTheft, 'Lost to hazards': c.lostToHazards,
-    };
-    element('result-stats').replaceChildren(...Object.entries(stats).flatMap(([label, value]) => {
-      const term = document.createElement('dt');
-      term.textContent = label;
-      const description = document.createElement('dd');
-      description.textContent = String(value);
-      return [term, description];
-    }));
-    this.audio.play('results');
+    const stats = element('result-stats');
+    stats.replaceChildren();
+    void import('./result-stats').then(({ renderResultStats }) => renderResultStats(stats, player));
+    if (best) this.audio.play('best');
+    else this.audio.play(clock.mode === 'arena' ? (place === 1 ? 'victory' : 'defeat') : 'results');
   }
 }

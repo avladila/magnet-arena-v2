@@ -1,11 +1,14 @@
 import { brand, color as rgb } from './brand';
 import type Phaser from 'phaser';
-import { viewConfig } from './config';
+import type { WorkshopParticles } from './workshop-particles';
+import { scrapConfig, viewConfig } from './config';
 import type { Collection, ResourceKind, Scrap, WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 
 const effectDuration = viewConfig.collectionEffectSeconds;
 const glintWidth = 1.5;
+const spriteFrames = Object.fromEntries(['light', 'dark'].map((mode) => [mode,
+  Array.from({ length: 10 }, (_, index) => [mode + '-scrap-' + index + '-0', mode + '-scrap-' + index + '-1'])]));
 
 export class ParticleView {
   private readonly pieces: Phaser.GameObjects.Graphics;
@@ -14,10 +17,19 @@ export class ParticleView {
     x: 0, y: 0, colorIndex: 0, kind: undefined as ResourceKind | undefined, remaining: 0,
   }));
   private nextEffect = 0;
+  private readonly sprites?: Phaser.GameObjects.Image[];
+  private visibleCount = 0;
+  private readonly previousX = new Float32Array(scrapConfig.capacity);
+  private readonly previousY = new Float32Array(scrapConfig.capacity);
+  private readonly generations = new Int32Array(scrapConfig.capacity).fill(-1);
+  private readonly samples = new Uint32Array(scrapConfig.capacity);
+  private sample = 0;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, useAtlas = false) {
     this.pieces = scene.add.graphics();
     this.glints = scene.add.graphics().setDepth(1);
+    if (useAtlas) this.sprites = Array.from({ length: scrapConfig.activeCount }, () =>
+      scene.add.image(0, 0, 'workshop', 'gold').setVisible(false));
   }
 
   render(
@@ -27,13 +39,38 @@ export class ParticleView {
     seconds: number,
     palette: ThemePalette,
     kindOf?: (scrap: Scrap) => ResourceKind,
+    mode = 'light', zoom = 1, reducedMotion = false, effects?: WorkshopParticles,
   ) {
     this.pieces.clear();
+    let visibleCount = 0;
+    let trails = 0;
+    const sample = ++this.sample;
     for (const scrap of slots) {
       const { x, y, radius, state, colorIndex } = scrap;
       if (state !== 'active' || x + radius < view.left || x - radius > view.right ||
           y + radius < view.top || y - radius > view.bottom) continue;
       const kind = kindOf?.(scrap);
+      if (this.sprites) {
+        const sprite = this.sprites[visibleCount++];
+        const goldOrEnergy = kind === 'gold' || kind === 'energy';
+        const frame = goldOrEnergy ? kind : spriteFrames[mode][colorIndex][Number(zoom >= 0.65)];
+        sprite.setFrame(frame).setPosition(x, y).setDisplaySize(goldOrEnergy ? 19 : 14, goldOrEnergy ? 19 : 14)
+          .setVisible(true);
+        if (effects && !reducedMotion && trails < 8 && this.samples[scrap.id] === sample - 1 &&
+            this.generations[scrap.id] === scrap.generation && seconds > 0) {
+          const dx = x - this.previousX[scrap.id];
+          const dy = y - this.previousY[scrap.id];
+          if (dx * dx + dy * dy > 1) {
+            effects.trail(x, y, Math.atan2(dy, dx), kind === 'gold' || kind === 'energy' ? kind : 'steel');
+            trails++;
+          }
+        }
+        this.samples[scrap.id] = sample;
+        this.generations[scrap.id] = scrap.generation;
+        this.previousX[scrap.id] = x;
+        this.previousY[scrap.id] = y;
+        continue;
+      }
       if (kind === 'gold' || kind === 'energy') {
         const gold = kind === 'gold';
         this.pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color1) : rgb(brand.legacy.particle_view.color2)).fillCircle(x, y, 7);
@@ -48,6 +85,11 @@ export class ParticleView {
       }
     }
 
+    if (this.sprites) {
+      for (let i = visibleCount; i < this.visibleCount; i++) this.sprites[i].setVisible(false);
+      this.visibleCount = visibleCount;
+      return;
+    }
     for (const effect of this.effects) effect.remaining = Math.max(0, effect.remaining - seconds);
     for (const collection of collections) {
       const effect = this.effects[this.nextEffect];
@@ -55,20 +97,30 @@ export class ParticleView {
       effect.y = collection.y;
       effect.colorIndex = collection.colorIndex;
       effect.kind = collection.kind;
-      effect.remaining = effectDuration;
+      effect.remaining = this.sprites
+        ? (collection.kind === 'gold' ? brand.motion.gold : brand.motion.pickup) / 1000 : effectDuration;
       this.nextEffect = (this.nextEffect + 1) % this.effects.length;
     }
     this.glints.clear();
     for (const effect of this.effects) {
-      if (effect.remaining <= 0) continue;
-      const opacity = effect.remaining / effectDuration;
+      if (reducedMotion || effect.remaining <= 0) continue;
+      const duration = this.sprites ? (effect.kind === 'gold' ? brand.motion.gold : brand.motion.pickup) / 1000 : effectDuration;
+      const opacity = effect.remaining / duration;
       const radius = 5 + (1 - opacity) * 8;
       const extent = radius + glintWidth / 2;
       if (effect.x + extent < view.left || effect.x - extent > view.right ||
           effect.y + extent < view.top || effect.y - extent > view.bottom) continue;
-      const color = effect.kind === 'gold' ? rgb(brand.legacy.particle_view.color6) : effect.kind === 'energy' ? rgb(brand.legacy.particle_view.color7) : palette.scrap[effect.colorIndex];
+      const color = effect.kind === 'gold' ? rgb(brand.roles.gold) : effect.kind === 'energy' ? rgb(brand.roles.energy) : palette.scrap[effect.colorIndex];
       this.glints.lineStyle(glintWidth, color, 0.8 * opacity);
-      this.glints.strokeCircle(effect.x, effect.y, radius);
+      if (!this.sprites) this.glints.strokeCircle(effect.x, effect.y, radius);
+      else {
+        this.glints.fillStyle(color, 0.8 * opacity);
+        const count = effect.kind === 'gold' ? 6 : 2;
+        for (let spoke = 0; spoke < count; spoke++) {
+          const angle = spoke * 2 * Math.PI / count;
+          this.glints.fillCircle(effect.x + radius * Math.cos(angle), effect.y + radius * Math.sin(angle), 1 + opacity);
+        }
+      }
     }
   }
 

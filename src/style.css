@@ -1,6 +1,14 @@
+@font-face {
+  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-regular.woff2') format('woff2');
+  font-weight: 400 600; font-display: swap;
+}
+@font-face {
+  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-display.woff2') format('woff2');
+  font-weight: 650 950; font-display: swap;
+}
 :root {
   color-scheme: light;
-  font-family: system-ui, sans-serif;
+  font-family: 'Magnet Sans', system-ui, sans-serif;
   background: var(--arena-background, var(--legacy-color1));
   color: var(--hud-text);
 }
@@ -170,16 +178,16 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 }
 #pause { display: grid; place-items: center; }
 .pause-icon { display: block; box-sizing: border-box; width: 11px; height: 13px; border-inline: 3px solid currentColor; }
-#clock { margin-inline: auto; font: 800 1.15rem ui-monospace, monospace; }
+#clock { margin-inline: auto; font: 800 1.15rem 'Magnet Sans', sans-serif; }
 .field-hud, #ranking {
   background: var(--hud-surface); border: 1px solid var(--hud-border); border-radius: .7rem; padding: .55rem .7rem;
 }
-.field-hud { margin-top: .5rem; width: max-content; font: 700 .78rem system-ui; }
+.field-hud { margin-top: .5rem; width: max-content; font: 700 .78rem 'Magnet Sans', sans-serif; }
 .field-hud label { display: flex; justify-content: space-between; gap: 1rem; }
-#energy { width: 8rem; height: .65rem; accent-color: var(--legacy-color3); }
+#energy { width: 8rem; height: .65rem; accent-color: var(--brand-energy); }
 #status:empty { display: none; }
 #status { margin-top: .25rem; }
-#ranking { position: absolute; right: 0; top: 50px; list-style: none; font: 700 .78rem/1.6 ui-monospace, monospace; }
+#ranking { position: absolute; right: 0; top: 50px; list-style: none; font: 700 .78rem/1.6 'Magnet Sans', sans-serif; }
 #ranking li, #result-ranking li { white-space: pre; }
 #attack {
   position: absolute; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom));
@@ -191,9 +199,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   color: var(--hud-text); font: 950 clamp(3rem, 13vw, 9rem)/1 system-ui; text-shadow: 0 2px 18px var(--hud-surface);
 }
 .menu {
-  box-sizing: border-box; padding: 0; border: 1px solid var(--legacy-color5); border-radius: 1.25rem;
+  box-sizing: border-box; padding: 0; border: 1px solid var(--hud-border); border-radius: var(--brand-radius-16);
   width: min(45rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto;
-  background: var(--legacy-color6); color: var(--legacy-color7); box-shadow: 0 32px 95px var(--legacy-color8);
+  background: var(--hud-surface); color: var(--hud-text); box-shadow: 0 32px 95px var(--legacy-color8);
 }
 .menu::backdrop { background: var(--legacy-color9); }
 .menu-art {
@@ -202,7 +210,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 }
 .menu-art::before {
   content: ''; position: absolute; inset: 0;
-  background: url('./assets/title.webp') center 52% / cover;
+  background: url('/hero.webp') center 52% / cover;
 }
 @media (prefers-reduced-motion: no-preference) {
   :root:not([data-reduced-motion="true"]) .menu-art::before {
@@ -216,16 +224,16 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .menu-content { padding: clamp(1rem, 4vw, 2.25rem); }
 .menu h2 { margin: 0; font-size: clamp(2rem, 7vw, 5rem); font-weight: 950; letter-spacing: -.075em; line-height: 1; }
 .menu h2 span { color: var(--legacy-color11); }
-.menu p { color: var(--legacy-color12); line-height: 1.5; }
+.menu p { color: var(--hud-text); line-height: 1.5; }
 .menu button, .menu select {
-  background: var(--legacy-color13); color: var(--legacy-color7); border: 1px solid var(--legacy-color14); border-radius: .55rem;
+  background: var(--arena-background); color: var(--hud-text); border: 1px solid var(--hud-border); border-radius: var(--brand-radius-8);
   padding: .55rem .8rem; min-height: 44px; font-weight: 750;
 }
-.menu button.primary { background: var(--legacy-color15); color: var(--legacy-color16); border-color: var(--legacy-color15); }
+.menu button.primary { background: var(--brand-teal); color: var(--brand-ink); border-color: var(--brand-teal); }
 .menu-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
 .setting { display: flex; max-width: 22rem; align-items: center; justify-content: space-between; gap: 1rem; margin: .75rem 0; }
-#records { font: .78rem ui-monospace, monospace; }
-#result-ranking { list-style: none; padding: 0; font: 700 .85rem/1.6 ui-monospace, monospace; }
+#records { font: .78rem 'Magnet Sans', sans-serif; }
+#result-ranking { list-style: none; padding: 0; font: 700 .85rem/1.6 'Magnet Sans', sans-serif; }
 #result-stats { display: grid; grid-template-columns: 1fr auto; gap: .3rem 1rem; font-size: .85rem; }
 #result-stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) {
@@ -239,7 +247,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #tutorial-task { max-width: min(22rem, calc(100vw - 3rem)); color: inherit; margin-top: .3rem; line-height: 1.4; }
 
 #loading {
-  position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+  position: fixed; inset: 0; z-index: 10; display: grid; place-content: center; justify-items: center; gap: 8px;
   background: var(--arena-background); color: var(--hud-text); font-size: 1.25rem; font-weight: 750;
 }
 .map-hud {
@@ -255,3 +263,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   border: 1px solid var(--legacy-color17); background: var(--legacy-color18); outline: 2px solid var(--legacy-color19);
 }
 #district { font-size: .72rem; margin-top: .25rem; }
+
+#menu-title .pole-mark { width: .73em; height: .73em; margin-inline-end: .15em; vertical-align: .03em; }
+#pause { border-radius: var(--brand-radius-16) var(--brand-radius-16) var(--brand-radius-8) var(--brand-radius-8); }
+#energy::-webkit-progress-bar { border-radius: var(--brand-radius-8); }
+#energy::-webkit-progress-value { border-radius: var(--brand-radius-8); }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-reduced-motion="true"]) button { transition: background-color var(--brand-menu-time) var(--brand-snap); }
+}
+
+#clock, #mass, #energy-readout, #ranking, #result-ranking { font-variant-numeric: tabular-nums; }

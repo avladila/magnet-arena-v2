@@ -1,54 +1,77 @@
+import { brand } from './brand';
+
+type Cue = keyof typeof brand.sound.cues;
+
 export class GameAudio {
   private context?: AudioContext;
-  volume = 0.45;
-  private track?: HTMLAudioElement;
+  private bus?: GainNode;
+  private effectsLevel = 0.45;
+  private masterLevel = 0.8;
   private musicLevel = 0.28;
+  private track?: HTMLAudioElement;
   private playing = false;
+  private unlocked = false;
 
-  setMusic(volume: number): void {
-    this.musicLevel = volume;
-    if (this.track) this.track.volume = volume;
-    this.playMusic(this.playing);
-  }
+  get volume(): number { return this.effectsLevel; }
+  set volume(volume: number) { this.effectsLevel = volume; this.sync(); }
+
+  setMaster(volume: number): void { this.masterLevel = volume; this.sync(); }
+  setMusic(volume: number): void { this.musicLevel = volume; this.sync(); }
 
   playMusic(playing: boolean): void {
     this.playing = playing;
-    if (!playing || this.musicLevel === 0) {
+    this.sync();
+  }
+
+  private sync(): void {
+    const audible = !document.hidden && this.unlocked;
+    if (this.bus) this.bus.gain.value = audible ? this.masterLevel * this.effectsLevel : 0;
+    const musicGain = this.masterLevel * this.musicLevel;
+    if (!this.playing || !audible || musicGain === 0) {
       this.track?.pause();
       return;
     }
     if (!this.track) {
       this.track = new Audio(import.meta.env.BASE_URL + 'soundtrack.ogg');
       this.track.loop = true;
-      this.track.volume = this.musicLevel;
     }
-    void this.track.play().catch(() => undefined);
+    this.track.volume = musicGain;
+    if (this.track.paused) void this.track.play().catch(() => undefined);
   }
 
   unlock(): void {
-    if (this.volume === 0 || typeof AudioContext === 'undefined') return;
-    this.context ??= new AudioContext();
-    if (this.context.state === 'suspended') void this.context.resume().catch(() => undefined);
+    this.unlocked = true;
+    if (typeof AudioContext !== 'undefined') {
+      if (!this.context) {
+        this.context = new AudioContext();
+        this.bus = this.context.createGain();
+        this.bus.connect(this.context.destination);
+      }
+      if (this.context.state === 'suspended') void this.context.resume().catch(() => undefined);
+    }
+    this.sync();
   }
 
-  play(cue: 'scrap' | 'gold' | 'ready' | 'pulse' | 'hit' | 'results'): void {
+  visibilityChanged(): void { this.sync(); }
+
+  play(cue: Cue): void {
     const ctx = this.context;
-    if (!ctx || ctx.state !== 'running' || this.volume === 0) return;
-    const cues = {
-      scrap: [520, 680, 0.055], gold: [740, 1200, 0.18], ready: [420, 960, 0.3],
-      pulse: [180, 65, 0.18], hit: [92, 42, 0.24], results: [480, 640, 0.45],
-    };
-    const [from, to, duration] = cues[cue];
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
+    if (!ctx || !this.bus || ctx.state !== 'running' || this.bus.gain.value === 0 || document.hidden) return;
+    const [root, milliseconds, timbre, pair] = brand.sound.cues[cue] as [number, number, OscillatorType, number];
+    const duration = milliseconds / 1000;
     const now = ctx.currentTime;
-    oscillator.type = cue === 'pulse' || cue === 'hit' ? 'triangle' : 'sine';
-    oscillator.frequency.setValueAtTime(from, now);
-    oscillator.frequency.exponentialRampToValueAtTime(to, now + duration);
-    gain.gain.setValueAtTime(Math.max(0.001, 0.12 * this.volume), now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-    oscillator.connect(gain).connect(ctx.destination);
+    const oscillator = ctx.createOscillator();
+    const envelope = ctx.createGain();
+    const hz = 440 * 2 ** ((root - 69) / 12);
+    oscillator.type = timbre;
+    oscillator.frequency.setValueAtTime(hz, now);
+    if (pair) oscillator.frequency.setValueAtTime(hz * 2 ** (brand.sound.interval / 12), now + duration * 0.44);
+    envelope.gain.setValueAtTime(0, now);
+    envelope.gain.linearRampToValueAtTime(brand.sound.level, now + duration * 0.12);
+    envelope.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    oscillator.connect(envelope).connect(this.bus);
     oscillator.start(now);
     oscillator.stop(now + duration);
+    oscillator.addEventListener('ended', () => { oscillator.disconnect(); envelope.disconnect(); }, { once: true });
   }
 }

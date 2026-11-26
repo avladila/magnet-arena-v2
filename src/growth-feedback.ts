@@ -47,25 +47,47 @@ export class GrowthFeedback {
 export class GrowthFeedbackView {
   private readonly rings: Phaser.GameObjects.Graphics;
   private feedback: GrowthFeedback;
+  private spin = 0;
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, player: Player, private readonly segmented = false) {
     this.rings = scene.add.graphics();
     this.feedback = new GrowthFeedback(player);
   }
 
   reset(player: Player) { this.feedback = new GrowthFeedback(player); }
 
-  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean): void {
-    this.feedback.update(player, seconds, reducedMotion);
+  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean): number | undefined {
+    const milestone = this.feedback.update(player, seconds, reducedMotion);
     const radius = this.feedback.haloRadius;
     this.rings.setPosition(player.position.x, player.position.y);
-    this.rings.clear().lineStyle(2, palette.field.edge, 0.32).strokeCircle(0, 0, radius);
+    this.rings.clear().lineStyle(2, palette.field.edge, player.combat.heat >= 1 ? 0.16 : 0.34);
+    if (!this.segmented || reducedMotion) this.rings.strokeCircle(0, 0, radius);
+    else {
+      this.spin = (this.spin + seconds * 0.32) % (Math.PI * 2);
+      this.arcRing(radius, 0, 12);
+      if (player.combat.heat < 1 && radius - player.radius > 16) {
+        this.rings.lineStyle(1, palette.field.edge, 0.19);
+        this.arcRing(radius - 8, -this.spin, 12);
+      }
+    }
 
     const pulse = this.feedback.pulseProgress;
-    if (pulse === undefined) return;
+    if (pulse === undefined) return milestone;
     const remaining = 1 - pulse;
     const innerRadius = player.radius + scrapConfig.radius;
     const pulseRadius = innerRadius + (radius + 12 - innerRadius) * (1 - remaining ** 2);
     this.rings.lineStyle(2.5, palette.field.pulse, 0.52 * remaining).strokeCircle(0, 0, pulseRadius);
+    return milestone;
+  }
+
+  private arcRing(radius: number, phase: number, count: number): void {
+    const segment = Math.PI * 2 / count;
+    this.rings.beginPath();
+    for (let i = 0; i < count; i++) {
+      const angle = phase + i * segment;
+      this.rings.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      this.rings.arc(0, 0, radius, angle, angle + segment * 0.84, false);
+    }
+    this.rings.strokePath();
   }
 }

@@ -1,7 +1,7 @@
-import { installBrand } from './brand';
+import { brand, installBrand } from './brand';
 import { GameAudio } from './audio';
 import { CompetitionView } from './competition-view';
-import { matchConfig } from './competition-config';
+import { matchConfig, theftConfig } from './competition-config';
 import { MatchClock, type Difficulty, type Mode } from './match';
 import { bindPlayInput } from './play-input';
 import { element, SessionUI } from './session-ui';
@@ -18,6 +18,7 @@ import { ParticleView } from './particle-view';
 import type { Collection, WorldBounds } from './particles';
 import { cssColor } from './theme';
 import { applyThemeToPage, bindThemeToggle, localThemePreference } from './theme-control';
+import { WorkshopParticles } from './workshop-particles';
 import { ArenaCamera, Heading, MagnetScale } from './view';
 import './style.css';
 
@@ -47,6 +48,8 @@ class ArenaScene extends Phaser.Scene {
   private framing = new ArenaCamera(this.model.player.position);
   private floor!: ArenaFloor;
   private particleView!: ParticleView;
+  private effects!: WorkshopParticles;
+  private lastLanding = 0;
   private botViews!: BotView[];
   private readonly botNames: WorldBounds[] = [];
   private field!: GrowthFeedbackView;
@@ -59,14 +62,16 @@ class ArenaScene extends Phaser.Scene {
   preload(): void {
     const base = import.meta.env.BASE_URL;
     this.load.atlas(magnetAtlas, base + 'magnets.webp', base + 'magnets.json');
+    this.load.atlas('workshop', base + 'workshop.webp', base + 'workshop.json');
   }
 
   create(): void {
     this.floor = new ArenaFloor(this.add.graphics());
     this.competition = new CompetitionView(this);
     const player = this.model.player;
-    this.field = new GrowthFeedbackView(this, player);
-    this.particleView = new ParticleView(this);
+    this.field = new GrowthFeedbackView(this, player, true);
+    this.particleView = new ParticleView(this, true);
+    this.effects = new WorkshopParticles(this);
     this.botViews = this.model.bots.map((bot) => new BotView(this, bot));
     this.magnet = createMagnetSprite(this, player.id).setDepth(2);
     const toggleTheme = () => {
@@ -80,7 +85,7 @@ class ArenaScene extends Phaser.Scene {
     this.playInput = bindPlayInput(surface, element('attack'), () => this.model.participants,
       () => this.menu.running && this.clock.countdown <= 0 && !this.clock.ended,
       (point) => this.screenToWorld(point), () => this.controls.input.mouseLeave(),
-      () => this.audio.play('pulse'));
+      () => this.audio.play('pulse'), () => this.audio.play('arm'));
     this.menu = new SessionUI(this.audio, {
       start: (mode, difficulty) => this.start(mode, difficulty),
       resetInput: () => this.resetInput(),
@@ -118,6 +123,8 @@ class ArenaScene extends Phaser.Scene {
     for (let i = 0; i < this.botViews.length; i++) this.botViews[i].setBot(this.model.bots[i]);
     this.field.reset(this.model.player);
     this.competition.reset();
+    this.effects.reset();
+    this.lastLanding = 0;
     this.positionCamera();
     this.menu.hud(this.model, this.clock, performance.now(), this.framing.bounds);
   }
@@ -139,7 +146,12 @@ class ArenaScene extends Phaser.Scene {
     this.resize();
     if (!this.menu.running) return;
     const player = this.model.player;
+    const releaseFrame = player.combat.attack.phase === 'warning' && player.combat.attack.remaining === theftConfig.warning;
     const previousEnergy = player.combat.energy;
+    const previousHeat = player.combat.heat;
+    const previousBrittle = player.combat.brittle;
+    const previousCorrosion = player.combat.corrosion;
+    const previousHazardLoss = player.combat.lostToHazards;
     const previousGold = player.combat.gold;
     const previousPickups = player.pickupsCollected;
     const previousHits = player.combat.hits;
@@ -164,16 +176,57 @@ class ArenaScene extends Phaser.Scene {
     const bounds = this.framing.bounds;
     if (advanced > 0) this.model.replenish(bounds);
     this.floor.render(bounds, theme.palette);
-    this.field.render(player, advanced, theme.palette, reducedMotion.matches || this.menu.motionReduced);
+    const lessMotion = reducedMotion.matches || this.menu.motionReduced;
+    this.effects.configure(this.menu.quality, lessMotion);
+    if (this.field.render(player, advanced, theme.palette, lessMotion)) {
+      this.audio.play('milestone');
+      this.effects.burst(player.position, 'teal', 24, brand.motion.milestone);
+    }
     this.particleView.render(this.model.particles.slots, bounds, collections, advanced, theme.palette,
-      (scrap) => this.model.particles.kind(scrap));
+      (scrap) => this.model.particles.kind(scrap), theme.current, this.framing.zoom,
+      lessMotion, this.effects);
+    for (const item of collections) {
+      const role = item.kind === 'gold' ? 'gold' : item.kind === 'energy' ? 'energy' : 'steel';
+      this.effects.burst(item, role, role === 'gold' ? 6 : 2, role === 'gold' ? brand.motion.gold : brand.motion.pickup);
+    }
+    for (const shard of this.model.salvage.chunks) {
+      if (shard.age >= theftConfig.flight && shard.age - advanced < theftConfig.flight) {
+        this.effects.burst(shard, 'steel', 6, brand.vfx.debrisFlash);
+        if (time - this.lastLanding > 220 && Math.hypot(shard.x - player.position.x, shard.y - player.position.y) < 280) {
+          this.audio.play('landing');
+          this.lastLanding = time;
+        }
+      }
+    }
     this.renderBots(advanced, bounds);
     this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
       this.menu.quality, advanced, this.framing.zoom, reducedMotion.matches || this.menu.motionReduced);
+    if (releaseFrame && advanced > 0 && player.combat.attack.phase === 'warning') {
+      this.effects.burst(player.position, 'energy', 6, brand.motion.pickup, player.combat.attack.bearing, Math.PI / 2);
+    }
     if (player.combat.hits > previousHits) {
       const detached = player.combat.detached - previousDetached;
-      this.menu.attackFeedback(detached > 0 ? detached + ' mass detached' : 'Core protected', time);
-    } else if (player.combat.misses > previousMisses) this.menu.attackFeedback('Miss', time);
+      this.menu.attackFeedback(detached > 0 ? detached + ' MASS DETACHED' : 'CORE PROTECTED', time);
+      if (!detached) this.audio.play('core');
+    } else if (player.combat.misses > previousMisses) {
+      this.audio.play('miss');
+      this.menu.attackFeedback('MISS', time);
+    }
+    if (!previousBrittle && player.combat.brittle) {
+      this.audio.play('freeze');
+      this.effects.burst(player.position, 'cold', 6, brand.motion.gold);
+    }
+    else if (previousBrittle && !player.combat.brittle) this.audio.play('recovery');
+    if (previousHeat < 1 && player.combat.heat === 1) this.audio.play('overheat');
+    if (!previousCorrosion && player.combat.corrosion) this.audio.play('corrosion');
+    if (player.combat.lostToHazards > previousHazardLoss) {
+      if (!player.combat.corrosion) this.audio.play('flux');
+      this.effects.burst(player.position, player.combat.corrosion ?? 'flux', 6, brand.motion.gold);
+    }
+    if (player.combat.lostToTheft + player.combat.lostToHazards > previousLoss) {
+      this.effects.burst(player.position, 'steel', 6, brand.vfx.debrisFlash);
+    }
+    this.effects.render(bounds, advanced, player.position);
     if (player.combat.hits > previousHits || player.combat.lostToTheft + player.combat.lostToHazards > previousLoss) {
       this.audio.play('hit');
       this.menu.vibrate(35);
@@ -186,7 +239,7 @@ class ArenaScene extends Phaser.Scene {
       this.menu.vibrate(15);
     }
     else if (player.pickupsCollected > previousPickups && time - this.lastPickupSound > 110) {
-      this.audio.play('scrap');
+      this.audio.play(player.combat.energy > previousEnergy ? 'energy' : 'scrap');
       this.lastPickupSound = time;
     }
     this.menu.hud(this.model, this.clock, time, bounds);
