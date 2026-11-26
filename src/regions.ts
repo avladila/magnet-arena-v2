@@ -1,4 +1,6 @@
 import { arena, regionConfig, scrapConfig } from './config';
+import { activityConfig } from './competition-config';
+import type { Hotspot } from './arena-activity';
 import { attractionReach } from './growth';
 import { clamp, type Participant, type Point } from './movement';
 import type { Scrap, WorldBounds } from './particles';
@@ -44,8 +46,8 @@ type Site = Point & {
   selected: number;
 };
 
-type Field = Point & { reach: number };
-type Interest = { fields: Field[]; view?: WorldBounds };
+type Field = Point & { wake: number; retain: number };
+type Interest = { fields: Field[]; view?: WorldBounds; hotspots: readonly Hotspot[] };
 
 const definitions = Array.from({ length: columns * rows }, (_, id) => ({ id, bounds: regionBounds(id) }));
 
@@ -60,13 +62,7 @@ function overlapsView(point: Point, view: WorldBounds, margin: number): boolean 
 
 function canWake(site: Site, { fields, view }: Interest, margin = regionConfig.visibilityMargin): boolean {
   return (!view || !overlapsView(site, view, margin + scrapConfig.radius)) &&
-    fields.every((field) => (site.x - field.x) ** 2 + (site.y - field.y) ** 2 > field.reach ** 2);
-}
-
-function insideProtectedArea(slot: Scrap, { fields, view }: Interest): boolean {
-  return (view !== undefined && overlapsView(slot, view, regionConfig.retentionMargin + scrapConfig.radius)) ||
-    fields.some((field) => (slot.x - field.x) ** 2 + (slot.y - field.y) ** 2 <=
-      (field.reach + regionConfig.retentionMargin) ** 2);
+    fields.every((field) => (site.x - field.x) ** 2 + (site.y - field.y) ** 2 > field.wake);
 }
 
 function spansWorld(view: WorldBounds): boolean {
@@ -108,7 +104,8 @@ export class ScrapRegions {
     return { ...this.counts, cacheLimit: this.cacheLimit, cachedRegions: this.cached.size, liveRegions, logicalSites };
   }
 
-  update(participants: readonly Participant[], view: WorldBounds | undefined, seconds: number, collected: readonly Scrap[]): void {
+  update(participants: readonly Participant[], view: WorldBounds | undefined, seconds: number, collected: readonly Scrap[],
+      hotspots: readonly Hotspot[] = []): void {
     if (this.slots.length === 0) return;
     this.clock += seconds;
     for (const slot of collected) {
@@ -121,10 +118,11 @@ export class ScrapRegions {
     if (this.clock < this.nextPlan && this.free.length === 0) return;
 
     const interest: Interest = {
-      fields: participants.map(({ position, physicalScale, radius }) => ({
-        ...position, reach: Math.max(attractionReach(physicalScale), radius + scrapConfig.radius),
-      })),
-      view,
+      fields: participants.map(({ position, physicalScale, radius }) => {
+        const reach = Math.max(attractionReach(physicalScale), radius + scrapConfig.radius);
+        return { ...position, wake: reach ** 2, retain: (reach + regionConfig.retentionMargin) ** 2 };
+      }),
+      view, hotspots,
     };
     if (this.clock >= this.nextPlan || !this.fillReserve(interest)) this.plan(interest);
   }
@@ -190,11 +188,12 @@ export class ScrapRegions {
     for (const slot of this.slots) {
       const site = this.bindings[slot.id];
       if (!site) continue;
-      if (insideProtectedArea(slot, interest)) {
+      const rank = this.rank(slot, interest, regionConfig.retentionMargin, true);
+      if (rank < 0) {
         site.selected = this.planId;
         needed--;
       } else {
-        const distance = Math.sqrt(this.rank(slot, interest));
+        const distance = Math.sqrt(rank);
         site.rank = Math.max(0, distance - regionConfig.retentionMargin) ** 2;
         this.candidates.push(site);
       }
@@ -234,13 +233,22 @@ export class ScrapRegions {
     this.prune();
   }
 
-  private rank(point: Point, { fields, view }: Interest): number {
+  private rank(point: Point, { fields, view, hotspots }: Interest, margin: number, retain: boolean): number {
+    if (view && overlapsView(point, view, margin + scrapConfig.radius)) return -1;
     let rank = view ? regionConfig.prefetchOffset ** 2 + distanceToBoundsSquared(point, view) : Infinity;
-    for (const field of fields) rank = Math.min(rank, (point.x - field.x) ** 2 + (point.y - field.y) ** 2);
+    for (const field of fields) {
+      const distance = (point.x - field.x) ** 2 + (point.y - field.y) ** 2;
+      if (distance <= (retain ? field.retain : field.wake)) return -1;
+      if (distance < rank) rank = distance;
+    }
+    for (const spot of hotspots) {
+      const distance = (point.x - spot.x) ** 2 + (point.y - spot.y) ** 2;
+      if (distance < spot.radius ** 2) rank *= 1 - activityConfig.streamWeight * spot.strength * (1 - distance / spot.radius ** 2);
+    }
     return rank;
   }
 
-  private rankRegions({ fields, view }: Interest): void {
+  private rankRegions({ fields, view, hotspots }: Interest): void {
     for (const entry of this.order) {
       let rank = Infinity;
       const { left, top, right, bottom } = entry.bounds;
@@ -250,6 +258,9 @@ export class ScrapRegions {
         rank = regionConfig.prefetchOffset ** 2 + dx * dx + dy * dy;
       }
       for (const field of fields) rank = Math.min(rank, distanceToBoundsSquared(field, entry.bounds));
+      for (const spot of hotspots) {
+        if (distanceToBoundsSquared(spot, entry.bounds) < spot.radius ** 2) rank *= 1 - activityConfig.streamWeight * spot.strength;
+      }
       entry.rank = rank;
     }
     this.order.sort((a, b) => a.rank - b.rank || a.id - b.id);
@@ -264,9 +275,11 @@ export class ScrapRegions {
       const region = this.load(entry.id);
       if (!region) continue;
       for (const site of region.sites) {
-        if (site.slot || site.listed === this.planId || !canWake(site, interest, margin)) continue;
+        if (site.slot || site.listed === this.planId) continue;
+        const rank = this.rank(site, interest, margin, false);
+        if (rank < 0) continue;
         site.listed = this.planId;
-        site.rank = this.rank(site, interest);
+        site.rank = rank;
         this.candidates.push(site);
       }
     }

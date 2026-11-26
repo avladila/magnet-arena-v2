@@ -1,7 +1,8 @@
 import { angleBetween, arm, bearingTo, cancelArm, gapBetween, legacyTheftDamage, release, resolveTheft,
   Salvage, salvageEligible, shell, theftDamage, type CombatRules, type Debris } from './combat';
-import { botTactics, navigationConfig, tacticsConfig, theftConfig } from './competition-config';
-import { populationConfig, resourceBudget } from './config';
+import { activityConfig, botTactics, navigationConfig, tacticsConfig, theftConfig } from './competition-config';
+import { ArenaActivity, type Hotspot, type SalvageSignal } from './arena-activity';
+import { playerConfig, populationConfig, resourceBudget } from './config';
 import { physicalScaleForMass } from './growth';
 import { Hazards } from './hazards';
 import type { Attack } from './combat-state';
@@ -14,6 +15,7 @@ import { createBots, type Bot } from './bots';
 import { advance, clampToArena, createPlayer, type Participant, type Steering } from './movement';
 import { ParticlePool, type Scrap, type WorldBounds } from './particles';
 
+type Opportunity = Hotspot | SalvageSignal;
 type BotTactics = {
   nextEvaluation: number;
   nextAttack: number;
@@ -21,8 +23,8 @@ type BotTactics = {
   armedFor?: Participant;
   victim?: Participant;
   pursuing: boolean;
-  signal?: Point;
-  visitedSignal?: Point;
+  opportunity?: { area: Opportunity; point: Point };
+  visited?: Opportunity;
   dodge?: { attack: Attack; target: Point };
   retreat?: { point: Point; until: number };
   salvage?: { chunk: Debris; point: Point };
@@ -30,6 +32,7 @@ type BotTactics = {
 };
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+const noHotspots: readonly Hotspot[] = [];
 
 export class ArenaModel {
   readonly player = createPlayer();
@@ -42,10 +45,9 @@ export class ArenaModel {
   readonly salvage: Salvage;
   readonly hazards?: Hazards;
   readonly combatRules: CombatRules;
-  signal?: Point;
   readonly tutorial?: Tutorial;
+  private readonly activity?: ArenaActivity;
   private elapsed = 0;
-  private nextSignal = 45;
   private readonly tactics = new Map<Bot, BotTactics>();
   private readonly attractionGrid?: AttractionGrid;
   private readonly populated: boolean;
@@ -72,8 +74,12 @@ export class ArenaModel {
     this.particles = new ParticlePool(seed, this.participants,
       tutorial ? 0 : activeCount, Boolean(difficulty || tutorial), tutorial ? populationConfig.tutorialSlots : capacity);
     if (difficulty || tutorial) this.hazards = new Hazards(seed, this.participants);
+    if (difficulty && !tutorial) this.activity = new ArenaActivity(seed);
     if (tutorial) this.tutorial = new Tutorial(this);
   }
+
+  get signal() { return this.activity?.signal; }
+  get hotspots() { return this.activity?.hotspots ?? noHotspots; }
 
   step(steering: Steering, seconds: number): AttractionResult | undefined {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
@@ -86,7 +92,7 @@ export class ArenaModel {
     this.elapsed += seconds;
     if (!this.tutorial) {
       if (this.difficulty) {
-        this.updateSignal();
+        this.activity?.update(this.elapsed, this.particles.slots, this.participants);
         if (this.populated && this.elapsed >= this.nextRanking) {
           for (const row of rankings(this.participants)) this.places.set(row.participant, row.place);
           this.nextRanking = this.elapsed + navigationConfig.evaluationSeconds;
@@ -103,32 +109,6 @@ export class ArenaModel {
     return advanceAttraction(this.particles, this.tutorial ? [this.player] : this.participants, seconds, this.attractionGrid);
   }
 
-  private updateSignal(): void {
-    if (this.elapsed >= this.nextSignal - 35) this.signal = undefined;
-    if (this.elapsed < this.nextSignal) return;
-    this.nextSignal += 60;
-    const counts = new Map<string, { point: Point; count: number }>();
-    for (const scrap of this.particles.slots) {
-      if (scrap.state !== 'active') continue;
-      const x = Math.floor(scrap.x / 500);
-      const y = Math.floor(scrap.y / 500);
-      const key = x + ',' + y;
-      const area = counts.get(key) ?? { point: { x: x * 500 + 250, y: y * 500 + 250 }, count: 0 };
-      area.count++;
-      counts.set(key, area);
-    }
-    let best = -Infinity;
-    for (const { point, count } of counts.values()) {
-      const distances = this.participants.map(({ position }) =>
-        Math.hypot(position.x - point.x, position.y - point.y)).sort((a, b) => a - b);
-      const score = count - (distances[0] + distances[1]) / 350;
-      if (score > best) {
-        best = score;
-        this.signal = point;
-      }
-    }
-  }
-
   private botSteering(bot: Bot, seconds: number): Steering {
     let target = bot.target?.point;
     if (!this.difficulty || !this.hazards) return target ? { kind: 'target', point: target } : { kind: 'idle' };
@@ -140,7 +120,8 @@ export class ArenaModel {
     }
 
     const victim = state.victim;
-    if (state.signal === this.signal && state.signal) target = state.signal;
+    const opportunity = state.opportunity;
+    if (opportunity && this.activeOpportunity(opportunity.area)) target = opportunity.point;
     if (state.salvage) target = state.salvage.point;
     if (victim && victim.combat.guardFor <= 1e-9 && !state.retreat && bot.combat.energy === theftConfig.energy) {
       const gap = gapBetween(bot, victim);
@@ -176,8 +157,8 @@ export class ArenaModel {
       bot.target = undefined;
       bot.decisionIn = 0;
       state.pursuing = false;
-      state.visitedSignal = state.signal;
-      state.signal = undefined;
+      state.visited = state.opportunity?.area;
+      state.opportunity = undefined;
       state.abandoned = state.salvage?.chunk;
       state.salvage = undefined;
       state.retreat = undefined;
@@ -220,19 +201,46 @@ export class ArenaModel {
       if (bot.strategy === 'collector' && victim && !committed && this.projectedLoss(bot, victim) < 70) state.pursuing = false;
     }
 
-    const signal = this.signal;
-    if (state.visitedSignal !== signal) state.visitedSignal = undefined;
-    if (!signal || difficulty === 'easy' || (bot.strategy !== 'roamer' && !charged) ||
-        state.visitedSignal === signal) {
-      state.signal = undefined;
-      return;
+    this.evaluateOpportunity(bot, state, charged);
+  }
+
+  private activeOpportunity(area: Opportunity): boolean {
+    return area.expires > this.elapsed && ('resources' in area ? this.signal === area : this.hotspots.includes(area));
+  }
+
+  private evaluateOpportunity(bot: Bot, state: BotTactics, charged: boolean): void {
+    const current = state.opportunity;
+    if (current && this.activeOpportunity(current.area) && !state.retreat) {
+      if (distance(bot.position, current.point) > Math.max(90, bot.radius * 0.55)) return;
+      state.visited = current.area;
     }
-    const remaining = distance(bot.position, signal);
-    const following = state.signal === signal;
-    if (following && remaining <= 270) state.visitedSignal = signal;
-    const signalRange = difficulty === 'hard' ? 1050 : 1900;
-    state.signal = remaining > 270 &&
-      remaining < signalRange + (following ? navigationConfig.exitClearance : 0) ? signal : undefined;
+    state.opportunity = undefined;
+    if (state.retreat || state.salvage || state.pursuing || bot.navigation.mode !== 'direct') return;
+    const opportunities: Opportunity[] = this.signal ? [this.signal, ...this.hotspots] : [...this.hotspots];
+    let selected: Opportunity | undefined;
+    let best = 0.29;
+    for (const area of opportunities) {
+      if (area === state.visited) continue;
+      const remaining = distance(bot.position, area);
+      const publicSignal = 'resources' in area;
+      const range = publicSignal ? activityConfig.signalTravel : activityConfig.hotspotTravel;
+      if (remaining <= 290 || remaining > range || this.elapsed + remaining / playerConfig.speed + 1.2 >= area.expires) continue;
+      let followers = 0;
+      for (const other of this.tactics.values()) if (other.opportunity?.area === area) followers++;
+      if (followers >= (publicSignal ? activityConfig.signalFollowers : activityConfig.hotspotFollowers)) continue;
+      const role = botTactics[bot.strategy];
+      const interest = publicSignal ? 0.72 + role.salvage * 0.36 + (charged ? 0.17 : 0)
+        : (bot.strategy === 'roamer' ? 1.15 : 0.98) - (role.pursuit - 1) * 0.2;
+      const value = publicSignal ? Math.min(1.5, area.resources / 23) : 0.72 + area.strength * 0.36;
+      const score = value * interest / (1 + remaining / 1500 + followers * 0.17);
+      if (score <= best) continue;
+      best = score;
+      selected = area;
+    }
+    if (!selected) return;
+    const route = bearingTo(bot.position, selected) + (Number(bot.id.slice(4)) % 7 - 3) * 0.24;
+    const point = clampToArena({ x: selected.x + Math.cos(route) * 310, y: selected.y + Math.sin(route) * 310 }, bot.radius);
+    state.opportunity = { area: selected, point };
   }
 
   private projectedLoss(attacker: Participant, victim: Participant): number {
@@ -327,7 +335,7 @@ export class ArenaModel {
 
   replenish(view: WorldBounds): void {
     if (this.tutorial) return;
-    this.particles.replenish(this.participants, view, this.elapsedSinceReplenish);
+    this.particles.replenish(this.participants, view, this.elapsedSinceReplenish, this.hotspots);
     this.elapsedSinceReplenish = 0;
   }
 }

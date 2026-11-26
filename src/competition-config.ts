@@ -47,3 +47,9 @@ export const navigationConfig = {
   pursuitEnterGap: 190,
   pursuitExitGap: 150,
 } as const;
+
+export const activityConfig = {
+  count: 3, radius: 500, spacing: 1780, lifetime: 33, lifetimeJitter: 9, fade: 6, streamWeight: 0.32,
+  firstSignal: 23, signalJitter: 5, signalInterval: 38, signalDuration: 24, signalMinimum: 18, depleted: 9,
+  signalTravel: 2500, hotspotTravel: 1750, signalFollowers: 7, hotspotFollowers: 4,
+} as const;

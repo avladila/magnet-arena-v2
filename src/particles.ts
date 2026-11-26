@@ -1,4 +1,5 @@
 import { scrapConfig } from './config';
+import type { Hotspot } from './arena-activity';
 import { clamp, type Participant, type Point } from './movement';
 import { ScrapRegions } from './regions';
 
@@ -55,8 +56,8 @@ export class ParticlePool {
       ...(this.mixed && { kind: this.kind(scrap) }) };
   }
 
-  replenish(participants: readonly Participant[], view: WorldBounds, seconds = 0): void {
-    this.regions.update(participants, view, seconds, this.collected);
+  replenish(participants: readonly Participant[], view: WorldBounds, seconds = 0, hotspots?: readonly Hotspot[]): void {
+    this.regions.update(participants, view, seconds, this.collected, hotspots);
     this.collected.length = 0;
   }
 }
