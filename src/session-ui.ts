@@ -1,3 +1,4 @@
+import { brand } from './brand';
 import type { ArenaModel } from './arena-model';
 import { matchConfig } from './competition-config';
 import type { GameAudio } from './audio';
@@ -27,6 +28,8 @@ export class SessionUI {
   private mode: Mode = 'arena';
   private duringSession = false;
   private rankingText = '';
+  private ownPlace?: number;
+  private resultDetails?: Promise<typeof import('./result-stats') | undefined>;
   private lastHud = 0;
   private feedback?: { label: string; until: number };
   private readonly navigation = new Navigation();
@@ -59,6 +62,8 @@ export class SessionUI {
         this.changeDifficulty = false;
         this.feedback = undefined;
         this.lastHud = -Infinity;
+        this.ownPlace = undefined;
+        this.resultDetails ??= import('./result-stats').catch(() => undefined);
         actions.start(this.mode, this.progress.difficulty);
         this.resume();
       } else if (action === 'resume') this.resume();
@@ -247,12 +252,20 @@ export class SessionUI {
     }
     element('status').textContent = [
       this.feedback && this.feedback.until > now ? this.feedback.label : '',
-      combat.heat >= 1 ? 'Overheated' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
-      combat.brittle ? 'Brittle' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '', tip,
+      combat.heat >= 1 ? 'OVERHEATED' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
+      combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '', tip,
     ].filter(Boolean).join(' · ');
     if (now - this.lastHud > 180) {
       this.lastHud = now;
       this.navigation.render(model, bounds);
+      const place = rankings(model.participants).find(({ participant }) => participant === model.player)!.place;
+      if (this.ownPlace !== undefined && this.ownPlace !== place && !this.motionReduced &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        element('ranking').animate([{ opacity: 0.68 }, { opacity: 1 }], {
+          duration: brand.motion.menu, easing: 'cubic-bezier(' + brand.motion.snap.join(',') + ')',
+        });
+      }
+      this.ownPlace = place;
       const rows = this.rows(model);
       const ranking = rows.join('\n');
       if (ranking !== this.rankingText) {
@@ -291,13 +304,23 @@ export class SessionUI {
     this.duringSession = false;
     this.setGameVisible(false);
     this.show('results');
+    this.dialog.dataset.victory = String(clock.mode === 'arena' && place === 1);
     const summary = clock.mode === 'endless' ? 'Endless session' :
       place === 1 ? 'Victory' : place === 2 ? 'Second place' : place === 3 ? 'Third place' : 'Place ' + place;
     element('result-summary').textContent = summary + ' · ' + player.mass + ' mass' + (best ? ' · Personal best' : '');
     this.list('result-ranking', this.rows(model));
     const stats = element('result-stats');
     stats.replaceChildren();
-    void import('./result-stats').then(({ renderResultStats }) => renderResultStats(stats, player));
+    void this.resultDetails?.then((details) => {
+      if (details) details.renderResultStats(stats, player);
+      else {
+        const label = document.createElement('dt');
+        const value = document.createElement('dd');
+        label.textContent = 'Peak mass';
+        value.textContent = String(player.combat.highest);
+        stats.replaceChildren(label, value);
+      }
+    });
     if (best) this.audio.play('best');
     else this.audio.play(clock.mode === 'arena' ? (place === 1 ? 'victory' : 'defeat') : 'results');
   }

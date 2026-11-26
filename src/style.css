@@ -273,3 +273,22 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 }
 
 #clock, #mass, #energy-readout, #ranking, #result-ranking { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-reduced-motion="true"]) .menu[data-page="results"][data-victory="true"] .menu-content {
+    background-image: radial-gradient(circle, var(--brand-gold) 1px, transparent 2px),
+      radial-gradient(circle, var(--brand-teal) 1px, transparent 2px);
+    background-position: top center, top center;
+    background-repeat: repeat-x;
+    background-size: 24px 20px, 18px 44px;
+    animation: victory-glint var(--brand-menu-time) var(--brand-snap);
+  }
+}
+@keyframes victory-glint {
+  from { background-position: top -20px center, top -40px center; }
+  to { background-position: top center, top center; }
+}
+
+.pickup-gain, .pickup-charge { position: absolute; z-index: 5; inset: 0 auto auto 0; opacity: 0; pointer-events: none; }
+.pickup-gain { color: var(--brand-ink); background: var(--brand-gold); padding: 1px 5px; border-radius: var(--brand-radius-8); font-weight: 850; }
+.pickup-charge { width: 11px; height: 5px; border-radius: var(--brand-radius-4); background: var(--brand-energy); }

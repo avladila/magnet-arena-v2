@@ -4,7 +4,7 @@ MAGNET is a single-player salvage competition built with Phaser 3, TypeScript an
 
 - **Arena** starts with a three-second countdown and runs for five minutes. Final rank uses current mass, highest mass and resource mass in that order.
 - **Endless** uses the same economy, rivals and hazards. End the session from Pause to see your stats and replay.
-- **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming and recovering stolen salvage.
+- **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming, recovering stolen salvage, and five live hazard encounters.
 
 ## Run locally
 
@@ -39,7 +39,7 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-See the [release verification report](docs/release-verification.md) for the test evidence and remaining release gates.
+See the [RC2 verification report](docs/rc2.md) for the test evidence and remaining release gates.
 
 ## Growth and balance
 
@@ -49,7 +49,7 @@ The camera applies the two-phase mass multiplier to its viewport baseline. It ea
 
 `src/config.ts` holds the 720 active pieces in a 1,500-slot pool, pull speeds of 300–700 world units per second, and presentation timing. The 460 world-unit-per-second movement speed carries forward from Task 001. Competitive sessions use the same pool with a deterministic 94% ordinary scrap, 1% gold and 5% red energy site distribution. Gold pays ten mass and red cells charge Magnetic Theft.
 
-The magnetic halo eases toward the actual field reach in world units. The 64-unit floor brackets are spaced 480 units apart. Milestones at 50, 100, 200 and 400 give a 340 ms visual pulse. If a collection batch crosses multiple thresholds, it shows one pulse for the highest. The palettes in `src/theme.ts` share the same ten ordinary scrap indices.
+The magnetic halo eases toward the actual field reach in world units. The 64-unit floor brackets are spaced 480 units apart. Milestones at 50, 100, 200, 400, 800, 1,500, 2,500 and 4,352 give a 340 ms visual pulse. If a collection batch crosses multiple thresholds, it shows one pulse for the highest. The palettes in `src/theme.ts` share the same ten ordinary scrap indices.
 
 ## Shared scrap
 

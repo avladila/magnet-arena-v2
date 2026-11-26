@@ -77,6 +77,8 @@ export class CompetitionView {
       const sprite = this.shards[shardIndex++];
       sprite.setFrame(debrisFrames[tier]).setPosition(chunk.x, chunk.y - lift).setDisplaySize(size, size)
         .setRotation(reducedMotion ? 0 : chunk.age * 4).setVisible(true);
+      const expiring = chunk.age > theftConfig.lifetime - 1;
+      sprite.setAlpha(expiring && !reducedMotion ? 0.72 + 0.28 * Math.cos(chunk.age * Math.PI * 3) : 1);
     }
     for (; shardIndex < this.shards.length; shardIndex++) this.shards[shardIndex].setVisible(false);
     if (model.signal && visible(model.signal, bounds, 160)) {

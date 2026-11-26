@@ -199,3 +199,22 @@ for col, mode in enumerate(tokens['themes']):
         sheet.paste(img.resize((52,52),Image.Resampling.LANCZOS),(x+4,y),img.resize((52,52),Image.Resampling.LANCZOS))
 sheet.save(E/'atlas-contact.webp',quality=90)
 (Path('brand')/'asset-manifest.json').write_text(json.dumps({'paletteRoles': list(roles), 'atlases': {'magnets': list(magnets), 'workshop': list(frames)}},indent=2)+'\n')
+
+# Contact proof uses native-size pickups, 2× review, and a small zoomed-out sample.
+proof = Image.new('RGB', (1260, 764), tokens['themes']['light']['background'])
+draw = ImageDraw.Draw(proof)
+for side, mode in enumerate(tokens['themes']):
+    palette = tokens['themes'][mode]
+    start = side * 630
+    draw.rectangle((start,0,start+630,764), fill=palette['background'])
+    draw.text((start+10,10), mode.upper() + '   1×   /   2×   /   GIANT-ZOOM', fill=palette['ink'])
+    entries = [*magnets.items(), *((k,v) for k,v in frames.items()
+               if k.startswith(mode) or not k.startswith(('light','dark')))]
+    for i,(key,img) in enumerate(entries):
+        x, y = start + 5 + i % 6 * 104, 31 + i // 6 * 49
+        draw.text((x,y+35), key.replace(mode + '-', ''), fill=palette['ink'])
+        sizes = (22, 39, 12) if key in magnets else (13, 25, 7)
+        for offset, size in zip((0, 25, 70), sizes):
+            thumb = img.resize((size,size), Image.Resampling.LANCZOS)
+            proof.paste(thumb, (x+offset,y+(35-size)//2), thumb)
+proof.save(E/'scale-contact.webp',quality=87)

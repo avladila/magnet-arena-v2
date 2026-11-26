@@ -15,6 +15,7 @@ export class Tutorial {
   completed = false;
   private station?: Hazard;
   private stop = 0;
+  private stationLoss = 0;
   private readonly stations: readonly HazardKind[] = ['flux', 'heat', 'water', 'acid', 'cold'];
 
   constructor(private readonly model: ArenaModel) {
@@ -43,8 +44,8 @@ export class Tutorial {
       'Collect one of the neutral salvage chunks after it lands.',
       this.stop === 0 ? 'Touch the Flux device. It strips mass from larger magnets.'
         : 'Enter the heat bay. Heat shrinks your pull field.',
-      ['Enter the water pool. Water corrodes your outer shell.',
-       'Enter the acid pool. Acid removes shell mass faster.',
+      ['Stay in the water pool until it corrodes your shell.',
+       'Stay in the acid pool until it strips shell mass.',
        'Stay inside the cryo vent until your shell becomes BRITTLE.'][this.stop - 2],
       'Training complete. Open Pause to return to the menu.',
     ][this.stage];
@@ -80,7 +81,7 @@ export class Tutorial {
       const site = this.station;
       const inside = Math.hypot(player.position.x - site.x, player.position.y - site.y) <= player.radius + site.radius;
       const experienced = site.kind === 'flux' || (site.kind === 'heat' ? state.heat >= 0.14
-        : site.kind === 'cold' ? state.brittle : state.corrosion === site.kind);
+        : site.kind === 'cold' ? state.brittle : state.corrosion === site.kind && state.lostToHazards > this.stationLoss);
       if (!inside || !experienced) return;
       this.stop++;
       if (this.stop >= this.stations.length) {
@@ -97,6 +98,7 @@ export class Tutorial {
     const kind = this.stations[this.stop];
     const { position } = this.model.player;
     const radius = hazardConfig[kind].radius;
+    this.stationLoss = this.model.player.combat.lostToHazards;
     this.station = {
       kind, radius, ...clampToArena({ x: position.x + 280, y: position.y }, radius),
       readyAt: 0, contacts: new Set(), victims: new Map(),

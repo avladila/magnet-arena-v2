@@ -18,6 +18,7 @@ import { ParticleView } from './particle-view';
 import type { Collection, WorldBounds } from './particles';
 import { cssColor } from './theme';
 import { applyThemeToPage, bindThemeToggle, localThemePreference } from './theme-control';
+import { PickupFeedback } from './pickup-feedback';
 import { WorkshopParticles } from './workshop-particles';
 import { ArenaCamera, Heading, MagnetScale } from './view';
 import './style.css';
@@ -49,6 +50,7 @@ class ArenaScene extends Phaser.Scene {
   private floor!: ArenaFloor;
   private particleView!: ParticleView;
   private effects!: WorkshopParticles;
+  private pickupFeedback!: PickupFeedback;
   private lastLanding = 0;
   private botViews!: BotView[];
   private readonly botNames: WorldBounds[] = [];
@@ -72,6 +74,7 @@ class ArenaScene extends Phaser.Scene {
     this.field = new GrowthFeedbackView(this, player, true);
     this.particleView = new ParticleView(this, true);
     this.effects = new WorkshopParticles(this);
+    this.pickupFeedback = new PickupFeedback(surface);
     this.botViews = this.model.bots.map((bot) => new BotView(this, bot));
     this.magnet = createMagnetSprite(this, player.id).setDepth(2);
     const toggleTheme = () => {
@@ -124,6 +127,7 @@ class ArenaScene extends Phaser.Scene {
     this.field.reset(this.model.player);
     this.competition.reset();
     this.effects.reset();
+    this.pickupFeedback.reset();
     this.lastLanding = 0;
     this.positionCamera();
     this.menu.hud(this.model, this.clock, performance.now(), this.framing.bounds);
@@ -185,9 +189,20 @@ class ArenaScene extends Phaser.Scene {
     this.particleView.render(this.model.particles.slots, bounds, collections, advanced, theme.palette,
       (scrap) => this.model.particles.kind(scrap), theme.current, this.framing.zoom,
       lessMotion, this.effects);
+    let ownGold: Collection | undefined;
+    let ownEnergy: Collection | undefined;
     for (const item of collections) {
       const role = item.kind === 'gold' ? 'gold' : item.kind === 'energy' ? 'energy' : 'steel';
       this.effects.burst(item, role, role === 'gold' ? 6 : 2, role === 'gold' ? brand.motion.gold : brand.motion.pickup);
+      if (item.ownerId === player.id) {
+        if (role === 'gold') ownGold = item;
+        else if (role === 'energy') ownEnergy = item;
+      }
+    }
+    if (lessMotion) this.pickupFeedback.reset();
+    else {
+      if (ownGold) this.pickupFeedback.show('gold', this.framing.toScreen(ownGold));
+      if (ownEnergy) this.pickupFeedback.show('energy', this.framing.toScreen(ownEnergy));
     }
     for (const shard of this.model.salvage.chunks) {
       if (shard.age >= theftConfig.flight && shard.age - advanced < theftConfig.flight) {
@@ -207,7 +222,10 @@ class ArenaScene extends Phaser.Scene {
     if (player.combat.hits > previousHits) {
       const detached = player.combat.detached - previousDetached;
       this.menu.attackFeedback(detached > 0 ? detached + ' MASS DETACHED' : 'CORE PROTECTED', time);
-      if (!detached) this.audio.play('core');
+      if (!detached) {
+        this.audio.play('core');
+        this.effects.burst(player.position, 'teal', 6, brand.motion.gold);
+      }
     } else if (player.combat.misses > previousMisses) {
       this.audio.play('miss');
       this.menu.attackFeedback('MISS', time);
@@ -216,8 +234,14 @@ class ArenaScene extends Phaser.Scene {
       this.audio.play('freeze');
       this.effects.burst(player.position, 'cold', 6, brand.motion.gold);
     }
-    else if (previousBrittle && !player.combat.brittle) this.audio.play('recovery');
-    if (previousHeat < 1 && player.combat.heat === 1) this.audio.play('overheat');
+    else if (previousBrittle && !player.combat.brittle) {
+      this.audio.play('recovery');
+      this.effects.burst(player.position, 'water', 6, brand.motion.gold);
+    }
+    if (previousHeat < 1 && player.combat.heat === 1) {
+      this.audio.play('overheat');
+      this.effects.burst(player.position, 'heat', 6, brand.motion.gold);
+    }
     if (!previousCorrosion && player.combat.corrosion) this.audio.play('corrosion');
     if (player.combat.lostToHazards > previousHazardLoss) {
       if (!player.combat.corrosion) this.audio.play('flux');
@@ -227,8 +251,13 @@ class ArenaScene extends Phaser.Scene {
       this.effects.burst(player.position, 'steel', 6, brand.vfx.debrisFlash);
     }
     this.effects.render(bounds, advanced, player.position);
-    if (player.combat.hits > previousHits || player.combat.lostToTheft + player.combat.lostToHazards > previousLoss) {
-      this.audio.play('hit');
+    const incoming = player.combat.lostToTheft + player.combat.lostToHazards - previousLoss;
+    if (player.combat.hits > previousHits || incoming > 0) this.audio.play('hit');
+    const hazardActivated = (!previousBrittle && player.combat.brittle) ||
+      (previousHeat < 1 && player.combat.heat === 1) ||
+      (!previousCorrosion && Boolean(player.combat.corrosion)) ||
+      (player.combat.lostToHazards > previousHazardLoss && !player.combat.corrosion);
+    if (player.combat.hits > previousHits || incoming >= Math.max(5, player.mass * 0.03) || hazardActivated) {
       this.menu.vibrate(35);
     }
     if (player.combat.energy === 100 && previousEnergy < 100) {

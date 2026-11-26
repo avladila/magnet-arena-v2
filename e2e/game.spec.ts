@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function inspectScene(page: Page): Promise<void> {
+  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
+    const response = await route.fetch();
+    const original = await response.text();
+    const anchor = 'this.floor = new ArenaFloor';
+    expect(original).toContain(anchor);
+    await route.fulfill({ response, body: original.replace(anchor, 'window.trainingScene = this; ' + anchor) });
+  });
+}
 
 test('Arena starts, steers and pauses; Endless reaches results and replays', async ({ page }) => {
   const errors: Error[] = [];
@@ -65,16 +75,26 @@ test('training advances after real steering', async ({ page }) => {
   await page.keyboard.up('KeyD');
 });
 
-test('fifty replays reuse the canvas and continue to handle controls', async ({ page }) => {
+test('fifty replays reuse the canvas and continue to handle controls', async ({ page, browserName }) => {
   test.setTimeout(120_000);
   await page.goto('/');
   await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  const cdp = browserName === 'chromium' ? await page.context().newCDPSession(page) : undefined;
+  await cdp?.send('HeapProfiler.collectGarbage');
+  const before = await cdp?.send('Runtime.getHeapUsage');
   for (let i = 0; i < 50; i++) {
     await page.getByRole('button', { name: 'Pause' }).click();
     await page.getByRole('button', { name: 'End Session' }).click();
     await page.getByRole('button', { name: 'Play Again' }).click();
   }
   await expect(page.locator('#arena > canvas')).toHaveCount(1);
+  await cdp?.send('HeapProfiler.collectGarbage');
+  const after = await cdp?.send('Runtime.getHeapUsage');
+  if (before && after) {
+    const delta = after.usedSize - before.usedSize;
+    console.log('Retained JavaScript heap after 50 replays (bytes):', delta);
+    expect(delta).toBeLessThan(12 * 1024 * 1024);
+  }
   await page.getByRole('button', { name: 'Pause' }).click();
   await expect(page.locator('#menu-title')).toHaveText('Paused');
 });
@@ -84,13 +104,7 @@ test('two real Chromium touch pointers steer and resolve one overridden attack',
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   try {
     const page = await context.newPage();
-    await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
-      const response = await route.fetch();
-      const original = await response.text();
-      const anchor = 'this.floor = new ArenaFloor';
-      expect(original).toContain(anchor);
-      await route.fulfill({ response, body: original.replace(anchor, 'window.trainingScene = this; ' + anchor) });
-    });
+    await inspectScene(page);
     await page.goto('/');
     await page.getByRole('button', { name: 'Endless', exact: true }).tap();
     await page.evaluate(() => {
@@ -124,13 +138,7 @@ test('full Arena simulation reaches results and Play Again through the UI', asyn
   test.setTimeout(60_000);
   const errors: Error[] = [];
   page.on('pageerror', (error) => errors.push(error));
-  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
-    const response = await route.fetch();
-    const original = await response.text();
-    const anchor = 'this.floor = new ArenaFloor';
-    expect(original).toContain(anchor);
-    await route.fulfill({ response, body: original.replace(anchor, 'window.trainingScene = this; ' + anchor) });
-  });
+  await inspectScene(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Play Arena' }).click();
   const elapsed = await page.evaluate(() => {
@@ -150,13 +158,7 @@ test('full Arena simulation reaches results and Play Again through the UI', asyn
 
 test('training teaches each hazard through in-arena encounters without recording a match', async ({ page }) => {
   test.setTimeout(45_000);
-  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
-    const response = await route.fetch();
-    await route.fulfill({
-      response,
-      body: (await response.text()).replace('this.floor = new ArenaFloor', 'window.trainingScene = this; this.floor = new ArenaFloor'),
-    });
-  });
+  await inspectScene(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Learn to Play' }).click();
   await page.keyboard.down('KeyD');
@@ -167,16 +169,21 @@ test('training teaches each hazard through in-arena encounters without recording
   await page.keyboard.up('Space');
   await expect(page.locator('#tutorial-task')).toContainText('neutral salvage');
   await page.keyboard.down('KeyD');
-  for (const lesson of ['Flux device', 'heat bay', 'water pool', 'acid pool', 'cryo vent']) {
-    await expect(page.locator('#tutorial-task')).toContainText(lesson, { timeout: 8000 });
+  const instructions = page.locator('#tutorial-task');
+  await expect(instructions).toContainText('Flux device', { timeout: 8000 });
+  await expect(instructions).toContainText('heat bay', { timeout: 5000 });
+  for (const [station, next] of [['water pool', 'acid pool'], ['acid pool', 'cryo vent'], ['cryo vent', 'Training complete']]) {
+    await expect(instructions).toContainText(station, { timeout: 5000 });
+    await expect.poll(() => page.evaluate((phrase) => {
+      if (!document.querySelector('#tutorial-task')?.textContent?.includes(phrase)) return 0;
+      const model = Reflect.get(window, 'trainingScene').model;
+      const { x, y } = model.tutorial.station;
+      return Math.hypot(model.player.position.x - x, model.player.position.y - y);
+    }, station), { intervals: [20], timeout: 4000 }).toBeLessThan(100);
+    await page.keyboard.up('KeyD');
+    await expect(instructions).toContainText(next);
+    if (next !== 'Training complete') await page.keyboard.down('KeyD');
   }
-  await expect.poll(() => page.evaluate(() => {
-    const model = Reflect.get(window, 'trainingScene').model;
-    const { x, y } = model.tutorial.station;
-    return Math.hypot(model.player.position.x - x, model.player.position.y - y);
-  }), { intervals: [20], timeout: 4000 }).toBeLessThan(85);
-  await page.keyboard.up('KeyD');
-  await expect(page.locator('#tutorial-task')).toContainText('Training complete');
   const progress = await page.evaluate(() => JSON.parse(localStorage.getItem('magnet.progress.v1')!));
   expect(progress.tutorialDone).toBe(true);
   expect(progress.completed).toBe(0);
@@ -184,13 +191,7 @@ test('training teaches each hazard through in-arena encounters without recording
 });
 
 test('presentation pool stays within each quality cap and clears under reduced motion', async ({ page }) => {
-  await page.route((url) => url.pathname === '/src/main.ts', async (route) => {
-    const response = await route.fetch();
-    await route.fulfill({
-      response,
-      body: (await response.text()).replace('this.floor = new ArenaFloor', 'window.trainingScene = this; this.floor = new ArenaFloor'),
-    });
-  });
+  await inspectScene(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Endless', exact: true }).click();
   const measurements = await page.evaluate(() => {
@@ -210,4 +211,31 @@ test('presentation pool stays within each quality cap and clears under reduced m
     return { result, cleared };
   });
   expect(measurements).toEqual({ result: [600, 300, 120], cleared: true });
+});
+
+test('master mute keeps the live music and effects buses silent after hide and resume', async ({ page }) => {
+  await inspectScene(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const audio = Reflect.get(window, 'trainingScene').audio;
+    return Boolean(audio.bus && audio.track && !audio.track.paused);
+  })).toBe(true);
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.locator('#master').fill('0');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    Reflect.deleteProperty(document, 'hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.getByRole('button', { name: 'Resume' }).click();
+  const silent = await page.evaluate(() => {
+    const audio = Reflect.get(window, 'trainingScene').audio;
+    return audio.bus.gain.value === 0 && audio.track.paused;
+  });
+  expect(silent).toBe(true);
 });
