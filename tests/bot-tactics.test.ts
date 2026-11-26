@@ -43,6 +43,24 @@ test('Chargers favor energy while below full charge and switch to collection at 
   assert.ok(charger.target!.point.x > charger.position.x);
 });
 
+test('Collectors contest a real mixed route but give a charged threat less influence', () => {
+  const { model } = situation('normal');
+  const bot = model.bots[0];
+  const rival = model.player;
+  bot.position = { x: 7680, y: 4920 };
+  rival.position = { x: 7320, y: 4920 };
+  const slots: Scrap[] = Array.from({ length: 15 }, (_, id) =>
+    ({ id, x: id < 6 ? 7320 : 8040, y: 4920 + id, generation: 1, state: 'active', radius: 5, colorIndex: 0 }));
+  const ai = new BotAI();
+  addMass(bot, 800);
+  ai.update([bot], slots, dt, 'normal', undefined, [bot, rival]);
+  assert.ok(bot.target!.point.x < bot.position.x);
+  rival.combat.energy = theftConfig.energy;
+  bot.decisionIn = 0;
+  ai.update([bot], slots, dt, 'normal', undefined, [bot, rival]);
+  assert.ok(bot.target!.point.x > bot.position.x);
+});
+
 test('a Hunter leaves a chase without closing the gap and Easy makes a shorter commitment', () => {
   for (const difficulty of ['easy', 'normal', 'hard'] as const) {
     const { model, internals } = situation(difficulty);

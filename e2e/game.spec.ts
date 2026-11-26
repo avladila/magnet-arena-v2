@@ -357,7 +357,12 @@ test('live release shrinks a giant, launches salvage and reports a guarded follo
 
 test('arena signals use one direction cue and results show recorded progression on a phone-sized viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(() => { crypto.getRandomValues = (buffer) => { (buffer as Uint32Array).fill(11216); return buffer; }; });
+  await page.addInitScript(() => {
+    crypto.getRandomValues = (buffer) => {
+      if (buffer instanceof Uint32Array) buffer.fill(11216);
+      return buffer;
+    };
+  });
   await inspectScene(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Play Arena' }).click();
