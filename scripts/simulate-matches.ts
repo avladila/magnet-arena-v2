@@ -7,7 +7,7 @@ import type { Point, Steering } from '../src/movement';
 const strategies = ['inactive', 'collector', 'aggressive', 'combat', 'hazard-aware', 'edge'] as const;
 const levels: Difficulty[] = ['easy', 'normal', 'hard'];
 const dt = 1 / 60;
-for (let trial = 0; trial < 36; trial++) {
+for (let trial = 0; trial < Number(process.env.MAGNET_TRIALS ?? 36); trial++) {
   const seed = 1000 + trial % strategies.length + Math.floor(trial / 18) * strategies.length;
   const strategy = strategies[trial % strategies.length];
   const difficulty = levels[Math.floor(trial / strategies.length) % levels.length];
