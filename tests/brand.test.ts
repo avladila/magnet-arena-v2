@@ -42,14 +42,10 @@ test('explicit semantic color references are restricted to their presentation co
   for (const file of sources('src')) {
     const name = file.slice('src/'.length);
     const source = readFileSync(file, 'utf8');
-    for (const [, role] of source.matchAll(/brand\.roles\.(\w+)|var\(--brand-(cobalt|coral|gold|energy|teal|flux|heat|water|acid|cold)\)/g)) {
-      if (!role) continue;
+    for (const [, typescriptRole, cssRole] of source.matchAll(/brand\.roles\.(\w+)|var\(--brand-(cobalt|coral|gold|energy|teal|flux|heat|water|acid|cold)\)/g)) {
+      const role = typescriptRole ?? cssRole;
       const contexts = brand.roleContexts[role as keyof typeof brand.roleContexts] as readonly string[];
       assert.ok(contexts?.includes(name), file + ' uses ' + role);
-    }
-    for (const [, role] of source.matchAll(/var\(--brand-(cobalt|coral|gold|energy|teal|flux|heat|water|acid|cold)\)/g)) {
-      const contexts = brand.roleContexts[role as keyof typeof brand.roleContexts] as readonly string[];
-      assert.ok(contexts.includes(name), file + ' uses ' + role);
     }
   }
 });
