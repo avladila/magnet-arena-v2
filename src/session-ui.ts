@@ -285,13 +285,6 @@ export class SessionUI {
       const all = rankings(model.participants);
       const mine = all.find(({ participant }) => participant.kind === 'player')!;
       const place = mine.place;
-      if (this.ownPlace !== undefined && this.ownPlace !== place && !this.motionReduced &&
-          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        element('ranking').animate([{ opacity: 0.68 }, { opacity: 1 }], {
-          duration: brand.motion.menu, easing: 'cubic-bezier(' + brand.motion.snap.join(',') + ')',
-        });
-      }
-      this.ownPlace = place;
       const rows = this.ranksExpanded ? all : all.slice(0, this.compactRanks.matches ? 1 : 5);
       if (!this.ranksExpanded && !rows.includes(mine)) rows.push(mine);
       const ranking = rows.map(({ place, participant }) => place + '/' + participant.id + '/' + participant.mass).join(',');
@@ -299,6 +292,15 @@ export class SessionUI {
         this.rankingText = ranking;
         this.list('ranking', rows);
       }
+      if (this.ownPlace !== undefined && this.ownPlace !== place && !this.motionReduced &&
+          !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const rising = place < this.ownPlace;
+        element('ranking').querySelector('.is-player')?.animate([
+          { transform: `translateX(${rising ? -7 : 7}px)`, backgroundColor: rising ? brand.arcade.green : brand.arcade.orange, color: brand.arcade.ink },
+          { transform: 'translateX(0)' },
+        ], { duration: 240, easing: 'cubic-bezier(' + brand.motion.snap.join(',') + ')' });
+      }
+      this.ownPlace = place;
     }
   }
 
@@ -333,7 +335,7 @@ export class SessionUI {
     this.duringSession = false;
     this.setGameVisible(false);
     this.show('results');
-    this.dialog.dataset.victory = String(clock.mode === 'arena' && place === 1);
+    this.dialog.dataset.outcome = clock.mode === 'endless' ? 'endless' : place === 1 ? 'victory' : 'defeat';
     const summary = clock.mode === 'endless' ? 'Endless session' :
       place === 1 ? 'Victory' : place === 2 ? 'Second place' : place === 3 ? 'Third place' : 'Place ' + place;
     element('result-summary').textContent = summary + ' · ' + player.mass + ' mass' + (best ? ' · Personal best' : '');

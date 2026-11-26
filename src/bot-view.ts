@@ -1,8 +1,9 @@
 import type Phaser from 'phaser';
-import { createMagnetSprite, PoleCharge, renderMagnet } from './magnet-art';
+import { brand } from './brand';
+import { createMagnetSprite, MagnetCharacter, renderMagnet } from './magnet-art';
 import type { Bot } from './bots';
 import { playerConfig, viewConfig } from './config';
-import { clamp, type Participant } from './movement';
+import { clamp, type Participant, type Point } from './movement';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 import { Heading, MagnetScale } from './view';
@@ -10,19 +11,19 @@ import { Heading, MagnetScale } from './view';
 export class BotView {
   private readonly body: Phaser.GameObjects.Sprite;
   private readonly label: Phaser.GameObjects.Text;
-  private readonly charge?: PoleCharge;
+  private readonly character?: MagnetCharacter;
   private heading = new Heading();
   private scale = new MagnetScale();
   private palette?: ThemePalette;
   private labelSide = -1;
   private bot?: Bot;
 
-  constructor(scene: Phaser.Scene, bot: Bot, showCharge = false) {
+  constructor(scene: Phaser.Scene, bot: Bot, showExpression = false) {
     this.bot = bot;
-    this.body = createMagnetSprite(scene, bot.id).setDepth(1);
-    if (showCharge) this.charge = new PoleCharge(scene);
+    if (showExpression) this.character = new MagnetCharacter(scene, bot.id, 1);
+    this.body = this.character?.body ?? createMagnetSprite(scene, bot.id).setDepth(1);
     this.label = scene.add.text(0, 0, bot.name, {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: 'Magnet Sans, system-ui, sans-serif',
       fontSize: '12px',
       fontStyle: 'bold',
       resolution: viewConfig.maxPixelRatio,
@@ -37,7 +38,7 @@ export class BotView {
     this.heading = new Heading();
     this.heading.angle = bot?.heading ?? 0;
     this.labelSide = -1;
-    this.charge?.reset();
+    this.character?.reset();
     this.scale = new MagnetScale();
   }
 
@@ -49,6 +50,7 @@ export class BotView {
     participants: readonly Participant[],
     names: WorldBounds[],
     reducedMotion = false,
+    pickup?: Point,
   ): void {
     const bot = this.bot;
     if (!bot) return;
@@ -59,17 +61,18 @@ export class BotView {
     const bodyRadius = playerConfig.radius * this.scale.scale;
     const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
-    this.body.setVisible(visible);
-    this.charge?.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion);
+    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, pickup);
+    else {
+      this.body.setVisible(visible);
+      if (visible) renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);
+    }
     this.label.setVisible(false);
     if (!visible) return;
 
     if (this.palette !== palette) {
-      this.label.setColor(palette.ui['--hud-text']).setStroke(palette.ui['--hud-surface'], 4);
+      this.label.setColor(brand.arcade.white).setStroke(brand.arcade.ink, 3.5);
       this.palette = palette;
     }
-    renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);
-
     const halfWidth = this.label.width / (2 * zoom);
     const height = this.label.height / zoom;
     const offset = bodyRadius + 5 / zoom;

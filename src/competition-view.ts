@@ -10,10 +10,26 @@ import type { Participant, Point } from './movement';
 import type { WorldBounds } from './particles';
 
 const debrisFrames = ['debris-0', 'debris-1', 'debris-2', 'debris-3'];
+export const sceneryAtlas = 'scenery';
 const combatColor = brand.combatVisual;
+const ink = rgb(brand.arcade.ink);
+const white = rgb(brand.arcade.white);
+const yellow = rgb(brand.arcade.yellow);
+const orange = rgb(brand.arcade.orange);
+const red = rgb(brand.arcade.red);
+const cyan = rgb(brand.arcade.cyan);
+const propOffsets = [[-390, -242], [407, -210], [-160, 350], [540, 231]];
+const propFrames = {
+  assembly: ['prop-press', 'prop-sign', 'prop-drain', 'prop-crate'],
+  foundry: ['prop-vent', 'prop-stacks', 'prop-press', 'prop-pipe'],
+  recycling: ['prop-crate', 'prop-press', 'prop-stacks', 'prop-sign'],
+  cooling: ['prop-pipe', 'prop-drain', 'prop-vent', 'prop-grate'],
+  chemical: ['prop-drain', 'prop-vent', 'prop-pipe', 'prop-sign'],
+  salvage: ['prop-stacks', 'prop-crate', 'prop-sign', 'prop-grate'],
+};
 
 const colors: Record<HazardKind, number> = {
-  flux: rgb(brand.roles.flux), heat: rgb(brand.roles.heat), water: rgb(brand.roles.water), acid: rgb(brand.roles.acid), cold: rgb(brand.roles.cold),
+  flux: rgb(brand.arcade.purple), heat: orange, water: rgb(brand.arcade.blue), acid: rgb(brand.arcade.green), cold: cyan,
 };
 
 function visible({ x, y }: Point, bounds: WorldBounds, radius: number) {
@@ -24,6 +40,8 @@ function visible({ x, y }: Point, bounds: WorldBounds, radius: number) {
 export class CompetitionView {
   private readonly structures: Phaser.GameObjects.Graphics;
   private readonly props: Phaser.GameObjects.Image[];
+  private districtMask = -1;
+  private structureQuality?: Quality;
   private readonly floor: Phaser.GameObjects.Graphics;
   private readonly sites: Phaser.GameObjects.Image[];
   private readonly shards: Phaser.GameObjects.Image[] = [];
@@ -33,15 +51,16 @@ export class CompetitionView {
 
   constructor(private readonly scene: Phaser.Scene, participantCount: number) {
     this.structures = scene.add.graphics();
-    this.props = Array.from({ length: districts.length * 4 }, () => scene.add.image(0, 0, 'workshop', 'prop-grate')
-      .setAlpha(0.21).setVisible(false));
+    this.props = Array.from({ length: districts.length * propOffsets.length }, () => scene.add.image(0, 0, sceneryAtlas, 'prop-grate')
+      .setDepth(0.08).setVisible(false));
     this.floor = scene.add.graphics();
-    this.sites = Array.from({ length: Object.values(hazardConfig).reduce((count, hazard) => count + hazard.count, 5) }, () => scene.add.image(0, 0, 'workshop', 'flux').setVisible(false));
+    this.sites = Array.from({ length: Object.values(hazardConfig).reduce((count, hazard) => count + hazard.count, 5) }, () =>
+      scene.add.image(0, 0, sceneryAtlas, 'flux').setDepth(0.16).setVisible(false));
     this.effects = scene.add.graphics().setDepth(5);
     this.damageLabels = Array.from({ length: participantCount }, () => ({
       text: scene.add.text(0, 0, '', {
-        fontFamily: 'system-ui, sans-serif', fontSize: '17px', fontStyle: 'bold',
-        color: brand.legacy.competition_view.color6, stroke: brand.legacy.competition_view.color7, strokeThickness: 4,
+        fontFamily: 'Magnet Sans, system-ui, sans-serif', fontSize: '19px', fontStyle: 'bold',
+        color: brand.arcade.pale, stroke: brand.arcade.ink, strokeThickness: 5,
       }).setOrigin(0.5).setDepth(6).setVisible(false),
       total: 0,
       theft: 0,
@@ -61,9 +80,11 @@ export class CompetitionView {
       art.setVisible(visible(site, bounds, radius + 15));
       if (!art.visible) continue;
       const cooling = kind === 'flux' && model.hazards?.discharged(site);
-      this.floor.fillStyle(colors[kind], 0.18).fillCircle(x, y, radius);
-      this.floor.lineStyle(3, colors[kind], 0.78).strokeCircle(x, y, radius);
-      art.setFrame(kind).setPosition(x, y).setDisplaySize(radius * 1.7, radius * 1.7)
+      this.floor.fillStyle(colors[kind], 0.17).fillCircle(x, y, radius);
+      this.floor.lineStyle(5, ink, 0.24).strokeCircle(x, y, radius);
+      this.floor.lineStyle(2.5, colors[kind], 0.84).strokeCircle(x, y, radius);
+      if (art.frame.name !== kind) art.setFrame(kind);
+      art.setPosition(x, y).setDisplaySize(radius * 1.96, radius * 1.96)
         .setAlpha(cooling ? 0.58 : 1);
       if (kind === 'flux' && !reducedMotion) art.rotation += seconds * (cooling ? 2 : 0.3);
       else art.rotation = 0;
@@ -102,11 +123,12 @@ export class CompetitionView {
       this.renderDamage(index, participant, seconds, zoom, bounds, reducedMotion);
       const attack = participant.combat.attack;
       if (!visible(participant.position, bounds, theftConfig.reach + participant.radius)) continue;
-      if (attack.phase === 'armed') this.cone(participant, participant === model.player ? aim : participant.heading, false);
-      if (attack.phase === 'warning') this.cone(participant, attack.bearing, true, attack.remaining);
+      if (attack.phase === 'armed') this.cone(participant, participant === model.player ? aim : participant.heading, zoom, reducedMotion);
+      if (attack.phase === 'warning') this.cone(participant, attack.bearing, zoom, reducedMotion, attack.remaining);
       if (participant.combat.energy === theftConfig.energy && attack.phase !== 'cooldown') {
-        this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color14), 0.78)
-          .strokeCircle(participant.position.x, participant.position.y, participant.radius + 11);
+        const { x, y } = participant.position;
+        if (reducedMotion) this.effects.lineStyle(2, yellow, 0.86).strokeCircle(x, y, participant.radius + 8);
+        else this.jaggedWave(x, y, participant.heading, 0.42, participant.radius + 8, 5, 2, 0.83, 6);
       }
       if (participant.combat.brittle || participant.combat.heat > 0.25) {
         this.effects.lineStyle(3, participant.combat.brittle ? colors.cold : colors.heat, 0.8)
@@ -172,35 +194,50 @@ export class CompetitionView {
     const { origin: { x, y }, bearing, radius, reduction } = impact;
     const span = Math.PI * 0.45;
     const strength = 1 - progress;
-    const wave = radius * (0.76 + progress * 0.43) + 30 + progress * 90;
-    this.effects.lineStyle(5 + reduction * 8, rgb(combatColor.fracture), strength * 0.75)
-      .beginPath().arc(x, y, wave, bearing - span, bearing + span, false).strokePath();
-    this.effects.lineStyle(2 + reduction * 4, rgb(combatColor.impact), strength)
-      .beginPath().arc(x, y, wave - 3, bearing - span * 0.86, bearing + span * 0.86, false).strokePath();
-    for (let i = -2; i <= 2; i++) {
-      const angle = bearing + i * 0.5;
+    const wave = radius * (0.76 + progress * 0.36) + 19 + progress * (58 + 100 * reduction);
+    this.jaggedWave(x, y, bearing, span, wave, 7 + radius * 0.035, 3.8 + reduction * 7, strength, 14);
+    const spokes = reduction >= 0.33 ? 3 : 2;
+    for (let i = -spokes; i <= spokes; i++) {
+      const angle = bearing + i * span / (spokes + 0.6);
       const root = radius * 0.58;
-      const end = wave - 12 - 9 * Math.abs(i);
-      this.effects.beginPath().moveTo(x + Math.cos(angle) * root, y + Math.sin(angle) * root)
+      const end = wave - 7 - 7 * Math.abs(i);
+      this.effects.lineStyle(5, ink, strength * 0.72).beginPath().moveTo(x + Math.cos(angle) * root, y + Math.sin(angle) * root)
         .lineTo(x + Math.cos(angle + 0.12) * (root + end) / 2, y + Math.sin(angle + 0.12) * (root + end) / 2)
         .lineTo(x + Math.cos(angle) * end, y + Math.sin(angle) * end).strokePath();
+      this.effects.lineStyle(2, yellow, strength).lineBetween(x + Math.cos(angle) * (end + 3), y + Math.sin(angle) * (end + 3),
+        x + Math.cos(angle) * (wave + 19), y + Math.sin(angle) * (wave + 19));
     }
+    if (progress < 0.45) this.flash(x + Math.cos(bearing) * radius * 0.64,
+      y + Math.sin(bearing) * radius * 0.64, (19 + 40 * reduction) * strength, bearing, strength);
   }
 
   private renderStructures(bounds: WorldBounds, quality: Quality) {
+    let mask = 0;
+    for (const [index, district] of districts.entries()) if (visible(district, bounds, 900)) mask |= 1 << index;
+    if (mask === this.districtMask && quality === this.structureQuality) return;
+    this.districtMask = mask;
+    this.structureQuality = quality;
     this.structures.clear();
     for (const prop of this.props) prop.setVisible(false);
-    if (quality === 'low') return;
     let propIndex = 0;
-    for (const { x, y, accent, mark } of districts) {
-      if (!visible({ x, y }, bounds, 980)) continue;
-      this.structures.lineStyle(12, accent, 0.14).strokeRoundedRect(x - 780, y - 560, 1560, 1120, 90);
-      this.structures.lineStyle(2, accent, 0.22).strokeRoundedRect(x - 796, y - 576, 1592, 1152, 100);
-      for (const dx of [-620, 620]) for (const dy of [-415, 415]) {
+    for (const [index, { x, y, accent, mark }] of districts.entries()) {
+      if ((mask & (1 << index)) === 0) continue;
+      this.structures.fillStyle(accent, 0.08).fillRoundedRect(x - 690, y - 440, 1380, 880, 90);
+      this.structures.lineStyle(6, accent, 0.19).strokeRoundedRect(x - 690, y - 440, 1380, 880, 90);
+      const count = quality === 'low' ? 2 : propOffsets.length;
+      for (let i = 0; i < count; i++) {
+        const [dx, dy] = propOffsets[i];
         const px = x + dx;
         const py = y + dy;
-        const frame = mark === 'cooling' || mark === 'chemical' ? 'prop-drain' : 'prop-grate';
-        this.props[propIndex++].setFrame(frame).setPosition(px, py).setDisplaySize(200, 144).setVisible(true);
+        const size = i === 0 ? 200 : i === 2 ? 132 : 158;
+        this.props[propIndex++].setFrame(propFrames[mark][i]).setPosition(px, py).setDisplaySize(size, size)
+          .setAlpha(i === 0 ? 0.57 : 0.44).setRotation(i === 1 ? -0.09 : 0).setVisible(true);
+        this.structures.fillStyle(accent, 0.11).fillRoundedRect(px - size * 0.45, py - size * 0.38, size * 0.9, size * 0.76, 18);
+        this.structures.fillStyle(yellow, 0.23);
+        for (let stripe = -2; stripe <= 2; stripe++) {
+          const start = px + stripe * 19;
+          this.structures.fillTriangle(start - 7, py + size * 0.4, start + 7, py + size * 0.4, start, py + size * 0.4 + 7);
+        }
       }
       if (quality === 'high') {
         this.structures.lineStyle(2, accent, 0.12);
@@ -211,18 +248,67 @@ export class CompetitionView {
     }
   }
 
-  private cone(magnet: Participant, aim: number, warning: boolean, warningLeft?: number) {
+  private cone(magnet: Participant, aim: number, zoom: number, reducedMotion: boolean, warningLeft?: number) {
     const { x, y } = magnet.position;
     const radius = theftConfig.reach + magnet.radius;
-    const color = warning ? rgb(brand.legacy.competition_view.color17) : rgb(brand.legacy.competition_view.color18);
-    this.effects.fillStyle(color, warning ? 0.26 : 0.13).lineStyle(3, color, 0.85);
+    const color = warningLeft === undefined ? yellow : orange;
+    this.effects.fillStyle(color, warningLeft === undefined ? 0.09 : 0.15).lineStyle(3.2, color, 0.82);
     this.effects.beginPath().moveTo(x, y);
     this.effects.arc(x, y, radius, aim - theftConfig.halfAngle, aim + theftConfig.halfAngle, false);
     this.effects.closePath().fillPath().strokePath();
-    if (warningLeft !== undefined) {
-      const travel = magnet.radius + (1 - warningLeft / theftConfig.warning) * theftConfig.reach;
-      this.effects.lineStyle(4, color, 0.85).beginPath();
-      this.effects.arc(x, y, travel, aim - theftConfig.halfAngle, aim + theftConfig.halfAngle, false).strokePath();
+    if (reducedMotion) return;
+    if (warningLeft === undefined) {
+      this.jaggedWave(x, y, aim, .5, magnet.radius + 17, 6, 2.8, .8, 8);
+      return;
+    }
+    const progress = 1 - warningLeft / theftConfig.warning;
+    const travel = magnet.radius + progress * theftConfig.reach;
+    this.jaggedWave(x, y, aim, theftConfig.halfAngle * .96, travel, 6 + magnet.radius * 0.022, 5, .92, 16);
+    const count = 4;
+    this.effects.lineStyle(3, white, 0.7);
+    for (let i = 0; i < count; i++) {
+      const angle = aim + (i / (count - 1) - .5) * 1.5;
+      const start = Math.max(magnet.radius, travel - 43 - 8 * i);
+      this.effects.lineBetween(x + Math.cos(angle) * start, y + Math.sin(angle) * start,
+        x + Math.cos(angle) * travel, y + Math.sin(angle) * travel);
+    }
+    if (progress < 0.5) {
+      const flashDistance = magnet.radius * 0.92 + 6;
+      this.flash(x + Math.cos(aim) * flashDistance, y + Math.sin(aim) * flashDistance,
+        Math.min(39 / zoom, 25 + magnet.radius * 0.21) * (1 - progress), aim, 0.95);
+    }
+  }
+
+  private jaggedWave(x: number, y: number, aim: number, span: number, radius: number, tooth: number,
+      width: number, alpha: number, segments: number): void {
+    this.effects.beginPath();
+    for (let i = 0; i <= segments; i++) {
+      const angle = aim - span + i * 2 * span / segments;
+      const distance = radius + (i % 2 === 0 ? 0 : -tooth);
+      const px = x + Math.cos(angle) * distance;
+      const py = y + Math.sin(angle) * distance;
+      if (i === 0) this.effects.moveTo(px, py);
+      else this.effects.lineTo(px, py);
+    }
+    this.effects.lineStyle(width + 6, ink, alpha).strokePath();
+    this.effects.lineStyle(width + 3, red, alpha).strokePath();
+    this.effects.lineStyle(width, yellow, alpha).strokePath();
+    this.effects.lineStyle(Math.max(1, width / 2.8), white, alpha).strokePath();
+  }
+
+  private flash(x: number, y: number, radius: number, angle: number, alpha: number): void {
+    for (const [scale, fill] of [[1, orange], [0.69, yellow], [0.41, white]]) {
+      this.effects.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const ray = angle + i * Math.PI / 8;
+        const length = radius * scale * (i % 2 === 0 ? 1 + (i % 4) * 0.07 : 0.46);
+        const px = x + Math.cos(ray) * length;
+        const py = y + Math.sin(ray) * length;
+        if (i === 0) this.effects.moveTo(px, py);
+        else this.effects.lineTo(px, py);
+      }
+      this.effects.fillStyle(fill, alpha).closePath().fillPath();
+      if (scale === 1) this.effects.lineStyle(3, ink, alpha).strokePath();
     }
   }
 }

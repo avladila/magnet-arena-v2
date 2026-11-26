@@ -1,33 +1,23 @@
-# MAGNET brand bible
+# MAGNET visual identity
 
-MAGNET is the Magnetic Industrial Playground, a toy workshop inside a warm factory. The title promise is “Pull the world toward you.” Four words guide decisions: playful, tactile, confident, fair.
+MAGNET is a top-down cartoon scrapyard. Its thick black ink, exaggerated faces, mechanical props, and comic impact poses draw on the energy of late-2000s browser arcade games. The horseshoe magnet is the central shape in the game, the app mark, and the menu artwork.
 
-| Pillar | In play |
-| --- | --- |
-| ATTRACT | Mirrored pull trails, soft field lines, and enamel ticks reward moving toward scrap. |
-| GROW | Mirrored steel plates attach as the shell grows. Keep both poles visible at every size. |
-| CONTEST | Keep warnings crisp and impartial. Use silhouettes, patterns, and icons alongside color. |
+## Drawing and color
 
-## Shape and mark
+Draw exterior character contours at about 4–6 pixels on the 128-pixel reference. Use interior strokes around 1.5–2.5 pixels. The shell, face, poles, and end caps need distinct silhouettes at gameplay size. Leave room for the eyes and use asymmetry in brows, mouths, and decals. Rivets, painted panels, nicks, and plates express both personality and growth.
 
-The Pole Pair is a horseshoe U and two round terminals. Use it for the mark, magnet, loading treatment, and sound. Build from U-arcs, circles, and hexagons on an eight-pixel grid. Use the token radii and stroke weights. Keep two pixels clear inside a 24-pixel icon. The standalone mark needs one terminal diameter of clear space and a minimum of 24 CSS pixels.
+Use saturated cel color, hard shadow planes, and crisp white or pale-yellow highlights. The shared palette starts with magnetic red `#FF3030`, electric blue `#238CFF`, toxic green `#8FFF20`, electric purple `#A740FF`, industrial yellow `#FFD323`, hot orange `#FF7820`, steel `#9CA8B5`, pure black `#000000`, and white `#FFFFFF`. Luminous pickups and magnetic energy use soft gradients. Put the strongest color and darkest ink on objects the player can act on. Give the ground broader, quieter plates, seams, and district markings. [Color tokens](../brand/tokens.json)
 
-Keep each magnet bilateral along its heading. Use six-fold devices for Flux and cryo, bilateral grates for heat, and irregular pools with symmetric warnings for water and acid. Use mirrored or radial parts for growth and effects. At thumbnail size each silhouette must survive conversion to black.
+## Characters and play
 
-## Color and materials
+Keep two colored poles and an open horseshoe jaw. Body rotation follows travel, and pupils glance in the direction of travel or toward scrap being collected. The ten face frames cover idle, movement, pickup, charge, attack, shock, injury, heat, cold, and corrosion. Growth adds steel, rivets, and layered plates across six stages. A severe wound stays visible for a short time and clears sooner as mass returns.
 
-The exact palette is in `brand/tokens.json`. Cobalt and coral identify opposing poles. Faceted charge uses crimson, a pale lightning mark, and a segmented orbit ring. Ordinary pickups share a glossy colored body and soft falloff that stays recognizable as detail recedes at distant zoom. Gold means value. Teal means safe or positive. Identify hazards by pattern and outline as well as by hue. Keep dark surfaces colorful. Verify WCAG AA for text.
+Use anticipation, quick recoil, squash and return, and small secondary marks. The arena model supplies all movement, damage, and collection geometry. Attack preparation shows direction. Release layers an inked red, yellow, and white shockwave with speed lines. Impact adds cracks, a visible reaction, shell loss, and falling salvage. The guard ring remains visually separate from the attack and the crimson energy pickup.
 
-Use a single soft upper-left light and a short lower-right grounding shadow. Enamel has one pale highlight and one shaded edge. Steel uses the five-step neutral scale. Gold has one highlight and edge. Rubber is matte. Energy has a contained halo. Frost, rust, and acid are reserved for hazards. Favor material contrast on the object and subdued floor markings.
+Energy keeps a pale lightning bolt and a segmented red orbit at distance. Gold uses an angular nugget silhouette. Scrap simplifies to glossy dots. Furnaces, crystal coolers, bubbles and warning signs, and jagged Flux fins distinguish the hazards by shape as well as color. [Artwork sheet](evidence/visual-identity/artwork.webp) · [Roster](evidence/visual-identity/roster.webp)
 
-## Type, sound, and motion
+## Interface and sound
 
-Use the bundled Open Sans Regular and ExtraBold faces. Their Apache-2.0 license and notice travel with the files. Keep the display heavy and use a legible sans for controls. Use tabular numbers and uppercase state labels. Write direct instructions such as “Hold to aim. Release to fire.”
+Use the bundled Open Sans display and regular faces. Titles use outlined, slanted display lettering. Buttons use thick borders, hard highlights, and a short press. The existing controls, ranking, charge indicator, and result stats carry the information in the interface. Use the appropriate character illustration for win and loss results.
 
-The Pole Pair sound is two consonant notes, low then high. Reuse it for confirmation, ready, milestones, and victory. Use metal clinks, enamel ticks, a soft rubber thud, and restrained gold chimes. Keep music below gameplay cues. Respect mute and gesture unlock.
-
-Use `snap` for controls, `pull` for collection, and `settle` for growth. Mechanically meaningful telegraphs survive reduced motion. Keep decorative particles below gameplay contrast and limit the flash rate.
-
-## Review
-
-Pass each asset in both themes at native size, 2×, and giant zoom. Check silhouette, grayscale, blur, contrast, light direction, token provenance, shape family, curves, and sonic motif or material. Prefer a six-fold gold glint and a symmetric charge ring. Reject an unmarked colored hazard, a second unrelated logo, or a burst that conceals a warning.
+Keep the two-note pole cue and workshop sound palette. Reduced motion keeps the expression, ability state, key telegraphs, and hazard outlines visible. [Implementation and verification](visual-identity.md)

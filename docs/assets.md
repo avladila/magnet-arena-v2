@@ -2,20 +2,21 @@
 
 | Asset | Source | Runtime |
 | --- | --- | --- |
-| Pole Pair, favicon, app icon, hero and social graphics | Original procedural artwork in `scripts/generate-brand-art.py` using `brand/tokens.json`. Hero and social art composite the real player atlas sprite. | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/social.webp` |
-| Twenty magnets and six shells each | Original mirrored plating, fasteners and enamel poles. The roster supplies names and accent colors. Stages start at 20, 50, 100, 400, 1,500 and 4,352 mass. | `public/magnets.webp` and `public/magnets.json` |
-| Scrap, gold, energy, hazards, salvage and props | Original vector-to-raster shapes with ten themed, glossy scrap colors, a faceted gold ingot, and a crimson bolt cell with its own orbit. Salvage has four luminous value tiers. | `public/workshop.webp` and `public/workshop.json` |
-| Hazard boundaries, floor markings and attack warnings | Presentation geometry aligned to model radii and bearings | Phaser Graphics |
-| Soundtrack | Original 16 bars at the token tempo | `public/soundtrack.ogg` |
-| Sound effects | Tuned Web Audio oscillator envelopes and the two-note Pole Pair interval | Generated in `src/audio.ts` from the token definitions |
-| RC1 source illustration | Original ImageGen illustration retained in `art-source/title.webp` for provenance | Archived |
+| App mark, hero, social, victory, and defeat art | Original cel art composited at illustration resolution from the game character designs | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/social.webp`, `public/victory.webp`, `public/defeat.webp` |
+| Twenty characters, six shells each | Artwork uses the shared color tokens, roster accents, and individual decals | `public/magnets.webp` and `public/magnets.json` |
+| Ten expressions per character | Painted eyes, brows and mouths with two authored pupil anchors per face | `public/faces.webp`, `public/faces.json`, and `brand/face-anchors.json` |
+| Hazards and scenery | Inked furnaces, coolers, puddles, spikes, signs, drains, pipes, presses, and vents | `public/scenery.webp` and `public/scenery.json` |
+| Pickups, salvage, and status marks | Ten luminous scrap colors, gold nuggets, crimson charge cells with an orbit, four salvage tiers, pupils, and reaction effects | `public/workshop.webp` and `public/workshop.json` |
+| Field, footprint, and shockwave | Vector commands aligned with model radii and bearings | Phaser Canvas |
+| Soundtrack and cues | Original 16-bar loop and Web Audio envelopes with two-note confirmations | `public/soundtrack.ogg`, `src/audio.ts`, `brand/tokens.json` |
+| Early title illustration | Original ImageGen source illustration retained for provenance | `art-source/title.webp` |
 
-The runtime has no hotlinked assets. UI bundles Latin Open Sans Regular and ExtraBold (Apache-2.0). The license and source notice are in `public/fonts/`. The atlases and asset manifest are reproducible with Python and Pillow.
+The current artwork ships with the game. It is generated from `scripts/arcade_art.py`, `scripts/generate-brand-art.py`, `brand/roster.json`, and `brand/tokens.json`. The local Open Sans Regular and ExtraBold faces include their Apache-2.0 license in `public/fonts/`.
 
 ```sh
-python scripts/generate-brand-art.py
+python -B scripts/generate-brand-art.py
 python scripts/generate-soundtrack.py
 ffmpeg -y -i /tmp/magnet-soundtrack.wav -c:a libvorbis -q:a 3 public/soundtrack.ogg
 ```
 
-See the [brand bible](brand.md), [RC4 roster sheet](evidence/rc4/roster.webp), and [RC3 pickup scale sheet](evidence/rc3/scale-contact.webp).
+[Asset manifest](../brand/asset-manifest.json) · [Visual identity](brand.md) · [Art sheet](evidence/visual-identity/artwork.webp) · [Roster sheet](evidence/visual-identity/roster.webp)

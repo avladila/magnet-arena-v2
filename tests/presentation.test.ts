@@ -378,7 +378,8 @@ test('the buffered floor reuses world-anchored geometry, recolors and draws no p
 
   const corner = { left: arena.width - 1040, top: arena.height - 740, right: arena.width, bottom: arena.height };
   floor.render(corner, themes.light);
-  const [background, ...dots] = art.rectangles;
+  const [background, ...details] = art.rectangles;
+  const dots = details.filter(({ width, height }) => width === 3 && height === 3);
   assert.equal(background.x + background.width, arena.width);
   assert.equal(background.y + background.height, arena.height);
   assert.ok(dots.length > 0 && dots.length < 300);
@@ -386,6 +387,9 @@ test('the buffered floor reuses world-anchored geometry, recolors and draws no p
     assert.equal((x + 1.5) % arenaArt.gridSpacing, 40);
     assert.equal((y + 1.5) % arenaArt.gridSpacing, 40);
   }
+  const plates = details.filter(({ width, height }) => width > 30 && height > 30);
+  assert.ok(plates.length > 0 && plates.every(({ x, y, width, height }) => x >= 0 && y >= 0 &&
+    x + width < arena.width && y + height < arena.height));
   floor.render(corner, themes.dark);
   assert.equal(art.clears, 4);
   assert.equal(art.fills[0], themes.dark.arena.background);

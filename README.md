@@ -39,7 +39,7 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-See the [RC4 verification report](docs/rc4.md) for combat, population, performance and browser evidence.
+See the [visual identity verification](docs/visual-identity.md) for the artwork and browser evidence. The [RC4 report](docs/rc4.md) covers combat and population.
 
 ## Growth and balance
 

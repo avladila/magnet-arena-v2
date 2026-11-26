@@ -354,3 +354,36 @@ test('live release shrinks a giant, launches salvage and reports a guarded follo
   await expect(page.locator('#status')).toHaveText('ATTACK GUARDED');
   await expect(page.locator('#energy-readout')).toHaveText('65%');
 });
+
+test('cartoon expressions follow a real attack and both Arena outcomes display matching art', async ({ page }) => {
+  const errors: Error[] = [];
+  page.on('pageerror', (error) => errors.push(error));
+  await inspectScene(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Play Arena' }).click();
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    scene.clock.countdown = 0;
+    scene.model.player.combat.energy = 100;
+  });
+  const mood = () => page.evaluate(() => Reflect.get(window, 'trainingScene').magnet.face.frame.name);
+  await expect.poll(mood).toBe('player-ready');
+  await page.keyboard.down('Space');
+  await expect.poll(mood).toBe('player-attack');
+  await page.keyboard.up('Space');
+  await expect(page.locator('#attack')).toHaveText('Cooling');
+  for (const [outcome, victory] of [['victory', true], ['defeat', false]] as const) {
+    await page.evaluate((win) => {
+      const scene = Reflect.get(window, 'trainingScene');
+      const participant = win ? scene.model.player : scene.model.bots[0];
+      participant.mass = participant.combat.highest = 8500;
+      scene.clock.countdown = 0;
+      scene.clock.elapsed = 299.999;
+    }, victory);
+    await expect(page.locator('#menu')).toHaveAttribute('data-outcome', outcome);
+    const art = await page.locator('.menu-art').evaluate((element) => getComputedStyle(element, '::before').backgroundImage);
+    expect(art).toContain(outcome + '.webp');
+    if (victory) await page.getByRole('button', { name: 'Play Again' }).click();
+  }
+  expect(errors).toEqual([]);
+});

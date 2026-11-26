@@ -14,4 +14,7 @@ export function installBrand(root: HTMLElement): void {
   for (const [name, value] of Object.entries(brand.roles)) {
     root.style.setProperty('--brand-' + name, value);
   }
+  for (const [name, value] of Object.entries(brand.arcade)) {
+    root.style.setProperty('--arcade-' + name, value);
+  }
 }

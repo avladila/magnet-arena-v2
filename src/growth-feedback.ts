@@ -1,6 +1,7 @@
-import { brand } from './brand';
+import { brand, color } from './brand';
 import type Phaser from 'phaser';
 import { pullMultiplier } from './combat';
+import { theftConfig } from './competition-config';
 import { growthFeedback, scrapConfig } from './config';
 import { attractionReach } from './growth';
 import type { Player } from './movement';
@@ -77,6 +78,16 @@ export class GrowthFeedbackView {
       if (player.combat.heat < 1 && radius - player.radius > 16) {
         this.rings.lineStyle(1, palette.field.edge, 0.14 + flash * 0.15);
         this.arcRing(radius - 8, -this.spin, 12);
+      }
+      if (player.combat.energy === theftConfig.energy && player.combat.attack.phase !== 'cooldown') {
+        this.rings.lineStyle(2.5, color(brand.arcade.yellow), 0.78).beginPath();
+        for (let i = 0; i < 4; i++) {
+          const angle = this.spin + i * Math.PI / 2;
+          this.rings.moveTo(radius * Math.cos(angle - .05), radius * Math.sin(angle - .05));
+          this.rings.lineTo((radius - 8) * Math.cos(angle), (radius - 8) * Math.sin(angle));
+          this.rings.lineTo(radius * Math.cos(angle + .07), radius * Math.sin(angle + .07));
+        }
+        this.rings.strokePath();
       }
     }
 

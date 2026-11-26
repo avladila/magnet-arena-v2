@@ -11,7 +11,7 @@ function firstMarker(minimum: number, origin: number, spacing: number): number {
 export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: ThemePalette, bounds: WorldBounds) {
   const { left, top, right, bottom } = bounds;
   art.clear().fillStyle(colors.background).fillRect(left, top, right - left, bottom - top);
-  art.fillStyle(colors.grid, 0.68);
+  art.fillStyle(colors.grid, 0.56);
   const { gridSpacing, referenceSpacing, referenceSize } = arenaArt;
   for (let x = firstMarker(left, gridSpacing / 2, gridSpacing); x < right; x += gridSpacing) {
     for (let y = firstMarker(top, gridSpacing / 2, gridSpacing); y < bottom; y += gridSpacing) {
@@ -40,6 +40,20 @@ export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: T
     }
   }
   art.strokePath();
+
+  // Raised plates and small service seams are anchored to the world, like the reference marks.
+  for (let x = firstMarker(left - referenceSpacing, 32, referenceSpacing); x < right; x += referenceSpacing) {
+    for (let y = firstMarker(top - referenceSpacing, 28, referenceSpacing); y < bottom; y += referenceSpacing) {
+      const width = Math.min(referenceSpacing - 32, arena.width - x - 20);
+      const height = Math.min(referenceSpacing - 36, arena.height - y - 20);
+      if (width <= 0 || height <= 0) continue;
+      art.fillStyle(colors.grid, 0.24).fillRect(x, y, width, height);
+      art.fillStyle(colors.markings, 0.16).fillRect(x, y + height, width, 3);
+      art.fillRect(x + width, y + 8, 3, height - 8);
+      art.fillStyle(colors.markings, 0.29).fillRect(x + 8, y + 8, 5, 5);
+      art.fillRect(x + width - 13, y + height - 13, 5, 5);
+    }
+  }
 }
 
 export class ArenaFloor {
