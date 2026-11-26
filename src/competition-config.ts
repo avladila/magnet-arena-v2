@@ -15,6 +15,6 @@ export const hazardConfig = {
 
 export const tacticsConfig = {
   easy: { search: 440, decision: 4.0, pursuit: 100, arming: 0.65, reconsider: 1.6, safety: 0 },
-  normal: { search: 610, decision: 2.85, pursuit: 140, arming: 0.35, reconsider: 0.8, safety: 50 },
+  normal: { search: 610, decision: 3.65, pursuit: 140, arming: 0.35, reconsider: 0.8, safety: 50 },
   hard: { search: 720, decision: 2.15, pursuit: 120, arming: 0.17, reconsider: 0.4, safety: 95 },
 } as const;
