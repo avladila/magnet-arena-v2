@@ -1,3 +1,4 @@
+import { installBrand } from './brand';
 import { GameAudio } from './audio';
 import { CompetitionView } from './competition-view';
 import { matchConfig } from './competition-config';
@@ -27,6 +28,7 @@ const mass = document.querySelector<HTMLElement>('#mass')!;
 const themeButton = document.querySelector<HTMLButtonElement>('#theme-toggle')!;
 const theme = localThemePreference();
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+installBrand(document.documentElement);
 applyThemeToPage(themeButton, theme);
 stick.style.setProperty('--joystick-size', touch.radius * 2 + 'px');
 

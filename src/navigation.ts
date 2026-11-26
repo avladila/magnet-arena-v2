@@ -1,3 +1,4 @@
+import { brand } from './brand';
 import type { ArenaModel } from './arena-model';
 import { arena } from './config';
 import { districtAt, districts } from './districts';
@@ -37,10 +38,10 @@ export class Navigation {
     for (const bot of model.bots) {
       const { x, y } = bot.position;
       if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) {
-        place(x, y, 3.5, '#d65c67');
+        place(x, y, 3.5, brand.legacy.navigation.color1);
       }
     }
-    if (model.signal) place(model.signal.x, model.signal.y, 5, '#ebbd68');
-    place(position.x, position.y, 4, '#a2f8dd');
+    if (model.signal) place(model.signal.x, model.signal.y, 5, brand.legacy.navigation.color2);
+    place(position.x, position.y, 4, brand.legacy.navigation.color3);
   }
 }

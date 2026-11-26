@@ -1,3 +1,4 @@
+import { brand, color as rgb } from './brand';
 import type Phaser from 'phaser';
 import type { ArenaModel } from './arena-model';
 import { theftConfig } from './competition-config';
@@ -8,7 +9,7 @@ import type { Participant, Point } from './movement';
 import type { WorldBounds } from './particles';
 
 const colors: Record<HazardKind, number> = {
-  flux: 0x6947bf, heat: 0xe86631, water: 0x2082ba, acid: 0x738c13, cold: 0x66bddb,
+  flux: rgb(brand.legacy.competition_view.color1), heat: rgb(brand.legacy.competition_view.color2), water: rgb(brand.legacy.competition_view.color3), acid: rgb(brand.legacy.competition_view.color4), cold: rgb(brand.legacy.competition_view.color5),
 };
 
 function visible({ x, y }: Point, bounds: WorldBounds, radius: number) {
@@ -29,7 +30,7 @@ export class CompetitionView {
     this.damageLabels = Array.from({ length: 5 }, () => ({
       text: scene.add.text(0, 0, '', {
         fontFamily: 'system-ui, sans-serif', fontSize: '17px', fontStyle: 'bold',
-        color: '#ffe9e8', stroke: '#7c1736', strokeThickness: 4,
+        color: brand.legacy.competition_view.color6, stroke: brand.legacy.competition_view.color7, strokeThickness: 4,
       }).setOrigin(0.5).setDepth(6).setVisible(false),
       total: 0,
       elapsed: Infinity,
@@ -44,7 +45,7 @@ export class CompetitionView {
     for (const site of model.hazards?.sites ?? []) {
       const { x, y, radius, kind } = site;
       if (!visible(site, bounds, radius + 15)) continue;
-      const color = kind === 'flux' && model.hazards?.discharged(site) ? 0x60766f : colors[kind];
+      const color = kind === 'flux' && model.hazards?.discharged(site) ? rgb(brand.legacy.competition_view.color8) : colors[kind];
       this.floor.fillStyle(color, 0.24).fillCircle(x, y, radius);
       this.floor.lineStyle(4, color, 0.85).strokeCircle(x, y, radius);
       if (kind === 'flux' || kind === 'cold') {
@@ -54,7 +55,7 @@ export class CompetitionView {
           this.floor.fillTriangle(x, y, x + radius * Math.cos(a), y + radius * Math.sin(a),
             x + radius * 0.42 * Math.cos(a + 0.47), y + radius * 0.42 * Math.sin(a + 0.47));
         }
-        this.floor.fillStyle(0xeafafa, 0.85).fillCircle(x, y, radius * 0.14);
+        this.floor.fillStyle(rgb(brand.legacy.competition_view.color9), 0.85).fillCircle(x, y, radius * 0.14);
       } else if (kind === 'heat') {
         for (let row = -3; row <= 3; row++) {
           this.floor.lineStyle(9, color, 0.72).lineBetween(x - 100, y + row * 24, x + 100, y + row * 24);
@@ -72,13 +73,13 @@ export class CompetitionView {
       const lift = chunk.age < theftConfig.flight ? 28 * Math.sin(Math.PI * chunk.age / theftConfig.flight) : 0;
       const size = Math.min(14, 5 + Math.sqrt(chunk.value));
       const y = chunk.y - lift;
-      this.effects.fillStyle(0x15362f, 0.3).fillEllipse(chunk.x, chunk.y + 3, size * 2, size);
-      this.effects.fillStyle(0x41685d).fillTriangle(chunk.x - size, y, chunk.x + size, y - size, chunk.x + size * 0.6, y + size);
-      this.effects.lineStyle(2, 0xdff8d6).lineBetween(chunk.x - size, y, chunk.x + size, y - size);
+      this.effects.fillStyle(rgb(brand.legacy.competition_view.color10), 0.3).fillEllipse(chunk.x, chunk.y + 3, size * 2, size);
+      this.effects.fillStyle(rgb(brand.legacy.competition_view.color11)).fillTriangle(chunk.x - size, y, chunk.x + size, y - size, chunk.x + size * 0.6, y + size);
+      this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color12)).lineBetween(chunk.x - size, y, chunk.x + size, y - size);
     }
     if (model.signal && visible(model.signal, bounds, 160)) {
-      this.effects.lineStyle(4, 0x117d67, 0.8).strokeCircle(model.signal.x, model.signal.y, 120);
-      this.effects.lineStyle(2, 0x117d67, 0.45).strokeCircle(model.signal.x, model.signal.y, 150);
+      this.effects.lineStyle(4, rgb(brand.legacy.competition_view.color13), 0.8).strokeCircle(model.signal.x, model.signal.y, 120);
+      this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color13), 0.45).strokeCircle(model.signal.x, model.signal.y, 150);
     }
     for (const [index, participant] of model.participants.entries()) {
       this.renderDamage(index, participant, seconds, zoom, bounds, reducedMotion);
@@ -87,7 +88,7 @@ export class CompetitionView {
       if (attack.phase === 'armed') this.cone(participant, participant === model.player ? aim : participant.heading, false);
       if (attack.phase === 'warning') this.cone(participant, attack.bearing, true, attack.remaining);
       if (participant.combat.energy === 100 && attack.phase !== 'cooldown') {
-        this.effects.lineStyle(2, 0xd44c66, 0.78)
+        this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color14), 0.78)
           .strokeCircle(participant.position.x, participant.position.y, participant.radius + 11);
       }
       if (participant.combat.brittle || participant.combat.heat > 0.25) {
@@ -95,7 +96,7 @@ export class CompetitionView {
           .strokeCircle(participant.position.x, participant.position.y, participant.radius + 5);
       }
     }
-    if (tracked) this.effects.lineStyle(4, 0xe24a61).strokeCircle(tracked.position.x, tracked.position.y, tracked.radius + 12);
+    if (tracked) this.effects.lineStyle(4, rgb(brand.legacy.competition_view.color15)).strokeCircle(tracked.position.x, tracked.position.y, tracked.radius + 12);
   }
 
   reset(): void {
@@ -124,7 +125,7 @@ export class CompetitionView {
     label.text.setPosition(x, y - magnet.radius - (18 + rise) / zoom).setScale(1 / zoom)
       .setAlpha(reducedMotion ? 1 : Math.min(1, (0.8 - label.elapsed) * 3));
     if (!reducedMotion && label.elapsed < 0.25) {
-      this.effects.lineStyle(3, 0xd84d63, 0.8 * (1 - label.elapsed / 0.25))
+      this.effects.lineStyle(3, rgb(brand.legacy.competition_view.color16), 0.8 * (1 - label.elapsed / 0.25))
         .strokeCircle(x, y, magnet.radius + 6 + label.elapsed * 52);
     }
   }
@@ -161,7 +162,7 @@ export class CompetitionView {
   private cone(magnet: Participant, aim: number, warning: boolean, warningLeft?: number) {
     const { x, y } = magnet.position;
     const radius = theftConfig.reach + magnet.radius;
-    const color = warning ? 0xc02645 : 0x1e7463;
+    const color = warning ? rgb(brand.legacy.competition_view.color17) : rgb(brand.legacy.competition_view.color18);
     this.effects.fillStyle(color, warning ? 0.26 : 0.13).lineStyle(3, color, 0.85);
     this.effects.beginPath().moveTo(x, y);
     this.effects.arc(x, y, radius, aim - theftConfig.halfAngle, aim + theftConfig.halfAngle, false);

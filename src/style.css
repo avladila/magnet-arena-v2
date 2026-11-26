@@ -1,7 +1,7 @@
 :root {
   color-scheme: light;
   font-family: system-ui, sans-serif;
-  background: var(--arena-background, #def5ee);
+  background: var(--arena-background, var(--legacy-color1));
   color: var(--hud-text);
 }
 
@@ -163,7 +163,7 @@ h1 span { color: var(--title-accent); }
 [hidden] { display: none !important; }
 button, select, input { font: inherit; }
 button { cursor: pointer; }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #12c9af; outline-offset: 3px; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--legacy-color2); outline-offset: 3px; }
 #pause, #attack {
   color: inherit; background: var(--hud-surface); border: 1px solid var(--hud-border);
   border-radius: .7rem; min-width: 44px; min-height: 44px; pointer-events: auto;
@@ -176,7 +176,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 }
 .field-hud { margin-top: .5rem; width: max-content; font: 700 .78rem system-ui; }
 .field-hud label { display: flex; justify-content: space-between; gap: 1rem; }
-#energy { width: 8rem; height: .65rem; accent-color: #e55361; }
+#energy { width: 8rem; height: .65rem; accent-color: var(--legacy-color3); }
 #status:empty { display: none; }
 #status { margin-top: .25rem; }
 #ranking { position: absolute; right: 0; top: 50px; list-style: none; font: 700 .78rem/1.6 ui-monospace, monospace; }
@@ -185,20 +185,20 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   position: absolute; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom));
   z-index: 3; min-width: 88px; min-height: 55px; touch-action: none; font-weight: 800;
 }
-#attack[data-ready="true"] { background: #a92743; color: white; }
+#attack[data-ready="true"] { background: var(--legacy-color4); color: white; }
 #countdown {
   position: absolute; z-index: 4; inset: 36% 0 auto; text-align: center; pointer-events: none;
   color: var(--hud-text); font: 950 clamp(3rem, 13vw, 9rem)/1 system-ui; text-shadow: 0 2px 18px var(--hud-surface);
 }
 .menu {
-  box-sizing: border-box; padding: 0; border: 1px solid #54716b; border-radius: 1.25rem;
+  box-sizing: border-box; padding: 0; border: 1px solid var(--legacy-color5); border-radius: 1.25rem;
   width: min(45rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto;
-  background: #102523; color: #edf9ef; box-shadow: 0 32px 95px #07191580;
+  background: var(--legacy-color6); color: var(--legacy-color7); box-shadow: 0 32px 95px var(--legacy-color8);
 }
-.menu::backdrop { background: #061d20a8; }
+.menu::backdrop { background: var(--legacy-color9); }
 .menu-art {
   height: clamp(6rem, 26vh, 16rem);
-  position: relative; overflow: hidden; background: #143b39;
+  position: relative; overflow: hidden; background: var(--legacy-color10);
 }
 .menu-art::before {
   content: ''; position: absolute; inset: 0;
@@ -215,13 +215,13 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .menu:not([data-page="home"]) .menu-art { display: none; }
 .menu-content { padding: clamp(1rem, 4vw, 2.25rem); }
 .menu h2 { margin: 0; font-size: clamp(2rem, 7vw, 5rem); font-weight: 950; letter-spacing: -.075em; line-height: 1; }
-.menu h2 span { color: #58ddbd; }
-.menu p { color: #c1d5ca; line-height: 1.5; }
+.menu h2 span { color: var(--legacy-color11); }
+.menu p { color: var(--legacy-color12); line-height: 1.5; }
 .menu button, .menu select {
-  background: #1d3e38; color: #edf9ef; border: 1px solid #51746b; border-radius: .55rem;
+  background: var(--legacy-color13); color: var(--legacy-color7); border: 1px solid var(--legacy-color14); border-radius: .55rem;
   padding: .55rem .8rem; min-height: 44px; font-weight: 750;
 }
-.menu button.primary { background: #93f2d1; color: #0d3028; border-color: #93f2d1; }
+.menu button.primary { background: var(--legacy-color15); color: var(--legacy-color16); border-color: var(--legacy-color15); }
 .menu-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
 .setting { display: flex; max-width: 22rem; align-items: center; justify-content: space-between; gap: 1rem; margin: .75rem 0; }
 #records { font: .78rem ui-monospace, monospace; }
@@ -252,6 +252,6 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 }
 #arena #minimap {
   position: static; width: min(180px, 42vw); height: auto; border-radius: .5rem;
-  border: 1px solid #66867f; background: #183633; outline: 2px solid #b4d2c3a8;
+  border: 1px solid var(--legacy-color17); background: var(--legacy-color18); outline: 2px solid var(--legacy-color19);
 }
 #district { font-size: .72rem; margin-top: .25rem; }

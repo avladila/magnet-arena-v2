@@ -1,3 +1,4 @@
+import { brand, color as rgb } from './brand';
 import type Phaser from 'phaser';
 import { viewConfig } from './config';
 import type { Collection, ResourceKind, Scrap, WorldBounds } from './particles';
@@ -35,9 +36,9 @@ export class ParticleView {
       const kind = kindOf?.(scrap);
       if (kind === 'gold' || kind === 'energy') {
         const gold = kind === 'gold';
-        this.pieces.fillStyle(gold ? 0xb57222 : 0x9e2544).fillCircle(x, y, 7);
-        this.pieces.fillStyle(gold ? 0xffd064 : 0xff6476).fillTriangle(x - 6, y, x, y - 7, x + 6, y);
-        this.pieces.fillStyle(0xfffbe8).fillCircle(x, y - 2, 1.8);
+        this.pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color1) : rgb(brand.legacy.particle_view.color2)).fillCircle(x, y, 7);
+        this.pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color3) : rgb(brand.legacy.particle_view.color4)).fillTriangle(x - 6, y, x, y - 7, x + 6, y);
+        this.pieces.fillStyle(rgb(brand.legacy.particle_view.color5)).fillCircle(x, y - 2, 1.8);
         continue;
       }
       if (kindOf) this.drawScrap(x, y, colorIndex, palette);
@@ -65,7 +66,7 @@ export class ParticleView {
       const extent = radius + glintWidth / 2;
       if (effect.x + extent < view.left || effect.x - extent > view.right ||
           effect.y + extent < view.top || effect.y - extent > view.bottom) continue;
-      const color = effect.kind === 'gold' ? 0xe5a32b : effect.kind === 'energy' ? 0xe74e67 : palette.scrap[effect.colorIndex];
+      const color = effect.kind === 'gold' ? rgb(brand.legacy.particle_view.color6) : effect.kind === 'energy' ? rgb(brand.legacy.particle_view.color7) : palette.scrap[effect.colorIndex];
       this.glints.lineStyle(glintWidth, color, 0.8 * opacity);
       this.glints.strokeCircle(effect.x, effect.y, radius);
     }

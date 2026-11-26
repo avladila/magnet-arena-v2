@@ -1,3 +1,4 @@
+import { brand, color } from './brand';
 import type Phaser from 'phaser';
 import { arena, arenaArt, playerConfig } from './config';
 import type { WorldBounds } from './particles';
@@ -68,18 +69,18 @@ export function drawMagnet(scene: Phaser.Scene, accent?: number) {
   const normalization = playerConfig.radius / (accent === undefined ? backingRadius : accentRadius);
   art.scaleCanvas(normalization, normalization);
   if (accent !== undefined) art.fillStyle(accent).fillCircle(0, 0, accentRadius);
-  art.fillStyle(0xf5fffa).fillCircle(0, 0, backingRadius);
-  art.fillStyle(0x397b74, 0.18).fillRoundedRect(-26, -21, 52, 46, 18);
-  art.fillStyle(0x23494d).fillRoundedRect(-26, -23, 50, 46, 18);
-  art.fillStyle(0xeb6170).fillRoundedRect(-23, -20, 43, 17, {
+  art.fillStyle(color(brand.legacy.art.color1)).fillCircle(0, 0, backingRadius);
+  art.fillStyle(color(brand.legacy.art.color2), 0.18).fillRoundedRect(-26, -21, 52, 46, 18);
+  art.fillStyle(color(brand.legacy.art.color3)).fillRoundedRect(-26, -23, 50, 46, 18);
+  art.fillStyle(color(brand.legacy.art.color4)).fillRoundedRect(-23, -20, 43, 17, {
     tl: 11, tr: 4, bl: 0, br: 2,
   });
-  art.fillStyle(0x427cd5).fillRoundedRect(-23, 3, 43, 17, {
+  art.fillStyle(color(brand.legacy.art.color5)).fillRoundedRect(-23, 3, 43, 17, {
     tl: 0, tr: 2, bl: 11, br: 4,
   });
-  art.fillStyle(0xffa4ac).fillRoundedRect(12, -20, 12, 17, 3);
-  art.fillStyle(0x9bc4ff).fillRoundedRect(12, 3, 12, 17, 3);
+  art.fillStyle(color(brand.legacy.art.color6)).fillRoundedRect(12, -20, 12, 17, 3);
+  art.fillStyle(color(brand.legacy.art.color7)).fillRoundedRect(12, 3, 12, 17, 3);
   // The open end of the horseshoe faces local +X.
-  art.fillStyle(0xf5fffa).fillRoundedRect(-6, -4, 32, 8, 4);
+  art.fillStyle(color(brand.legacy.art.color1)).fillRoundedRect(-6, -4, 32, 8, 4);
   return art;
 }
