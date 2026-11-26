@@ -89,7 +89,7 @@ export class BotAI {
         const charging = role && bot.combat.energy < theftConfig.energy;
         const energy = profile ? (charging ? profile.charge * role : bot.combat.energy < theftConfig.energy ? profile.energy - 1 : 0) : 0;
         const target = this.pickRoute(bot, arrival, charging ? search * 1.22 : search, decision, energy,
-          profile ? profile.density : collector.densityWeight);
+          profile ? profile.density : collector.densityWeight, profile ? profile.overrun : Infinity);
         if (target) {
           bot.target = target;
         } else if (!onRoute || bot.target?.kind === 'region') {
@@ -105,7 +105,7 @@ export class BotAI {
   }
 
   private pickRoute(bot: Bot, arrival: number, search: number, decision: number, energy: number,
-      densityWeight: number): BotTarget | undefined {
+      densityWeight: number, overrun: number): BotTarget | undefined {
     const { x, y } = bot.position;
     const forwardX = Math.cos(bot.heading);
     const forwardY = Math.sin(bot.heading);
@@ -135,7 +135,7 @@ export class BotAI {
         // Continue through the cell so nearby pickups do not end the route.
         // Reject directions without enough room to commit before the wall.
         const travel = Math.min(
-          Math.max(preferred, distance),
+          Math.max(minimum, distance, Math.min(preferred, distance + overrun)),
           distanceToWall(x, ux, arena.width, margin),
           distanceToWall(y, uy, arena.height, margin),
         );

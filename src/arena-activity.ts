@@ -1,5 +1,5 @@
 import { activityConfig as config } from './competition-config';
-import { arena, playerConfig } from './config';
+import { arena } from './config';
 import type { Participant, Point } from './movement';
 import type { Scrap } from './particles';
 import { seedRandom } from './random';
@@ -94,9 +94,9 @@ export class ArenaActivity {
       for (const { position } of participants) {
         const d = distanceSquared(point, position);
         if (d < band) present++;
-        if (d > (playerConfig.speed * 5.75) ** 2) continue;
+        if (d > config.signalTravel ** 2) continue;
         competitors++;
-        approach += Math.max(0, 1 - d / (playerConfig.speed * 5.75) ** 2);
+        approach += Math.max(0, 1 - d / config.signalTravel ** 2);
       }
       const score = count + Math.min(7, competitors) * 2.8 + Math.min(4, approach) * 2.3 - Math.max(0, present - 2) * 3 + this.random() * 3;
       this.scratch.push({ point, score, competitors });

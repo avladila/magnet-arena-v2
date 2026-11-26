@@ -16,14 +16,14 @@ export const hazardConfig = {
 
 
 export const tacticsConfig = {
-  easy: { search: 380, decision: 5.4, density: 0.10, gold: 1, charge: 7, energy: 1,
+  easy: { search: 380, decision: 5.4, overrun: 1160, density: 0.10, gold: 1, charge: 7, energy: 1,
     evaluate: 0.40, pursuit: 65, chase: 1.55, arming: 0.72, reconsider: 2, safety: 16,
     aimGap: 192, lead: 0, reward: 38, threat: 0.34, salvageTravel: 0.76 },
-  normal: { search: 655, decision: 3.4, density: 0.28, gold: 2.6, charge: 10, energy: 1.8,
+  normal: { search: 655, decision: 3.4, overrun: 760, density: 0.28, gold: 2.6, charge: 10, energy: 1.8,
     evaluate: 0.25, pursuit: 170, chase: 2.4, arming: 0.35, reconsider: 0.9, safety: 50,
     aimGap: 215, lead: 0.09, reward: 24, threat: 0.25, salvageTravel: 0.91 },
-  hard: { search: 870, decision: 2.55, density: 0.34, gold: 5.5, charge: 13, energy: 2.4,
-    evaluate: 0.18, pursuit: 235, chase: 3.1, arming: 0.20, reconsider: 0.7, safety: 85,
+  hard: { search: 910, decision: 2.55, overrun: 480, density: 0.34, gold: 5.5, charge: 13, energy: 2.4,
+    evaluate: 0.18, pursuit: 235, chase: 2.4, arming: 0.20, reconsider: 0.7, safety: 85,
     aimGap: 236, lead: 0.18, reward: 32, threat: 0.19, salvageTravel: 1 },
 } as const;
 
@@ -54,7 +54,7 @@ export const navigationConfig = {
 } as const;
 
 export const activityConfig = {
-  count: 3, radius: 500, spacing: 1780, lifetime: 33, lifetimeJitter: 9, fade: 6, streamWeight: 0.32,
+  count: 4, radius: 500, spacing: 2050, lifetime: 32, lifetimeJitter: 11, fade: 6, streamWeight: 0.32,
   firstSignal: 23, signalJitter: 5, signalInterval: 38, signalDuration: 24, signalMinimum: 18, depleted: 9,
-  signalTravel: 2500, hotspotTravel: 1750, signalFollowers: 7, hotspotFollowers: 4,
+  signalTravel: 2240, hotspotTravel: 1350, signalFollowers: 6, hotspotFollowers: 4,
 } as const;
