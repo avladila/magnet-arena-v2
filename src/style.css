@@ -1,9 +1,9 @@
 @font-face {
-  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-regular.woff2') format('woff2');
+  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-regular.woff') format('woff');
   font-weight: 400 600; font-display: swap;
 }
 @font-face {
-  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-display.woff2') format('woff2');
+  font-family: 'Magnet Sans'; src: url('/fonts/open-sans-display.woff') format('woff');
   font-weight: 650 950; font-display: swap;
 }
 :root {
