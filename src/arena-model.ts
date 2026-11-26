@@ -1,11 +1,12 @@
-import { angleBetween, arm, bearingTo, cancelArm, gapBetween, legacyTheftDamage, release, resolveTheft,
-  Salvage, salvageEligible, shell, theftDamage, type CombatRules, type Debris } from './combat';
+import { angleBetween, arm, bearingTo, cancelArm, forecastTheft, gapBetween, release, resolveTheft,
+  Salvage, salvageEligible, shell, type CombatRules, type Debris } from './combat';
 import { activityConfig, botTactics, navigationConfig, tacticsConfig, theftConfig } from './competition-config';
 import { ArenaActivity, type Hotspot, type SalvageSignal } from './arena-activity';
 import { playerConfig, populationConfig, resourceBudget } from './config';
-import { physicalScaleForMass } from './growth';
+import { attractionReach, physicalScaleForMass } from './growth';
 import { Hazards } from './hazards';
-import type { Attack } from './combat-state';
+import { pullMultiplier, type Attack } from './combat-state';
+import { debrisPullSpeed, debrisRadius } from './salvage';
 import { Tutorial } from './tutorial';
 import { rankings, type Difficulty } from './match';
 import type { Point } from './movement';
@@ -23,6 +24,8 @@ type BotTactics = {
   armedFor?: Participant;
   victim?: Participant;
   pursuing: boolean;
+  chase?: { victim: Participant; until: number; gap: number; progressAt: number };
+  ignored?: { victim: Participant; until: number };
   opportunity?: { area: Opportunity; point: Point };
   visited?: Opportunity;
   dodge?: { attack: Attack; target: Point };
@@ -54,10 +57,6 @@ export class ArenaModel {
   private readonly places = new Map<Participant, number>();
   private nextRanking = 0;
   private readonly kindOf = (scrap: Scrap) => this.particles.kind(scrap);
-  private readonly hardWeight = (scrap: Scrap) => {
-    const kind = this.kindOf(scrap);
-    return kind === 'gold' ? 5 : kind === 'energy' ? 2 : 1;
-  };
 
   constructor(seed: number, private readonly difficulty?: Difficulty, tutorial = false,
       options: { participantCount?: number; combat?: CombatRules } = {}) {
@@ -85,8 +84,7 @@ export class ArenaModel {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
     if (!this.tutorial) this.elapsedSinceReplenish += seconds;
     if (!this.tutorial) {
-      this.botAI.update(this.bots, this.particles.slots, seconds, this.difficulty,
-        this.difficulty === 'hard' ? this.hardWeight : undefined, this.populated ? this.kindOf : undefined);
+      this.botAI.update(this.bots, this.particles.slots, seconds, this.difficulty, this.populated ? this.kindOf : undefined);
     }
     advance(this.player, steering, seconds);
     this.elapsed += seconds;
@@ -116,7 +114,7 @@ export class ArenaModel {
     const state = this.tactics.get(bot)!;
     if (this.elapsed >= state.nextEvaluation) {
       this.evaluateTactics(bot, state);
-      state.nextEvaluation = this.elapsed + navigationConfig.evaluationSeconds;
+      state.nextEvaluation = this.elapsed + tactics.evaluate;
     }
 
     const victim = state.victim;
@@ -125,15 +123,15 @@ export class ArenaModel {
     if (state.salvage) target = state.salvage.point;
     if (victim && victim.combat.guardFor <= 1e-9 && !state.retreat && bot.combat.energy === theftConfig.energy) {
       const gap = gapBetween(bot, victim);
-      if (state.pursuing && (!state.salvage || bot.strategy !== 'scavenger')) {
+      if (state.pursuing) {
         const angle = bearingTo(victim.position, bot.position);
         const approach = victim.radius + bot.radius + navigationConfig.pursuitExitGap;
         target = gap > navigationConfig.pursuitExitGap
-          ? { x: victim.position.x + Math.cos(angle) * approach,
-              y: victim.position.y + Math.sin(angle) * approach }
-          : bot.position;
+          ? { x: victim.position.x + victim.velocity.x * tactics.lead + Math.cos(angle) * approach,
+              y: victim.position.y + victim.velocity.y * tactics.lead + Math.sin(angle) * approach }
+          : { x: bot.position.x + victim.velocity.x * 0.45, y: bot.position.y + victim.velocity.y * 0.45 };
       }
-      if (gap < theftConfig.reach * 0.8 && this.elapsed >= state.nextAttack) {
+      if (gap < tactics.aimGap && this.elapsed >= state.nextAttack) {
         if (arm(bot)) {
           state.fireAt = this.elapsed + tactics.arming;
           state.armedFor = victim;
@@ -144,8 +142,11 @@ export class ArenaModel {
     if (state.fireAt !== undefined && this.elapsed >= state.fireAt) {
       // Attack bearings are resolved from live geometry, independent of the visible body yaw.
       const opponent = state.armedFor;
-      if (opponent && opponent.combat.guardFor <= 1e-9 && !state.retreat) {
-        release(bot, bearingTo(bot.position, opponent.position));
+      if (opponent && opponent.combat.guardFor <= 1e-9 && !state.retreat &&
+          gapBetween(bot, opponent) <= theftConfig.reach + 40 && this.attackUtility(bot, opponent, gapBetween(bot, opponent)) > 0) {
+        const aim = { x: opponent.position.x + (opponent.velocity.x - bot.velocity.x) * tactics.lead,
+          y: opponent.position.y + (opponent.velocity.y - bot.velocity.y) * tactics.lead };
+        release(bot, bearingTo(bot.position, aim));
       } else cancelArm(bot);
       state.fireAt = undefined;
       state.armedFor = undefined;
@@ -156,6 +157,8 @@ export class ArenaModel {
     if (bot.navigation.takeReplanRequest()) {
       bot.target = undefined;
       bot.decisionIn = 0;
+      if (state.chase) state.ignored = { victim: state.chase.victim, until: this.elapsed + 2.5 };
+      state.chase = undefined;
       state.pursuing = false;
       state.visited = state.opportunity?.area;
       state.opportunity = undefined;
@@ -168,16 +171,32 @@ export class ArenaModel {
 
   private evaluateTactics(bot: Bot, state: BotTactics): void {
     const difficulty = this.difficulty!;
+    const profile = tacticsConfig[difficulty];
     const preference = this.populated ? botTactics[bot.strategy].pursuit : 1;
-    const range = theftConfig.reach + tacticsConfig[difficulty].pursuit * preference;
+    const range = theftConfig.reach + profile.pursuit * preference;
+    const charged = bot.combat.energy === theftConfig.energy;
+    const chase = state.chase;
+    if (chase && charged) {
+      const gap = gapBetween(bot, chase.victim);
+      if (gap <= chase.gap - 38 || gap < profile.aimGap) {
+        chase.gap = gap;
+        chase.progressAt = this.elapsed;
+      }
+      if (this.elapsed >= chase.until || this.elapsed - chase.progressAt > 0.95 ||
+          gap > range + navigationConfig.exitClearance) {
+        state.ignored = { victim: chase.victim, until: this.elapsed + 2.5 };
+        state.chase = undefined;
+      }
+    }
+    if (state.ignored && state.ignored.until <= this.elapsed) state.ignored = undefined;
     const previous = state.victim;
     const previousGap = previous ? gapBetween(bot, previous) : Infinity;
-    const held = previous && previousGap <= range + navigationConfig.exitClearance
+    const held = previous && previous !== state.ignored?.victim && previousGap <= range + navigationConfig.exitClearance
       ? this.attackUtility(bot, previous, previousGap) : 0;
     let score = held * navigationConfig.targetAdvantage;
     let victim = held > 0 ? previous : undefined;
     for (const candidate of this.participants) {
-      if (candidate === bot || candidate === previous && held > 0) continue;
+      if (candidate === bot || candidate === state.ignored?.victim || candidate === previous && held > 0) continue;
       const gap = gapBetween(bot, candidate);
       if (gap > range) continue;
       const utility = this.attackUtility(bot, candidate, gap);
@@ -188,18 +207,19 @@ export class ArenaModel {
     }
     state.victim = victim;
 
-    const charged = bot.combat.energy === theftConfig.energy;
-    const committed = victim === previous && state.pursuing;
-    const gap = victim ? gapBetween(bot, victim) : 0;
-    state.pursuing = difficulty !== 'easy' && charged &&
-      (gap > (committed ? navigationConfig.pursuitExitGap : navigationConfig.pursuitEnterGap) ||
-        (committed && bot.combat.attack.phase === 'armed'));
-
     if (this.populated) {
       this.evaluateRetreat(bot, state);
       this.evaluateSalvage(bot, state);
-      if (bot.strategy === 'collector' && victim && !committed && this.projectedLoss(bot, victim) < 70) state.pursuing = false;
     }
+    const committed = state.chase?.victim === victim && state.pursuing;
+    const gap = victim ? gapBetween(bot, victim) : 0;
+    const fighting = bot.combat.attack.phase === 'armed';
+    const preferSalvage = state.salvage && !fighting && (!committed || bot.strategy === 'scavenger');
+    state.pursuing = Boolean(victim && charged && !state.retreat && !preferSalvage &&
+      (gap > (committed ? navigationConfig.pursuitExitGap : profile.aimGap) || (committed && fighting)) &&
+      (bot.strategy !== 'collector' || gap <= theftConfig.reach || committed));
+    state.chase = state.pursuing && victim ? (committed ? state.chase
+      : { victim, until: this.elapsed + profile.chase * preference, gap, progressAt: this.elapsed }) : undefined;
 
     this.evaluateOpportunity(bot, state, charged);
   }
@@ -229,7 +249,8 @@ export class ArenaModel {
       for (const other of this.tactics.values()) if (other.opportunity?.area === area) followers++;
       if (followers >= (publicSignal ? activityConfig.signalFollowers : activityConfig.hotspotFollowers)) continue;
       const role = botTactics[bot.strategy];
-      const interest = publicSignal ? 0.72 + role.salvage * 0.36 + (charged ? 0.17 : 0)
+      const interest = publicSignal ? role.signal * (0.98 + (charged ? 0.15 : 0)) *
+        (bot.physicalScale >= 8 && followers > 2 ? 0.83 : 1)
         : (bot.strategy === 'roamer' ? 1.15 : 0.98) - (role.pursuit - 1) * 0.2;
       const value = publicSignal ? Math.min(1.5, area.resources / 23) : 0.72 + area.strength * 0.36;
       const score = value * interest / (1 + remaining / 1500 + followers * 0.17);
@@ -243,34 +264,45 @@ export class ArenaModel {
     state.opportunity = { area: selected, point };
   }
 
-  private projectedLoss(attacker: Participant, victim: Participant): number {
-    return this.combatRules === 'impact' ? theftDamage(attacker, victim)
-      : legacyTheftDamage(attacker.mass, victim.mass, shell(victim));
-  }
-
   private attackUtility(bot: Bot, victim: Participant, gap: number): number {
     if (victim.combat.guardFor > 1e-9) return 0;
     if (!this.populated) return shell(victim) / (1 + gap / 100);
+    const profile = tacticsConfig[this.difficulty!];
+    const loss = forecastTheft(bot, victim, this.combatRules);
+    if (bot.combat.energy === theftConfig.energy && loss < profile.reward) return 0;
     const rank = this.places.get(victim) ?? Infinity;
     const contender = rank < (this.places.get(bot) ?? Infinity) && rank <= 5 ? 1.24 : 1;
-    return this.projectedLoss(bot, victim) * contender / (1 + gap / 120);
+    const readyRival = victim.combat.energy === theftConfig.energy && victim.combat.attack.phase !== 'cooldown';
+    const unsafe = readyRival && bot.physicalScale >= 4 && this.difficulty === 'hard'
+      ? Math.max(0.35, 1 - 2 * forecastTheft(victim, bot, this.combatRules) / bot.mass) : 1;
+    return loss * contender * unsafe / (1 + gap / 120);
   }
 
   private evaluateRetreat(bot: Bot, state: BotTactics): void {
     if (state.retreat && this.elapsed < state.retreat.until) return;
     state.retreat = undefined;
-    if (bot.physicalScale < 4 || bot.combat.guardFor > 0) return;
+    const profile = tacticsConfig[this.difficulty!];
+    const recent = bot.combat.impact;
+    const wounded = recent && recent.reduction >= 0.25 && bot.combat.guardFor > 0.25;
+    if ((bot.physicalScale < 4 && !wounded) || (bot.combat.guardFor > 0 && !wounded)) return;
     let threat: Participant | undefined;
     let worst = 0;
     for (const opponent of this.participants) {
       if (opponent === bot || opponent.combat.energy < theftConfig.energy || opponent.combat.attack.phase === 'cooldown') continue;
       const gap = gapBetween(bot, opponent);
-      if (gap > theftConfig.reach + 95) continue;
-      const postScale = physicalScaleForMass(bot.mass - this.projectedLoss(opponent, bot));
+      if (gap > theftConfig.reach + profile.safety + 45) continue;
+      const postScale = physicalScaleForMass(bot.mass - forecastTheft(opponent, bot, this.combatRules));
       const reduction = 1 - postScale / bot.physicalScale;
-      if (reduction < 0.26 || reduction <= worst) continue;
-      if (bot.strategy === 'hunter' && bot.combat.energy === theftConfig.energy && reduction < 0.4) continue;
-      worst = reduction;
+      const attack = opponent.combat.attack;
+      const direction = bearingTo(opponent.position, bot.position);
+      const facing = attack.phase === 'warning' ? Math.cos(angleBetween(attack.bearing, direction))
+        : Math.cos(angleBetween(opponent.heading, direction));
+      const closing = Math.hypot(opponent.velocity.x, opponent.velocity.y) > 50;
+      const urgency = closing || attack.phase === 'warning' ? 0.86 + 0.14 * facing : 1;
+      const risk = reduction * urgency * (1 - Math.max(0, gap - theftConfig.reach) / 420);
+      if (risk < profile.threat * (wounded ? 0.65 : 1) || risk <= worst) continue;
+      if (bot.strategy === 'hunter' && bot.combat.energy === theftConfig.energy && risk < 0.4) continue;
+      worst = risk;
       threat = opponent;
     }
     if (!threat) return;
@@ -293,9 +325,18 @@ export class ArenaModel {
   }
 
   private evaluateSalvage(bot: Bot, state: BotTactics): void {
+    if (state.retreat) {
+      state.salvage = undefined;
+      return;
+    }
     const preference = botTactics[bot.strategy].salvage;
+    const profile = tacticsConfig[this.difficulty!];
     const chunks = this.salvage.chunks;
     const range = 480 + 260 * preference;
+    const contact = bot.radius + debrisRadius;
+    const modifier = pullMultiplier(bot);
+    const pullReach = Math.max(0, attractionReach(bot.physicalScale) - contact) * modifier;
+    const speed = playerConfig.speed * profile.salvageTravel;
     if (state.abandoned && !chunks.includes(state.abandoned)) state.abandoned = undefined;
     const current = state.salvage;
     let selected: Debris | undefined;
@@ -305,9 +346,21 @@ export class ArenaModel {
       const dx = chunk.x - bot.position.x;
       const dy = chunk.y - bot.position.y;
       if (dx * dx + dy * dy > (range + bot.radius) ** 2) continue;
+      const gap = Math.max(0, Math.hypot(dx, dy) - contact);
+      const arrival = Math.max(0, gap - pullReach) / speed + Math.min(gap, pullReach) / (speed + debrisPullSpeed * modifier);
+      const remaining = theftConfig.lifetime - chunk.age;
+      if (arrival + 0.2 >= remaining) continue;
       const own = chunk.source?.credits.some(({ id }) => id === bot.id);
-      const value = Math.sqrt(chunk.value) * (preference + (own ? 0.75 : 0)) *
-        (chunk === current?.chunk ? navigationConfig.targetAdvantage : 1) / (1 + Math.hypot(dx, dy) / 400);
+      let value = Math.sqrt(chunk.value) * (preference + (own ? 0.63 : 0)) *
+        (chunk === current?.chunk ? navigationConfig.targetAdvantage : 1) / (1 + arrival);
+      if (value <= score) continue;
+      for (const rival of this.participants) {
+        if (rival === bot || !salvageEligible(chunk, rival.id)) continue;
+        const gapToRival = Math.hypot(chunk.x - rival.position.x, chunk.y - rival.position.y) - rival.radius - debrisRadius;
+        if (gapToRival >= gap || gapToRival > 140) continue;
+        value *= arrival > 0.5 ? 0.50 : 0.82;
+        break;
+      }
       if (value <= score) continue;
       score = value;
       selected = chunk;

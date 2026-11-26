@@ -16,7 +16,6 @@ export type Bot = Participant<'bot'> & {
   readonly random: () => number;
   decisionIn: number;
   readonly navigation: BotNavigation;
-  thinkFor?: number;
   target?: BotTarget;
 };
 

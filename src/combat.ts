@@ -34,6 +34,13 @@ export function theftDamage(attacker: Participant, defender: Participant): numbe
   return clamp(defender.mass - massForPhysicalScale(target), 0, combatShell(defender));
 }
 
+export function forecastTheft(attacker: Participant, victim: Participant, rules: CombatRules): number {
+  const legacy = rules === 'legacy';
+  const limit = legacy ? shell(victim) : combatShell(victim);
+  const loss = legacy ? legacyTheftDamage(attacker.mass, victim.mass, limit) : theftDamage(attacker, victim);
+  return victim.combat.brittle ? Math.min(limit, Math.round(loss * hazardConfig.cold.damage)) : loss;
+}
+
 export function legacyTheftDamage(attacker: number, defender: number, available: number): number {
   const fraction = Math.min(0.32, 0.12 + 0.04 * Math.log2(Math.max(1, defender / attacker)));
   return available === 0 ? 0 : Math.min(available, Math.max(1, Math.round(available * fraction)));

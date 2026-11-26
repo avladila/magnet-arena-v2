@@ -4,7 +4,8 @@ import { arena, playerConfig } from './config';
 import { addMass, attractionReach } from './growth';
 import { clamp, clampToArena, type Participant, type Point } from './movement';
 
-const radius = 5;
+export const debrisRadius = 5;
+export const debrisPullSpeed = 520;
 const turn = Math.PI * 2;
 const frontShare = 0.65;
 
@@ -37,7 +38,7 @@ function landingPoint(origin: Point, distance: number, preferred: number, placed
     const angle = preferred + Math.ceil(step / 2) * Math.PI / 24 * (step % 2 ? 1 : -1);
     const x = origin.x + Math.cos(angle) * distance;
     const y = origin.y + Math.sin(angle) * distance;
-    if (x < radius || y < radius || x > arena.width - radius || y > arena.height - radius) continue;
+    if (x < debrisRadius || y < debrisRadius || x > arena.width - debrisRadius || y > arena.height - debrisRadius) continue;
     nearest ??= { x, y };
     if (placed.every((point) => (point.x - x) ** 2 + (point.y - y) ** 2 >= 12 ** 2)) return { x, y };
   }
@@ -59,7 +60,7 @@ export class Salvage {
     const count = Math.min(8, value, this.capacity - this.chunks.length) || 1;
     for (let i = 0; i < count; i++) {
       const angle = i * turn / count + origin.x * 0.01;
-      const destination = clampToArena({ x: origin.x + 145 * Math.cos(angle), y: origin.y + 145 * Math.sin(angle) }, radius);
+      const destination = clampToArena({ x: origin.x + 145 * Math.cos(angle), y: origin.y + 145 * Math.sin(angle) }, debrisRadius);
       this.queue({ ...origin, origin, destination, age: 0, value: Math.floor(value / count) + Number(i < value % count) });
     }
     return value;
@@ -143,7 +144,7 @@ export class Salvage {
     let speed = 0;
     for (const magnet of participants) {
       if (!salvageEligible(chunk, magnet.id)) continue;
-      const contact = magnet.radius + radius;
+      const contact = magnet.radius + debrisRadius;
       const reach = attractionReach(magnet.physicalScale);
       const squared = (chunk.x - magnet.position.x) ** 2 + (chunk.y - magnet.position.y) ** 2;
       if (squared > Math.max(contact, reach) ** 2) continue;
@@ -152,7 +153,7 @@ export class Salvage {
       if (gap <= Math.max(0, reach - contact) * modifier &&
           (gap < bestGap || (gap === bestGap && winner && magnet.id < winner.id))) {
         bestGap = gap;
-        speed = 520 * modifier;
+        speed = debrisPullSpeed * modifier;
         winner = magnet;
       }
     }
@@ -176,7 +177,7 @@ export class Salvage {
       addMass(winner, chunk.value);
       return true;
     }
-    const fraction = travel / (bestGap + winner.radius + radius);
+    const fraction = travel / (bestGap + winner.radius + debrisRadius);
     chunk.x += (winner.position.x - chunk.x) * fraction;
     chunk.y += (winner.position.y - chunk.y) * fraction;
     return false;

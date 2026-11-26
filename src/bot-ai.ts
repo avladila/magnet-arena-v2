@@ -1,4 +1,4 @@
-import { tacticsConfig } from './competition-config';
+import { botTactics, tacticsConfig, theftConfig } from './competition-config';
 import type { Difficulty } from './match';
 import type { Bot, BotTarget } from './bots';
 import { arena, botConfig, playerConfig } from './config';
@@ -49,14 +49,15 @@ function waypoint(bot: Bot): Point {
 
 export class BotAI {
   private readonly density = new Float32Array(columns * rows);
-  private readonly chargeDensity = new Float32Array(columns * rows);
+  private readonly energyCells = new Float32Array(columns * rows);
   private readonly occupiedCells: number[] = [];
 
   update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number, difficulty?: Difficulty,
-      weight?: (scrap: Scrap) => number, kindOf?: (scrap: Scrap) => ResourceKind): void {
+      kindOf?: (scrap: Scrap) => ResourceKind): void {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
-    const decision = difficulty ? tacticsConfig[difficulty].decision : collector.decisionSeconds;
-    const search = difficulty ? tacticsConfig[difficulty].search : collector.searchRadius;
+    const profile = difficulty && tacticsConfig[difficulty];
+    const decision = profile ? profile.decision : collector.decisionSeconds;
+    const search = profile ? profile.search : collector.searchRadius;
     let densityReady = false;
     for (const bot of bots) {
       bot.decisionIn -= seconds;
@@ -67,37 +68,28 @@ export class BotAI {
         (bot.strategy === 'roamer' || (goal.x >= bot.radius && goal.x <= arena.width - bot.radius &&
           goal.y >= bot.radius && goal.y <= arena.height - bot.radius));
       if (onRoute && bot.decisionIn > 0) continue;
-      if (difficulty === 'easy') {
-        if (bot.thinkFor !== undefined) {
-          bot.thinkFor -= seconds;
-          if (bot.thinkFor > 0) continue;
-          bot.thinkFor = undefined;
-        } else if (bot.target) {
-          bot.target = undefined;
-          bot.thinkFor = 0.85 + bot.random() * 0.4;
-          continue;
-        }
-      }
-
-      if (bot.strategy !== 'roamer' || (weight && bot.random() < 0.55)) {
+      if (bot.strategy !== 'roamer' || (onRoute && kindOf && bot.random() < 0.24)) {
         if (!densityReady) {
           for (const index of this.occupiedCells) {
             this.density[index] = 0;
-            this.chargeDensity[index] = 0;
+            this.energyCells[index] = 0;
           }
           this.occupiedCells.length = 0;
           for (const scrap of slots) {
             if (scrap.state !== 'active') continue;
             const index = cell(scrap);
             if (this.density[index] === 0) this.occupiedCells.push(index);
-            this.density[index] += weight?.(scrap) ?? 1;
-            if (kindOf) this.chargeDensity[index] += kindOf(scrap) === 'energy' ? 12 : 1;
+            const kind = kindOf?.(scrap);
+            this.density[index] += kind === 'gold' && profile ? profile.gold : 1;
+            if (kind === 'energy') this.energyCells[index]++;
           }
           densityReady = true;
         }
-        const charging = kindOf && bot.strategy === 'charger' && bot.combat.energy < 100;
-        const target = this.pickRoute(bot, arrival, charging ? search * 1.2 : search, decision,
-          charging ? this.chargeDensity : this.density);
+        const role = botTactics[bot.strategy].charge;
+        const charging = role && bot.combat.energy < theftConfig.energy;
+        const energy = profile ? (charging ? profile.charge * role : bot.combat.energy < theftConfig.energy ? profile.energy - 1 : 0) : 0;
+        const target = this.pickRoute(bot, arrival, charging ? search * 1.22 : search, decision, energy,
+          profile ? profile.density : collector.densityWeight);
         if (target) {
           bot.target = target;
         } else if (!onRoute || bot.target?.kind === 'region') {
@@ -106,13 +98,14 @@ export class BotAI {
         bot.decisionIn = decision;
       } else {
         bot.target = { kind: 'waypoint', point: waypoint(bot) };
-        bot.decisionIn = roamer.reconsiderMinSeconds +
-          bot.random() * (roamer.reconsiderMaxSeconds - roamer.reconsiderMinSeconds);
+        bot.decisionIn = roamer.reconsiderMinSeconds + bot.random() *
+          (roamer.reconsiderMaxSeconds - roamer.reconsiderMinSeconds) + (difficulty ? 1.4 : 0);
       }
     }
   }
 
-  private pickRoute(bot: Bot, arrival: number, search: number, decision: number, density: Float32Array): BotTarget | undefined {
+  private pickRoute(bot: Bot, arrival: number, search: number, decision: number, energy: number,
+      densityWeight: number): BotTarget | undefined {
     const { x, y } = bot.position;
     const forwardX = Math.cos(bot.heading);
     const forwardY = Math.sin(bot.heading);
@@ -130,7 +123,7 @@ export class BotAI {
     for (let row = firstRow; row <= lastRow; row++) {
       for (let column = firstColumn; column <= lastColumn; column++) {
         const index = row * columns + column;
-        const population = density[index];
+        const population = this.density[index] + this.energyCells[index] * energy;
         if (population === 0) continue;
         const center = cellCenter(index);
         const dx = center.x - x;
@@ -149,7 +142,7 @@ export class BotAI {
         if (travel < Math.max(minimum, distance - arrival)) continue;
 
         const alignment = moving ? (1 + ux * forwardX + uy * forwardY) / 2 : 1;
-        const score = (1 + collector.densityWeight * (population - 1)) *
+        const score = (1 + densityWeight * (population - 1)) *
           (1 - collector.turnPenalty * (1 - alignment)) / (1 + distance / collector.distanceBias);
         if (score <= bestScore) continue;
         bestScore = score;

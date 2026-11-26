@@ -16,18 +16,24 @@ export const hazardConfig = {
 
 
 export const tacticsConfig = {
-  easy: { search: 440, decision: 4.0, pursuit: 100, arming: 0.65, reconsider: 1.6, safety: 0 },
-  normal: { search: 610, decision: 3.65, pursuit: 140, arming: 0.35, reconsider: 0.8, safety: 50 },
-  hard: { search: 720, decision: 2.15, pursuit: 120, arming: 0.17, reconsider: 0.4, safety: 95 },
+  easy: { search: 380, decision: 5.4, density: 0.10, gold: 1, charge: 7, energy: 1,
+    evaluate: 0.40, pursuit: 65, chase: 1.55, arming: 0.72, reconsider: 2, safety: 16,
+    aimGap: 192, lead: 0, reward: 38, threat: 0.34, salvageTravel: 0.76 },
+  normal: { search: 655, decision: 3.4, density: 0.28, gold: 2.6, charge: 10, energy: 1.8,
+    evaluate: 0.25, pursuit: 170, chase: 2.4, arming: 0.35, reconsider: 0.9, safety: 50,
+    aimGap: 215, lead: 0.09, reward: 24, threat: 0.25, salvageTravel: 0.91 },
+  hard: { search: 870, decision: 2.55, density: 0.34, gold: 5.5, charge: 13, energy: 2.4,
+    evaluate: 0.18, pursuit: 235, chase: 3.1, arming: 0.20, reconsider: 0.7, safety: 85,
+    aimGap: 236, lead: 0.18, reward: 32, threat: 0.19, salvageTravel: 1 },
 } as const;
 
 export const botTactics = {
-  collector: { pursuit: 0.65, salvage: 0.4 },
-  hunter: { pursuit: 1.45, salvage: 0.85 },
-  charger: { pursuit: 1.15, salvage: 0.55 },
-  scavenger: { pursuit: 0.85, salvage: 1.6 },
-  roamer: { pursuit: 0.8, salvage: 0.45 },
-  opportunist: { pursuit: 1, salvage: 1.15 },
+  collector: { pursuit: 0.45, salvage: 0.45, charge: 0, signal: 0.92 },
+  hunter: { pursuit: 1.45, salvage: 0.88, charge: 0.62, signal: 0.82 },
+  charger: { pursuit: 1.16, salvage: 0.60, charge: 1, signal: 0.90 },
+  scavenger: { pursuit: 0.72, salvage: 1.6, charge: 0, signal: 1.28 },
+  roamer: { pursuit: 0.60, salvage: 0.45, charge: 0, signal: 0.72 },
+  opportunist: { pursuit: 1.08, salvage: 1.15, charge: 0.43, signal: 1.21 },
 } as const;
 
 export const navigationConfig = {
@@ -44,7 +50,6 @@ export const navigationConfig = {
   stuckSeconds: 1,
   stuckProgress: 0.2,
   targetAdvantage: 1.2,
-  pursuitEnterGap: 190,
   pursuitExitGap: 150,
 } as const;
 
