@@ -24,15 +24,17 @@ export type Collection = Readonly<Point & {
 export type WorldBounds = { left: number; top: number; right: number; bottom: number };
 
 export class ParticlePool {
-  readonly slots: readonly Scrap[] = Array.from({ length: scrapConfig.capacity }, (_, id): Scrap => ({
-    id, radius: scrapConfig.radius, generation: 0, state: 'inactive', x: 0, y: 0, colorIndex: 0,
-  }));
+  readonly slots: readonly Scrap[];
   private readonly regions: ScrapRegions;
   private readonly collected: Scrap[] = [];
 
-  constructor(seed: number, participants: readonly Participant[], activeCount = scrapConfig.activeCount, private readonly mixed = false) {
+  constructor(seed: number, participants: readonly Participant[], activeCount = scrapConfig.activeCount,
+      private readonly mixed = false, capacity = scrapConfig.capacity) {
+    this.slots = Array.from({ length: capacity }, (_, id): Scrap => ({
+      id, radius: scrapConfig.radius, generation: 0, state: 'inactive', x: 0, y: 0, colorIndex: 0,
+    }));
     const population = clamp(Math.trunc(activeCount), 0, this.slots.length);
-    this.regions = new ScrapRegions(seed, this.slots.slice(0, population));
+    this.regions = new ScrapRegions(seed, this.slots.slice(0, population), participants.length);
     this.regions.update(participants, undefined, 0, this.collected);
   }
 

@@ -38,7 +38,7 @@ export class Navigation {
     for (const bot of model.bots) {
       const { x, y } = bot.position;
       if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) {
-        place(x, y, 3.5, brand.legacy.navigation.color1);
+        place(x, y, 2.8, '#' + bot.accent.toString(16).padStart(6, '0'));
       }
     }
     if (model.signal) place(model.signal.x, model.signal.y, 5, brand.legacy.navigation.color2);

@@ -3,7 +3,7 @@ import type { Difficulty } from './match';
 import type { Bot, BotTarget } from './bots';
 import { arena, botConfig, playerConfig } from './config';
 import { clampToArena, type Point } from './movement';
-import type { Scrap } from './particles';
+import type { ResourceKind, Scrap } from './particles';
 
 const { collector, roamer } = botConfig;
 const columns = Math.ceil(arena.width / collector.cellSize);
@@ -49,9 +49,11 @@ function waypoint(bot: Bot): Point {
 
 export class BotAI {
   private readonly density = new Float32Array(columns * rows);
+  private readonly chargeDensity = new Float32Array(columns * rows);
   private readonly occupiedCells: number[] = [];
 
-  update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number, difficulty?: Difficulty, weight?: (scrap: Scrap) => number): void {
+  update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number, difficulty?: Difficulty,
+      weight?: (scrap: Scrap) => number, kindOf?: (scrap: Scrap) => ResourceKind): void {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
     const decision = difficulty ? tacticsConfig[difficulty].decision : collector.decisionSeconds;
     const search = difficulty ? tacticsConfig[difficulty].search : collector.searchRadius;
@@ -59,7 +61,7 @@ export class BotAI {
     for (const bot of bots) {
       bot.decisionIn -= seconds;
       if (bot.target && bot.navigation.mode !== 'direct') continue;
-      const arrival = bot.strategy === 'collector' ? bot.radius * collector.arrivalRadiusRatio : roamer.arrivalRadius;
+      const arrival = bot.strategy === 'roamer' ? roamer.arrivalRadius : bot.radius * collector.arrivalRadiusRatio;
       const goal = bot.target?.point;
       const onRoute = goal !== undefined && distanceSquared(bot.position, goal) > arrival ** 2 &&
         (bot.strategy === 'roamer' || (goal.x >= bot.radius && goal.x <= arena.width - bot.radius &&
@@ -77,19 +79,25 @@ export class BotAI {
         }
       }
 
-      if (bot.strategy === 'collector' || (weight && bot.random() < 0.55)) {
+      if (bot.strategy !== 'roamer' || (weight && bot.random() < 0.55)) {
         if (!densityReady) {
-          for (const index of this.occupiedCells) this.density[index] = 0;
+          for (const index of this.occupiedCells) {
+            this.density[index] = 0;
+            this.chargeDensity[index] = 0;
+          }
           this.occupiedCells.length = 0;
           for (const scrap of slots) {
             if (scrap.state !== 'active') continue;
             const index = cell(scrap);
             if (this.density[index] === 0) this.occupiedCells.push(index);
             this.density[index] += weight?.(scrap) ?? 1;
+            if (kindOf) this.chargeDensity[index] += kindOf(scrap) === 'energy' ? 12 : 1;
           }
           densityReady = true;
         }
-        const target = this.pickRoute(bot, arrival, search, decision);
+        const charging = kindOf && bot.strategy === 'charger' && bot.combat.energy < 100;
+        const target = this.pickRoute(bot, arrival, charging ? search * 1.2 : search, decision,
+          charging ? this.chargeDensity : this.density);
         if (target) {
           bot.target = target;
         } else if (!onRoute || bot.target?.kind === 'region') {
@@ -104,7 +112,7 @@ export class BotAI {
     }
   }
 
-  private pickRoute(bot: Bot, arrival: number, search: number, decision: number): BotTarget | undefined {
+  private pickRoute(bot: Bot, arrival: number, search: number, decision: number, density: Float32Array): BotTarget | undefined {
     const { x, y } = bot.position;
     const forwardX = Math.cos(bot.heading);
     const forwardY = Math.sin(bot.heading);
@@ -122,7 +130,7 @@ export class BotAI {
     for (let row = firstRow; row <= lastRow; row++) {
       for (let column = firstColumn; column <= lastColumn; column++) {
         const index = row * columns + column;
-        const population = this.density[index];
+        const population = density[index];
         if (population === 0) continue;
         const center = cellCenter(index);
         const dx = center.x - x;

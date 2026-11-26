@@ -23,9 +23,6 @@ export class Tutorial {
     this.dummy = model.bots[0];
     this.dummy.position = { x: this.origin.x + 530, y: this.origin.y - 190 };
     addMass(this.dummy, 155);
-    for (let i = 1; i < model.bots.length; i++) {
-      model.bots[i].position = { x: 600, y: 600 + 500 * i };
-    }
     for (const slot of model.particles.slots) slot.state = 'inactive';
     const sites = model.hazards!.sites;
     for (let i = sites.length - 1; i >= 0; i--) {

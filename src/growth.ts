@@ -12,6 +12,10 @@ export function physicalScaleForMass(mass: number): number {
   );
 }
 
+export function massForPhysicalScale(scale: number): number {
+  return Math.round(playerConfig.initialMass * (1 + (scale - 1) / growthConfig.scaleFactor) ** 2);
+}
+
 export function attractionReach(physicalScale: number): number {
   const scale = Math.min(physicalScale, growthConfig.maxScale);
   if (scale <= reachTransitionScale) return Math.min(normalReachCap, baseReach * Math.sqrt(scale));

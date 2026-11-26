@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ArenaModel } from '../src/arena-model';
-import { arena } from '../src/config';
+import { arena, resourceBudget } from '../src/config';
 import { arm, bearingTo, gapBetween, release } from '../src/combat';
 import { theftConfig } from '../src/competition-config';
 
@@ -23,7 +23,7 @@ test('30 simulated minutes preserve bounds and account for all player, bot, and 
       assert.ok(p.position.x >= p.radius && p.position.x <= arena.width - p.radius);
       assert.ok(p.position.y >= p.radius && p.position.y <= arena.height - p.radius);
     }
-    assert.equal(particles.slots.length, 1500);
+    assert.equal(particles.slots.length, resourceBudget(participants.length).capacity);
     assert.ok(salvage.chunks.length <= theftConfig.debrisCapacity);
     const worldMass = participants.reduce((sum, p) => sum + p.mass, 0);
     const mintedMass = participants.reduce((sum, p) => sum + p.combat.resourceMass, participants.length * 20);

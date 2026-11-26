@@ -71,7 +71,7 @@ class ArenaScene extends Phaser.Scene {
 
   create(): void {
     this.floor = new ArenaFloor(this.add.graphics());
-    this.competition = new CompetitionView(this);
+    this.competition = new CompetitionView(this, this.model.participants.length);
     const player = this.model.player;
     this.field = new GrowthFeedbackView(this, player, true);
     this.particleView = new ParticleView(this, true);
@@ -165,7 +165,11 @@ class ArenaScene extends Phaser.Scene {
     const previousPickups = player.pickupsCollected;
     const previousHits = player.combat.hits;
     const previousMisses = player.combat.misses;
+    const previousGuarded = player.combat.guarded;
+    const previousProtected = player.combat.protectedHits;
+    const previousBrittleHits = player.combat.brittleHits;
     const previousDetached = player.combat.detached;
+    const previousSalvage = player.combat.salvage;
     const previousLoss = player.combat.lostToTheft + player.combat.lostToHazards;
     const collections: Collection[] = [];
     const steering = this.playInput.steering(this.controls.input.steering((point) => this.screenToWorld(point)));
@@ -180,7 +184,7 @@ class ArenaScene extends Phaser.Scene {
       });
     }
     this.heading.update(player.heading, advanced);
-    this.magnetScale.update(player.physicalScale, advanced);
+    this.magnetScale.update(player.physicalScale, advanced, player.combat.lostToTheft);
     this.framing.follow(player.position, advanced, player.mass);
     const bounds = this.framing.bounds;
     if (advanced > 0) this.model.replenish(bounds);
@@ -211,9 +215,14 @@ class ArenaScene extends Phaser.Scene {
       if (ownEnergy) this.pickupFeedback.show('energy', this.framing.toScreen(ownEnergy), player.combat.energy - previousEnergy);
       if (player.combat.energy === 100 && previousEnergy < 100) this.pickupFeedback.ready();
     }
+    let landingBursts = this.menu.quality === 'high' ? 14 : 7;
     for (const shard of this.model.salvage.chunks) {
       if (shard.age >= theftConfig.flight && shard.age - advanced < theftConfig.flight) {
-        this.effects.burst(shard, 'steel', 6, brand.vfx.debrisFlash);
+        if (landingBursts > 0 && shard.x >= bounds.left && shard.x <= bounds.right &&
+            shard.y >= bounds.top && shard.y <= bounds.bottom) {
+          this.effects.burst(shard, 'steel', shard.value >= 70 ? 6 : 2, brand.vfx.debrisFlash);
+          landingBursts--;
+        }
         if (time - this.lastLanding > 220 && Math.hypot(shard.x - player.position.x, shard.y - player.position.y) < 280) {
           this.audio.play('landing');
           this.lastLanding = time;
@@ -226,16 +235,20 @@ class ArenaScene extends Phaser.Scene {
     if (releaseFrame && advanced > 0 && player.combat.attack.phase === 'warning') {
       this.effects.burst(player.position, 'energy', 6, brand.motion.pickup, player.combat.attack.bearing, Math.PI / 2);
     }
+    const detached = player.combat.detached - previousDetached;
     if (player.combat.hits > previousHits) {
-      const detached = player.combat.detached - previousDetached;
-      this.menu.attackFeedback(detached > 0 ? detached + ' MASS DETACHED' : 'CORE PROTECTED', time);
-      if (!detached) {
-        this.audio.play('core');
-        this.effects.burst(player.position, 'teal', 6, brand.motion.gold);
-      }
+      this.menu.attackFeedback(detached + ' MASS DETACHED' + (player.combat.brittleHits > previousBrittleHits ? ' · BRITTLE HIT' : ''), time);
+    } else if (player.combat.guarded > previousGuarded) {
+      this.audio.play('guarded');
+      this.menu.attackFeedback('ATTACK GUARDED', time);
+    } else if (player.combat.protectedHits > previousProtected) {
+      this.audio.play('core');
+      this.menu.attackFeedback('CORE PROTECTED', time);
     } else if (player.combat.misses > previousMisses) {
       this.audio.play('miss');
       this.menu.attackFeedback('MISS', time);
+    } else if (player.combat.salvage > previousSalvage) {
+      this.menu.attackFeedback('+' + (player.combat.salvage - previousSalvage) + ' SALVAGE', time);
     }
     if (!previousBrittle && player.combat.brittle) {
       this.audio.play('freeze');
@@ -259,13 +272,13 @@ class ArenaScene extends Phaser.Scene {
     }
     this.effects.render(bounds, advanced, player.position, this.framing.zoom);
     const incoming = player.combat.lostToTheft + player.combat.lostToHazards - previousLoss;
-    if (player.combat.hits > previousHits || incoming > 0) this.audio.play('hit');
+    if (player.combat.hits > previousHits || incoming > 0) this.audio.play(Math.max(detached, incoming) >= 350 ? 'impact' : 'hit');
     const hazardActivated = (!previousBrittle && player.combat.brittle) ||
       (previousHeat < 1 && player.combat.heat === 1) ||
       (!previousCorrosion && Boolean(player.combat.corrosion)) ||
       (player.combat.lostToHazards > previousHazardLoss && !player.combat.corrosion);
     if (player.combat.hits > previousHits || incoming >= Math.max(5, player.mass * 0.03) || hazardActivated) {
-      this.menu.vibrate(35);
+      this.menu.vibrate(Math.max(detached, incoming) >= 350 ? 58 : 35);
     }
     if (player.combat.energy === 100 && previousEnergy < 100) {
       this.audio.play('ready');

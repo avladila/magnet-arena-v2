@@ -6,8 +6,11 @@ export function renderResultStats(container: HTMLElement, { mass, combat }: Part
     'Final mass': mass, 'Peak mass': combat.highest,
     'Maximum scale': physicalScaleForMass(combat.highest).toFixed(2) + '×',
     'Ordinary scrap': combat.ordinary, 'Gold scrap': combat.gold, 'Energy cells': combat.cells,
-    'Successful attacks': combat.hits, 'Missed attacks': combat.misses, 'Mass detached': combat.detached,
-    'Salvage collected': combat.salvage, 'Lost to rivals': combat.lostToTheft, 'Lost to hazards': combat.lostToHazards,
+    'Successful attacks': combat.hits, 'Missed attacks': combat.misses, 'Guarded attacks': combat.guarded,
+    'Protected-core attacks': combat.protectedHits, 'Mass detached': combat.detached,
+    'Largest single theft': combat.largestTheft, 'Largest diameter reduction': (combat.largestReduction * 100).toFixed(1) + '%',
+    'Salvage collected': combat.salvage, 'Salvage from your attacks': combat.ownSalvage, 'Own salvage reclaimed': combat.reclaimedSalvage,
+    'Lost to rivals': combat.lostToTheft, 'Lost to hazards': combat.lostToHazards,
   };
   const content = document.createDocumentFragment();
   for (const [label, value] of Object.entries(fields)) {

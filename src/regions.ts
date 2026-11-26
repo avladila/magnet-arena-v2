@@ -77,6 +77,7 @@ function spansWorld(view: WorldBounds): boolean {
 // One physical slot per live site. Sleeping sites keep their position until
 // the region expires or loses its cache entry. Collections alone renew a site.
 export class ScrapRegions {
+  private readonly cacheLimit: number;
   private readonly cached = new Map<number, Region>();
   private readonly epochs = new Uint32Array(definitions.length);
   private readonly bindings: (Site | undefined)[] = [];
@@ -92,7 +93,10 @@ export class ScrapRegions {
     duplicateActivations: 0, visibleFallbacks: 0, peakCachedRegions: 0,
   };
 
-  constructor(private readonly seed: number, private readonly slots: readonly Scrap[]) {}
+  constructor(private readonly seed: number, private readonly slots: readonly Scrap[], participants: number) {
+    // A center and its surrounding region neighborhood can serve each moving magnet.
+    this.cacheLimit = Math.min(definitions.length, Math.max(regionConfig.cacheLimit, participants * 9));
+  }
 
   get stats() {
     let liveRegions = 0;
@@ -101,7 +105,7 @@ export class ScrapRegions {
       if (region.live > 0) liveRegions++;
       logicalSites += region.sites.length;
     }
-    return { ...this.counts, cachedRegions: this.cached.size, liveRegions, logicalSites };
+    return { ...this.counts, cacheLimit: this.cacheLimit, cachedRegions: this.cached.size, liveRegions, logicalSites };
   }
 
   update(participants: readonly Participant[], view: WorldBounds | undefined, seconds: number, collected: readonly Scrap[]): void {
@@ -271,7 +275,7 @@ export class ScrapRegions {
   private load(id: number): Region | undefined {
     let region = this.cached.get(id);
     if (!region) {
-      if (this.cached.size >= regionConfig.cacheLimit && !this.evictOldest()) return;
+      if (this.cached.size >= this.cacheLimit && !this.evictOldest()) return;
       const bounds = definitions[id].bounds;
       region = { id, bounds, sites: [], lastUsed: this.clock, lastPlan: this.planId, live: 0 };
       const count = Math.round((bounds.right - bounds.left) * (bounds.bottom - bounds.top) * regionConfig.sitesPerUnitArea);

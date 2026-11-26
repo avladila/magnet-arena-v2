@@ -34,7 +34,10 @@
           <div id="tutorial-task"></div>
           <div id="district"></div>
         </div>
-        <ol id="ranking" aria-label="Live ranking"></ol>
+        <div id="rankings-panel">
+          <ol id="ranking" aria-label="Live ranking"></ol>
+          <button id="rankings-toggle" type="button" aria-controls="ranking" aria-expanded="false">Full rankings</button>
+        </div>
       </header>
       <div class="map-hud">
         <button id="map-toggle" type="button" aria-expanded="false" aria-controls="minimap" hidden>Map</button>
@@ -67,6 +70,7 @@
         <div id="menu-help" hidden>
           <p>Move with the mouse or WASD. On touchscreens, tap a destination or drag to steer.</p>
           <p>Scrap adds mass. Gold adds ten. Red energy charges Magnetic Theft. With a full charge, hold Space or Attack to aim and release to fire.</p>
+          <p>Large magnets lose more of their diameter when hit. Anyone can contest the salvage after it lands. The damaged magnet has a brief theft guard and can reclaim its own salvage after five seconds.</p>
           <p>Keep clear of Flux Spikes as you grow. Heat weakens your field, water and acid corrode your shell, and cryogenic vents make you brittle.</p>
           <div class="menu-actions"><button data-action="tutorial">Play Tutorial</button><button data-action="back">Back</button></div>
         </div>
@@ -93,7 +97,7 @@
           <div class="menu-actions"><button data-action="back">Cancel</button><button data-action="home">Leave</button></div>
         </div>
         <div id="menu-results" hidden>
-          <p id="result-summary"></p><ol id="result-ranking"></ol><dl id="result-stats"></dl>
+          <p id="result-summary"></p><ol id="result-ranking" aria-label="Final ranking" tabindex="0"></ol><dl id="result-stats"></dl>
           <div class="menu-actions"><button class="primary" data-action="replay">Play Again</button><button data-action="change">Change Difficulty</button><button data-action="home">Main Menu</button></div>
         </div>
       </div>

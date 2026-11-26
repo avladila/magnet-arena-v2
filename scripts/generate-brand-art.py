@@ -5,13 +5,14 @@ from pathlib import Path
 from PIL import Image, ImageColor, ImageDraw
 
 tokens = json.loads(Path('brand/tokens.json').read_text())
+roster = json.loads(Path('brand/roster.json').read_text())
 roles = tokens['roles']
 steel = tokens['steel']
 ink = tokens['themes']['light']['ink']
 pickups = tokens['pickups']
 energy = pickups['energyMaterial']
 P = Path('public')
-E = Path('docs/evidence/rc3')
+E = Path('docs/evidence/rc4')
 N = 96
 
 
@@ -50,7 +51,7 @@ def rgb(value):
 
 def magnet(index, stage):
     image, d = tile()
-    trim = tokens['rivalTrim'][index]
+    trim = tokens['rivalTrim'][index] if index < len(tokens['rivalTrim']) else roster[index-1]['accent']
     r = 34 + stage
     d.ellipse((49-r, 51-r, 49+r, 51+r), fill=(35, 54, 74, 66))
     d.ellipse((48-r, 48-r, 48+r, 48+r), fill=ink)
@@ -72,12 +73,17 @@ def magnet(index, stage):
         d.polygon(radial(30, 48, 6, 6), fill=steel[0])
     elif index == 4:
         d.ellipse((26,44,34,52), outline=steel[0], width=2)
+    elif index > 4:
+        points = (3, 4, 5, 6)[index % 4]
+        d.polygon(radial(30, 48, 6, points, -pi/2 + (index % 3) * pi/6), fill=steel[0])
+        for offset in range(index % 3 + 1):
+            d.line((26, 40 + offset * 8, 34, 40 + offset * 8), fill=trim, width=1)
     else:
         d.rounded_rectangle((26, 44, 35, 52), 4, fill=steel[0])
     return image
 
 
-magnets = {f'{name}-{stage}': magnet(i, stage) for i, name in enumerate(['player', 'bot-1', 'bot-2', 'bot-3', 'bot-4'])
+magnets = {f'{name}-{stage}': magnet(i, stage) for i, name in enumerate(['player', *(bot['id'] for bot in roster)])
            for stage in range(len(tokens['shellStages']))}
 pack('magnets', magnets)
 
@@ -201,7 +207,7 @@ def object_art(kind):
     im, d = tile()
     if kind.startswith('debris'):
         rank = int(kind[-1])
-        base = steel[2 - rank]
+        base = steel[max(0, 2 - rank)]
         im = glow(base, 58 + rank * 44, spread=16 + rank * 2)
         d = ImageDraw.Draw(im)
         points = radial(48, 48, 23 + rank * 5, 6, .23)
@@ -213,6 +219,9 @@ def object_art(kind):
         d.line((34, 39, 46, 34, 59, 38), fill=steel[0], width=3)
         for i in range(rank + 1):
             d.ellipse((38+i*8, 49, 42+i*8, 53), fill=ink)
+        if rank == 3:
+            d.line((27, 56, 47, 68, 68, 59), fill=steel[2], width=4)
+            d.line((30, 61, 47, 72, 65, 65), fill=steel[0], width=2)
     elif kind == 'flux':
         d.ellipse((10,10,86,86),outline=roles[kind],width=4)
         for angle in range(6):
@@ -260,7 +269,7 @@ frames['gold'] = gold_ingot()
 frames['energy'] = energy_cell()
 frames['energy-orbit'] = energy_orbit()
 frames['pole-charge'] = glow(energy['highlight'], 230, spread=19)
-for kind in ['debris-0','debris-1','debris-2','flux','cold','heat','water','acid','prop-grate','prop-drain']:
+for kind in ['debris-0','debris-1','debris-2','debris-3','flux','cold','heat','water','acid','prop-grate','prop-drain']:
     frames[kind] = object_art(kind)
 for role in ['steel', 'gold', 'energy', 'teal', 'heat', 'cold', 'flux', 'acid', 'water']:
     tone = steel[0] if role == 'steel' else roles[role]
@@ -298,37 +307,15 @@ for name, dimensions in [('hero',(1024,384)), ('social',(1200,630))]:
     background.convert('RGB').save(P/(name+'.webp'),quality=90)
 
 E.mkdir(parents=True,exist_ok=True)
-sheet=Image.new('RGB',(960,768),tokens['themes']['light']['background'])
-d=ImageDraw.Draw(sheet)
-for col, mode in enumerate(tokens['themes']):
-    x0=480*col
-    d.rectangle((x0,0,x0+480,768),fill=tokens['themes'][mode]['background'])
-    d.text((x0+12,10),mode.upper(),fill=tokens['themes'][mode]['ink'])
-    for i,(key,img) in enumerate([*magnets.items(), *((k,v) for k,v in frames.items() if k.startswith(mode) or not k.startswith(('light','dark'))) ]):
-        x,y = x0 + (i%8)*60, 29+(i//8)*60
-        sheet.paste(img.resize((52,52),Image.Resampling.LANCZOS),(x+4,y),img.resize((52,52),Image.Resampling.LANCZOS))
-sheet.save(E/'atlas-contact.webp',quality=90)
+sheet = Image.new('RGB', (1076, 40 + 112 * ((len(roster) + 5) // 5)), tokens['themes']['dark']['background'])
+d = ImageDraw.Draw(sheet)
+legend = steel[0]
+d.text((14, 12), 'MAGNET · Arena roster and shell stages', fill=legend)
+for i, bot in enumerate([{'id': 'player', 'name': 'You', 'strategy': 'player'}, *roster]):
+    x, y = 9 + i % 5 * 215, 38 + i // 5 * 112
+    d.text((x+7, y+6), bot['name'] + ' / ' + bot['strategy'].capitalize(), fill=legend)
+    for stage in range(len(tokens['shellStages'])):
+        img = magnets[f"{bot['id']}-{stage}"].resize((34, 34), Image.Resampling.LANCZOS)
+        sheet.paste(img, (x + stage * 34, y + 34), img)
+sheet.save(E/'roster.webp', quality=93)
 (Path('brand')/'asset-manifest.json').write_text(json.dumps({'paletteRoles': list(roles), 'atlases': {'magnets': list(magnets), 'workshop': list(frames)}},indent=2)+'\n')
-
-# Contact proof uses native-size pickups, 2× review, and a small zoomed-out sample.
-proof = Image.new('RGB', (1260, 764), tokens['themes']['light']['background'])
-draw = ImageDraw.Draw(proof)
-for side, mode in enumerate(tokens['themes']):
-    palette = tokens['themes'][mode]
-    start = side * 630
-    draw.rectangle((start,0,start+630,764), fill=palette['background'])
-    draw.text((start+10,10), mode.upper() + '   1×   /   2×   /   GIANT-ZOOM', fill=palette['ink'])
-    entries = [*magnets.items(), *((k,v) for k,v in frames.items()
-               if k.startswith(mode) or not k.startswith(('light','dark')))]
-    for i,(key,img) in enumerate(entries):
-        x, y = start + 5 + i % 6 * 104, 31 + i // 6 * 49
-        draw.text((x,y+35), key.replace(mode + '-', ''), fill=palette['ink'])
-        sizes = (22, 39, 12) if key in magnets else (14, 26, 8)
-        if key in ('energy', 'energy-orbit'):
-            sizes = (24, 38, 19)
-        elif key == 'gold':
-            sizes = (21, 34, 12)
-        for offset, size in zip((0, 25, 70), sizes):
-            thumb = img.resize((size,size), Image.Resampling.LANCZOS)
-            proof.paste(thumb, (x+offset,y+(35-size)//2), thumb)
-proof.save(E/'scale-contact.webp',quality=87)

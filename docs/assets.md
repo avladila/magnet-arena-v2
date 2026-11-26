@@ -1,10 +1,10 @@
-# MAGNET RC2 assets
+# MAGNET assets
 
 | Asset | Source | Runtime |
 | --- | --- | --- |
 | Pole Pair, favicon, app icon, hero and social graphics | Original procedural artwork in `scripts/generate-brand-art.py` using `brand/tokens.json`. Hero and social art composite the real player atlas sprite. | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/social.webp` |
-| Five magnets and six shells each | Original mirrored plating, fasteners and enamel poles. Stages start at 20, 50, 100, 400, 1,500 and 4,352 mass. | `public/magnets.webp` and `public/magnets.json` |
-| Scrap, gold, energy, hazards, salvage and props | Original vector-to-raster shapes with ten themed, glossy scrap colors with a continuous small-scale silhouette, a faceted gold ingot, and a crimson bolt cell with its own orbit. Salvage has three luminous value tiers. | `public/workshop.webp` and `public/workshop.json` |
+| Twenty magnets and six shells each | Original mirrored plating, fasteners and enamel poles. The roster supplies names and accent colors. Stages start at 20, 50, 100, 400, 1,500 and 4,352 mass. | `public/magnets.webp` and `public/magnets.json` |
+| Scrap, gold, energy, hazards, salvage and props | Original vector-to-raster shapes with ten themed, glossy scrap colors, a faceted gold ingot, and a crimson bolt cell with its own orbit. Salvage has four luminous value tiers. | `public/workshop.webp` and `public/workshop.json` |
 | Hazard boundaries, floor markings and attack warnings | Presentation geometry aligned to model radii and bearings | Phaser Graphics |
 | Soundtrack | Original 16 bars at the token tempo | `public/soundtrack.ogg` |
 | Sound effects | Tuned Web Audio oscillator envelopes and the two-note Pole Pair interval | Generated in `src/audio.ts` from the token definitions |
@@ -18,4 +18,4 @@ python scripts/generate-soundtrack.py
 ffmpeg -y -i /tmp/magnet-soundtrack.wav -c:a libvorbis -q:a 3 public/soundtrack.ogg
 ```
 
-See the [brand bible](brand.md), [RC3 atlas contact sheet](evidence/rc3/atlas-contact.webp), [scale contact sheet](evidence/rc3/scale-contact.webp), and [RC3 report](rc3.md).
+See the [brand bible](brand.md), [RC4 roster sheet](evidence/rc4/roster.webp), and [RC3 pickup scale sheet](evidence/rc3/scale-contact.webp).

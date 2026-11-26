@@ -1,7 +1,7 @@
 import { brand, color as rgb } from './brand';
 import type Phaser from 'phaser';
 import type { WorkshopParticles } from './workshop-particles';
-import { scrapConfig, viewConfig } from './config';
+import { populationConfig, resourceBudget, scrapConfig, viewConfig } from './config';
 import type { Collection, ResourceKind, Scrap, WorldBounds } from './particles';
 import type { Quality } from './progress';
 import type { ThemeMode, ThemePalette } from './theme';
@@ -9,6 +9,7 @@ import type { ThemeMode, ThemePalette } from './theme';
 const effectDuration = viewConfig.collectionEffectSeconds;
 const glintWidth = 1.5;
 const settings = brand.pickups;
+const capacity = resourceBudget(populationConfig.competitive).capacity;
 const ordinaryFrames = {
   light: Array.from({ length: scrapConfig.colorCount }, (_, index) => 'light-scrap-' + index),
   dark: Array.from({ length: scrapConfig.colorCount }, (_, index) => 'dark-scrap-' + index),
@@ -45,24 +46,20 @@ export class ParticleView {
   }));
   private nextEffect = 0;
   private readonly sprites?: Phaser.GameObjects.Image[];
-  private readonly orbits: Phaser.GameObjects.Image[];
+  private readonly orbits: Phaser.GameObjects.Image[] = [];
   private visibleCount = 0;
   private orbitCount = 0;
-  private readonly previousX = new Float32Array(scrapConfig.capacity);
-  private readonly previousY = new Float32Array(scrapConfig.capacity);
-  private readonly generations = new Int32Array(scrapConfig.capacity);
-  private readonly samples = new Uint32Array(scrapConfig.capacity);
-  private readonly emitAt = new Float64Array(scrapConfig.capacity);
+  private readonly previousX = new Float32Array(capacity);
+  private readonly previousY = new Float32Array(capacity);
+  private readonly generations = new Int32Array(capacity);
+  private readonly samples = new Uint32Array(capacity);
+  private readonly emitAt = new Float64Array(capacity);
   private sample = 0;
   private elapsed = 0;
 
-  constructor(scene: Phaser.Scene, useAtlas = false) {
-    this.orbits = [];
+  constructor(private readonly scene: Phaser.Scene, useAtlas = false) {
     if (useAtlas) {
-      this.sprites = Array.from({ length: scrapConfig.activeCount }, () =>
-        scene.add.image(0, 0, 'workshop', 'gold').setDepth(0.3).setVisible(false));
-      this.orbits = Array.from({ length: settings.energyOrbitPool }, () =>
-        scene.add.image(0, 0, 'workshop', 'energy-orbit').setDepth(0.2).setVisible(false));
+      this.sprites = [];
     } else {
       this.pieces = scene.add.graphics();
       this.glints = scene.add.graphics().setDepth(1);
@@ -106,7 +103,8 @@ export class ParticleView {
       const size = kind === 'ordinary' ? ordinarySize : kind === 'gold' ? goldSize : energySize;
       if (!inView(x, y, size / 2, view)) continue;
 
-      const image = sprites[visible++];
+      const image = sprites[visible] ??= this.scene.add.image(0, 0, 'workshop', 'gold').setDepth(0.4);
+      visible++;
       const frame = kind === 'ordinary' ? ordinaryFrames[mode][colorIndex] : kind;
       if (image.frame.name !== frame) image.setFrame(frame).setDepth(kind === 'ordinary' ? 0.3 : 0.4);
       image.setPosition(x, y).setDisplaySize(size, size).setVisible(true);
@@ -114,10 +112,12 @@ export class ParticleView {
       const continuing = this.samples[id] !== 0 && this.samples[id] === sample - 1 && this.generations[id] === generation;
       if (kind === 'energy' || kind === 'gold') {
         const offset = phase(scrap);
-        if (kind === 'energy' && orbits < this.orbits.length) {
+        if (kind === 'energy') {
           const breath = animate ? 0.89 + 0.11 * Math.sin(2 * Math.PI * (time / settings.energyBreathSeconds + offset)) : 0.94;
           const angle = animate ? 2 * Math.PI * offset + settings.energyTurnRate * Math.PI / 180 * time : 0;
-          this.orbits[orbits++].setPosition(x, y).setDisplaySize(size, size).setRotation(angle).setAlpha(breath).setVisible(true);
+          const orbit = this.orbits[orbits] ??= this.scene.add.image(0, 0, 'workshop', 'energy-orbit').setDepth(0.2);
+          orbits++;
+          orbit.setPosition(x, y).setDisplaySize(size, size).setRotation(angle).setAlpha(breath).setVisible(true);
         }
         const period = settings.glintSeconds[kind];
         if (animate && continuing && (kind === 'gold' || quality === 'high') &&

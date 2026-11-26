@@ -179,7 +179,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #pause { display: grid; place-items: center; }
 .pause-icon { display: block; box-sizing: border-box; width: 11px; height: 13px; border-inline: 3px solid currentColor; }
 #clock { margin-inline: auto; font: 800 1.15rem 'Magnet Sans', sans-serif; }
-.field-hud, #ranking {
+.field-hud, #rankings-panel {
   background: var(--hud-surface); border: 1px solid var(--hud-border); border-radius: .7rem; padding: .55rem .7rem;
 }
 .field-hud { margin-top: .5rem; width: max-content; font: 700 .78rem 'Magnet Sans', sans-serif; }
@@ -187,8 +187,23 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #energy { width: 8rem; height: .65rem; accent-color: var(--brand-energy); }
 #status:empty { display: none; }
 #status { margin-top: .25rem; }
-#ranking { position: absolute; right: 0; top: 50px; list-style: none; font: 700 .78rem/1.6 'Magnet Sans', sans-serif; }
-#ranking li, #result-ranking li { white-space: pre; }
+#rankings-panel {
+  position: absolute; top: 62px; right: 0; width: clamp(7rem, 20vw, 10.5rem);
+  padding: .3rem .45rem; font: 700 .78rem/1.5 'Magnet Sans', sans-serif;
+}
+#ranking { margin: 0; padding: 0; list-style: none; }
+#rankings-panel[data-expanded="true"] { pointer-events: auto; }
+#rankings-panel[data-expanded="true"] #ranking { overflow-y: auto; overscroll-behavior: contain; max-height: min(33vh, 19rem); }
+#rankings-toggle {
+  color: inherit; font-weight: 800; pointer-events: auto; width: 100%;
+  background: transparent; border: 0; border-top: 1px solid var(--hud-border); min-height: 32px; margin-top: .24rem;
+}
+#ranking li, #result-ranking li {
+  display: grid; grid-template-columns: 1.6em minmax(0, 1fr) auto; gap: .38em;
+  padding: .08em .25em; border-radius: .25em; align-items: baseline;
+}
+#ranking li span:nth-child(2), #result-ranking li span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ranking li.is-player, #result-ranking li.is-player { background: var(--arena-background); outline: 1px solid var(--hud-border); }
 #attack {
   position: absolute; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom));
   z-index: 3; min-width: 88px; min-height: 55px; touch-action: none; font-weight: 800;
@@ -233,7 +248,10 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .menu-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
 .setting { display: flex; max-width: 22rem; align-items: center; justify-content: space-between; gap: 1rem; margin: .75rem 0; }
 #records { font: .78rem 'Magnet Sans', sans-serif; }
-#result-ranking { list-style: none; padding: 0; font: 700 .85rem/1.6 'Magnet Sans', sans-serif; }
+#result-ranking {
+  list-style: none; padding: .24rem; font: 700 .85rem/1.6 'Magnet Sans', sans-serif;
+  max-height: min(35vh, 20rem); overflow-y: auto; border: 1px solid var(--hud-border); border-radius: .55rem;
+}
 #result-stats { display: grid; grid-template-columns: 1fr auto; gap: .3rem 1rem; font-size: .85rem; }
 #result-stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) {
@@ -248,7 +266,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   .guide-heading { grid-column: 1 / -1; }
   .game-guide p.mouse-guide, .game-guide p.touch-guide { display: none; }
   .field-hud { grid-column: 1; box-sizing: border-box; max-width: 100%; }
-  #ranking { position: static; grid-column: 2; margin: .5rem 0 0; }
+  #rankings-panel { position: static; grid-column: 2; margin: .5rem 0 0; }
 }
 @media (max-height: 470px) { .menu-art { display: none; } }
 

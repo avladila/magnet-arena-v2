@@ -32,7 +32,7 @@ test('Arena starts, steers and pauses; Endless reaches results and replays', asy
   await page.getByRole('button', { name: 'Endless', exact: true }).click();
   await page.getByRole('button', { name: 'Pause' }).click();
   await page.getByRole('button', { name: 'End Session' }).click();
-  await expect(page.locator('#result-ranking li')).toHaveCount(5);
+  await expect(page.locator('#result-ranking li')).toHaveCount(20);
   await page.getByRole('button', { name: 'Play Again' }).click();
   await expect(page.locator('#mass')).toHaveText('20');
   expect(errors).toEqual([]);
@@ -127,7 +127,7 @@ test('two real Chromium touch pointers steer and resolve one overridden attack',
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await expect.poll(() => page.evaluate(() => {
       const c = Reflect.get(window, 'trainingScene').model.player.combat;
-      return c.hits + c.misses;
+      return c.hits + c.misses + c.protectedHits + c.guarded;
     })).toBe(1);
   } finally {
     await context.close();
@@ -150,7 +150,7 @@ test('full Arena simulation reaches results and Play Again through the UI', asyn
     return scene.clock.elapsed;
   });
   expect(elapsed).toBeCloseTo(300, 6);
-  await expect(page.locator('#result-ranking li')).toHaveCount(5);
+  await expect(page.locator('#result-ranking li')).toHaveCount(20);
   await page.getByRole('button', { name: 'Play Again' }).click();
   await expect(page.locator('#clock')).toHaveText('5:00');
   expect(errors).toEqual([]);
@@ -285,4 +285,72 @@ test('giant mobile energy stays recognizable in Low and reduced motion, then cha
   await expect(page.locator('#energy-ready')).toBeVisible();
   await expect(page.locator('#attack')).toHaveText('Ready');
   await expect(page.locator('#mass')).toHaveText('4352');
+});
+
+test('live ranks stay compact and reveal the full twenty-place standings on desktop and mobile', async ({ page }) => {
+  await inspectScene(page);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    for (const [i, bot] of scene.model.bots.entries()) {
+      bot.mass = 100 + i * 5;
+      bot.combat.highest = bot.mass;
+    }
+  });
+  await expect(page.locator('#ranking li')).toHaveCount(6);
+  await expect(page.locator('#ranking .is-player span').first()).toHaveText('20');
+  await page.getByRole('button', { name: 'Full rankings' }).click();
+  await expect(page.locator('#ranking li')).toHaveCount(20);
+  await expect(page.getByRole('button', { name: 'Close rankings' })).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', { name: 'Close rankings' }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('#ranking li')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Full rankings' }).click();
+  await expect(page.locator('#ranking li')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await page.getByRole('button', { name: 'End Session' }).click();
+  await expect(page.locator('#result-ranking li')).toHaveCount(20);
+  await expect(page.locator('#result-ranking .is-player span').first()).toHaveText('20');
+  expect(await page.locator('#result-ranking').evaluate((list) => list.scrollHeight > list.clientHeight)).toBe(true);
+});
+
+test('live release shrinks a giant, launches salvage and reports a guarded follow-up', async ({ page }) => {
+  await inspectScene(page);
+  await page.setViewportSize({ width: 1460, height: 880 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const { model } = scene;
+    model.botSteering = () => ({ kind: 'idle' });
+    model.replenish = () => {};
+    model.hazards.sites.length = 0;
+    model.particles.slots.forEach((piece: { state: string }) => { piece.state = 'inactive'; });
+    const player = model.player;
+    player.combat.energy = 100;
+    for (const bot of model.bots.slice(1)) bot.position = { x: 500, y: 500 };
+    const victim = model.bots[0];
+    Object.assign(victim, { position: { x: player.position.x + 410, y: player.position.y }, mass: 4352, physicalScale: 12, radius: 360 });
+    victim.combat.highest = 4352;
+    scene.botViews[0].scale.scale = 12;
+  });
+  await page.keyboard.down('Space');
+  await expect(page.locator('#attack')).toHaveText('Release');
+  await page.keyboard.up('Space');
+  await expect(page.locator('#status')).toHaveText('3301 MASS DETACHED');
+  const impact = await page.evaluate(() => {
+    const { model } = Reflect.get(window, 'trainingScene');
+    return { mass: model.bots[0].mass, radius: model.bots[0].radius, chunks: model.salvage.chunks.length };
+  });
+  expect(impact.mass).toBe(1051);
+  expect(impact.radius).toBeCloseTo(180, 1);
+  expect(impact.chunks).toBe(24);
+  await page.evaluate(() => { Reflect.get(window, 'trainingScene').model.player.combat.energy = 100; });
+  await expect(page.locator('#attack')).toHaveText('Ready');
+  await page.keyboard.down('Space');
+  await page.keyboard.up('Space');
+  await expect(page.locator('#status')).toHaveText('ATTACK GUARDED');
+  await expect(page.locator('#energy-readout')).toHaveText('65%');
 });

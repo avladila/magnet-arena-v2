@@ -1,12 +1,40 @@
 import { hazardConfig, theftConfig } from './competition-config';
-import { addMass, attractionReach } from './growth';
-import { clampToArena, type Participant, type Point } from './movement';
+import { growthConfig, playerConfig } from './config';
+import { massForPhysicalScale, physicalScaleForMass } from './growth';
+import { clamp, type Participant, type Point } from './movement';
+import { Salvage, shell } from './salvage';
 
-export function shell(participant: Participant): number {
-  return Math.max(0, participant.mass - Math.max(20, Math.floor(participant.combat.highest / 4)));
+export { pullMultiplier } from './combat-state';
+export { Salvage, salvageEligible, shell, type Debris } from './salvage';
+
+export type CombatRules = 'impact' | 'legacy';
+
+export function combatShell(victim: Participant): number {
+  const core = clamp(Math.floor(victim.combat.highest / 4), playerConfig.initialMass, theftConfig.combatCoreCap);
+  return Math.max(0, victim.mass - core);
 }
 
-export function theftDamage(attacker: number, defender: number, available: number): number {
+export function physicalReduction(attackerScale: number, defenderScale: number): number {
+  const scale = clamp(defenderScale, 1, growthConfig.maxScale);
+  let base = theftConfig.sizeLoss[0][1] as number;
+  for (let i = 1; i < theftConfig.sizeLoss.length; i++) {
+    const [high, upper] = theftConfig.sizeLoss[i];
+    if (scale > high) continue;
+    const [low, lower] = theftConfig.sizeLoss[i - 1];
+    base = lower + (upper - lower) * (scale - low) / (high - low);
+    break;
+  }
+  const bonus = clamp(0.025 * Math.log2(scale / clamp(attackerScale, 1, growthConfig.maxScale)), 0, 0.05);
+  return Math.min(0.5, base + bonus);
+}
+
+export function theftDamage(attacker: Participant, defender: Participant): number {
+  const scale = defender.physicalScale;
+  const target = Math.max(1, scale * (1 - physicalReduction(attacker.physicalScale, scale)));
+  return clamp(defender.mass - massForPhysicalScale(target), 0, combatShell(defender));
+}
+
+export function legacyTheftDamage(attacker: number, defender: number, available: number): number {
   const fraction = Math.min(0.32, 0.12 + 0.04 * Math.log2(Math.max(1, defender / attacker)));
   return available === 0 ? 0 : Math.min(available, Math.max(1, Math.round(available * fraction)));
 }
@@ -44,135 +72,99 @@ export function angleBetween(a: number, b: number): number {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 }
 
-export type Debris = Point & { destination: Point; origin: Point; value: number; age: number };
+type Request = { attacker: Participant; value: number; bearing: number };
 
-export class Salvage {
-  readonly chunks: Debris[] = [];
-  readonly pending: { origin: Point; value: number; age: number }[] = [];
-  expiredMass = 0;
-
-  detach(victim: Participant, requested: number): number {
-    const value = Math.min(requested, shell(victim));
-    if (value <= 0) return 0;
-    const origin = { ...victim.position };
-    addMass(victim, -value);
-    this.emit(origin, value, 0, Math.min(8, value));
-    return value;
+export function resolveTheft(participants: readonly Participant[], salvage: Salvage, seconds: number,
+    rules: CombatRules = 'impact'): void {
+  const legacy = rules === 'legacy';
+  for (const participant of participants) {
+    if (participant.combat.guardFor > 0) participant.combat.guardFor = Math.max(0, participant.combat.guardFor - seconds);
   }
-
-  private emit(origin: Point, value: number, age: number, desired: number): void {
-    const count = Math.min(desired, theftConfig.debrisCapacity - this.chunks.length);
-    if (!count) {
-      this.pending.push({ origin, value, age });
-      return;
-    }
-    const each = Math.floor(value / count);
-    for (let i = 0; i < count; i++) {
-      const angle = i * Math.PI * 2 / count + origin.x * 0.01;
-      const destination = clampToArena({
-        x: origin.x + 145 * Math.cos(angle), y: origin.y + 145 * Math.sin(angle),
-      }, 5);
-      this.chunks.push({ ...origin, origin, destination, age, value: each + Number(i < value % count) });
-    }
-  }
-
-  step(participants: readonly Participant[], seconds: number): void {
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      const chunk = this.chunks[i];
-      chunk.age += seconds;
-      if (chunk.age >= theftConfig.lifetime) {
-        this.expiredMass += chunk.value;
-        this.chunks.splice(i, 1);
-        continue;
-      }
-      if (chunk.age - seconds < theftConfig.flight) {
-        const t = Math.min(1, chunk.age / theftConfig.flight);
-        chunk.x = chunk.origin.x + (chunk.destination.x - chunk.origin.x) * t;
-        chunk.y = chunk.origin.y + (chunk.destination.y - chunk.origin.y) * t;
-        if (t < 1) continue;
-      }
-      let winner: Participant | undefined;
-      let bestGap = Infinity;
-      for (const participant of participants) {
-        const distance = Math.hypot(chunk.x - participant.position.x, chunk.y - participant.position.y);
-        const contact = participant.radius + 5;
-        const margin = Math.max(0, attractionReach(participant.physicalScale) - contact) * pullMultiplier(participant);
-        const gap = distance - contact;
-        if (gap <= margin && (gap < bestGap || (gap === bestGap && winner && participant.id < winner.id))) {
-          bestGap = gap;
-          winner = participant;
-        }
-      }
-      if (!winner) continue;
-      const travel = 520 * seconds * pullMultiplier(winner);
-      if (bestGap <= travel) {
-        winner.combat.salvage += chunk.value;
-        addMass(winner, chunk.value);
-        this.chunks.splice(i, 1);
-      } else {
-        const fraction = travel / (bestGap + winner.radius + 5);
-        chunk.x += (winner.position.x - chunk.x) * fraction;
-        chunk.y += (winner.position.y - chunk.y) * fraction;
-      }
-    }
-    for (let i = this.pending.length - 1; i >= 0; i--) {
-      const event = this.pending[i];
-      event.age += seconds;
-      if (event.age >= theftConfig.lifetime) this.expiredMass += event.value;
-      else if (this.chunks.length < theftConfig.debrisCapacity) this.emit(event.origin, event.value, event.age, 1);
-      else continue;
-      this.pending.splice(i, 1);
-    }
-  }
-}
-
-export function pullMultiplier(participant: Participant): number {
-  return (1 - participant.combat.heat) * (participant.combat.brittle ? hazardConfig.cold.attraction : 1);
-}
-
-export function resolveTheft(participants: readonly Participant[], salvage: Salvage, seconds: number): void {
-  const damage = new Map<Participant, { attacker: Participant; value: number }[]>();
+  let damage: Map<Participant, Request[]> | undefined;
   for (const attacker of participants) {
-    const attack = attacker.combat.attack;
+    const state = attacker.combat;
+    const attack = state.attack;
     if (attack.phase !== 'warning' && attack.phase !== 'cooldown') continue;
     attack.remaining -= seconds;
     if (attack.remaining > 1e-9) continue;
     if (attack.phase === 'cooldown') {
-      attacker.combat.attack = { phase: 'idle' };
+      state.attack = { phase: 'idle' };
       continue;
     }
-    let hit = false;
+    let guarded = false;
+    let contact = false;
+    let damaging = false;
     for (const victim of participants) {
       if (victim === attacker || gapBetween(attacker, victim) > theftConfig.reach ||
           angleBetween(attack.bearing, bearingTo(attacker.position, victim.position)) > theftConfig.halfAngle) continue;
-      hit = true;
-      const value = theftDamage(attacker.mass, victim.mass, shell(victim));
+      if (!legacy && victim.combat.guardFor > 1e-9) {
+        guarded = true;
+        continue;
+      }
+      contact = true;
+      const value = legacy ? legacyTheftDamage(attacker.mass, victim.mass, shell(victim)) : theftDamage(attacker, victim);
       if (!value) continue;
-      const requests = damage.get(victim) ?? [];
-      requests.push({ attacker, value });
-      damage.set(victim, requests);
+      damaging = true;
+      damage ??= new Map();
+      let requests = damage.get(victim);
+      if (!requests) damage.set(victim, requests = []);
+      const bearing = attacker.position.x === victim.position.x && attacker.position.y === victim.position.y
+        ? attack.bearing + Math.PI : bearingTo(victim.position, attacker.position);
+      requests.push({ attacker, value, bearing });
     }
-    attacker.combat.energy -= hit ? theftConfig.energy : theftConfig.missCost;
-    attacker.combat[hit ? 'hits' : 'misses']++;
-    attacker.combat.attack = { phase: 'cooldown', remaining: theftConfig.cooldown };
+    state.energy = Math.max(0, state.energy - (contact ? theftConfig.energy : theftConfig.missCost));
+    if (damaging || (legacy && contact)) state.hits++;
+    else if (contact) state.protectedHits++;
+    else if (guarded) state.guarded++;
+    else state.misses++;
+    state.attack = { phase: 'cooldown', remaining: theftConfig.cooldown };
   }
-  for (const [victim, requests] of damage) {
-    // Stable participant IDs decide which simultaneous hit consumes brittle.
-    requests.sort((a, b) => a.attacker.id.localeCompare(b.attacker.id));
-    if (victim.combat.brittle) {
-      requests[0].value = Math.round(requests[0].value * hazardConfig.cold.damage);
-      victim.combat.brittle = false;
-    }
-    const total = requests.reduce((sum, request) => sum + request.value, 0);
-    const actual = salvage.detach(victim, total);
-    victim.combat.lostToTheft += actual;
-    let cumulative = 0;
-    let credited = 0;
-    for (const { attacker, value } of requests) {
-      cumulative += value;
-      const next = Math.floor(cumulative * actual / total);
-      attacker.combat.detached += next - credited;
-      credited = next;
-    }
+  if (!damage) return;
+  // Resolve in stable victim order in the impact rules. All requests used pre-hit geometry.
+  const victims = legacy ? damage : [...damage].sort(([a], [b]) => a.id.localeCompare(b.id));
+  for (const [victim, requests] of victims) detachDamage(victim, requests, salvage, legacy);
+}
+
+function detachDamage(victim: Participant, requests: Request[], salvage: Salvage, legacy: boolean): void {
+  requests.sort((a, b) => a.attacker.id.localeCompare(b.attacker.id));
+  let strongest = requests[0];
+  if (!legacy) for (const request of requests) if (request.value > strongest.value) strongest = request;
+  const brittle = victim.combat.brittle;
+  if (brittle) {
+    strongest.value = Math.round(strongest.value * hazardConfig.cold.damage);
+    victim.combat.brittle = false;
+  }
+  const total = requests.reduce((sum, request) => sum + request.value, 0);
+  const limit = legacy ? shell(victim) : combatShell(victim);
+  const actual = Math.min(limit, legacy ? total : strongest.value);
+  const originalScale = victim.physicalScale;
+  const reduction = 1 - physicalScaleForMass(victim.mass - actual) / originalScale;
+  const credits: { id: string; value: number }[] = [];
+  let cumulative = 0;
+  let credited = 0;
+  let x = 0;
+  let y = 0;
+  for (const { attacker, value, bearing } of requests) {
+    cumulative += value;
+    const next = Math.floor(cumulative * actual / total);
+    const share = next - credited;
+    credited = next;
+    if (!share) continue;
+    credits.push({ id: attacker.id, value: share });
+    const state = attacker.combat;
+    state.detached += share;
+    state.largestTheft = Math.max(state.largestTheft, share);
+    state.largestReduction = Math.max(state.largestReduction, reduction);
+    if (brittle) state.brittleHits++;
+    x += Math.cos(bearing) * share;
+    y += Math.sin(bearing) * share;
+  }
+  const bearing = Math.hypot(x, y) > 1e-9 ? Math.atan2(y, x) : strongest.bearing;
+  const impact = { origin: victim.position, radius: victim.radius, mass: victim.mass, bearing, brittle, removed: actual, reduction };
+  victim.combat.lostToTheft += legacy ? salvage.detach(victim, actual, limit)
+    : salvage.detachTheft(victim, actual, limit, impact, credits);
+  if (actual > 0) {
+    victim.combat.impact = impact;
+    if (!legacy) victim.combat.guardFor = theftConfig.guard;
   }
 }

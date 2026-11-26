@@ -24,6 +24,12 @@ export const scrapConfig = {
   massPerPickup: 1,
   radius: 5,
 };
+export const populationConfig = { competitive: 20, legacy: 5, tutorial: 2, tutorialSlots: 32 } as const;
+
+export function resourceBudget(participants: number) {
+  const activeCount = Math.floor(scrapConfig.activeCount * participants / populationConfig.legacy);
+  return { activeCount, capacity: Math.max(scrapConfig.capacity, Math.ceil(activeCount * 1.25)) };
+}
 export const regionConfig = {
   size: 960,
   sitesPerUnitArea: 720 / (4800 * 3200),

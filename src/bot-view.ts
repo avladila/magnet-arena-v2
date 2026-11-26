@@ -15,8 +15,10 @@ export class BotView {
   private scale = new MagnetScale();
   private palette?: ThemePalette;
   private labelSide = -1;
+  private bot?: Bot;
 
-  constructor(scene: Phaser.Scene, private bot: Bot, showCharge = false) {
+  constructor(scene: Phaser.Scene, bot: Bot, showCharge = false) {
+    this.bot = bot;
     this.body = createMagnetSprite(scene, bot.id).setDepth(1);
     if (showCharge) this.charge = new PoleCharge(scene);
     this.label = scene.add.text(0, 0, bot.name, {
@@ -27,10 +29,13 @@ export class BotView {
     }).setOrigin(0.5, 0).setDepth(2);
   }
 
-  setBot(bot: Bot) {
+  setBot(bot?: Bot) {
     this.bot = bot;
+    this.body.setVisible(false);
+    this.label.setVisible(false);
+    if (bot && this.label.text !== bot.name) this.label.setText(bot.name);
     this.heading = new Heading();
-    this.heading.angle = bot.heading;
+    this.heading.angle = bot?.heading ?? 0;
     this.labelSide = -1;
     this.charge?.reset();
     this.scale = new MagnetScale();
@@ -45,15 +50,17 @@ export class BotView {
     names: WorldBounds[],
     reducedMotion = false,
   ): void {
-    this.heading.update(this.bot.heading, seconds);
-    this.scale.update(this.bot.physicalScale, seconds);
+    const bot = this.bot;
+    if (!bot) return;
+    this.heading.update(bot.heading, seconds);
+    this.scale.update(bot.physicalScale, seconds, bot.combat.lostToTheft);
 
-    const { x, y } = this.bot.position;
+    const { x, y } = bot.position;
     const bodyRadius = playerConfig.radius * this.scale.scale;
     const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
     this.body.setVisible(visible);
-    this.charge?.render(this.bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion);
+    this.charge?.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion);
     this.label.setVisible(false);
     if (!visible) return;
 
@@ -61,7 +68,7 @@ export class BotView {
       this.label.setColor(palette.ui['--hud-text']).setStroke(palette.ui['--hud-surface'], 4);
       this.palette = palette;
     }
-    renderMagnet(this.body, this.bot, this.heading.angle, this.scale.scale);
+    renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);
 
     const halfWidth = this.label.width / (2 * zoom);
     const height = this.label.height / zoom;
@@ -74,7 +81,7 @@ export class BotView {
       if (box.right > view.right || top < view.top || box.bottom > view.bottom) continue;
       if (names.some((other) => box.left < other.right && box.right > other.left &&
           box.top < other.bottom && box.bottom > other.top)) continue;
-      if (participants.some((other) => other !== this.bot && this.bodyCovers(other, box))) continue;
+      if (participants.some((other) => other !== bot && this.bodyCovers(other, box))) continue;
       this.labelSide = side;
       names.push(box);
       this.label.setPosition(labelX, top).setScale(1 / zoom).setVisible(true);

@@ -11,7 +11,6 @@ export function element<T extends HTMLElement = HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
 }
 
-const names: Record<string, string> = { player: 'You', 'bot-1': 'Copper', 'bot-2': 'Spark', 'bot-3': 'Drift', 'bot-4': 'Orbit' };
 const formatTime = (seconds: number) => {
   const remaining = Math.max(0, Math.ceil(seconds));
   return Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0');
@@ -28,6 +27,8 @@ export class SessionUI {
   private mode: Mode = 'arena';
   private duringSession = false;
   private rankingText = '';
+  private ranksExpanded = false;
+  private readonly compactRanks = matchMedia('(max-width: 600px), (pointer: coarse)');
   private ownPlace?: number;
   private resultDetails?: Promise<typeof import('./result-stats') | undefined>;
   private lastHud = 0;
@@ -61,6 +62,7 @@ export class SessionUI {
         this.duringSession = true;
         this.changeDifficulty = false;
         this.feedback = undefined;
+        this.expandRanks(false);
         this.lastHud = -Infinity;
         this.ownPlace = undefined;
         this.resultDetails ??= import('./result-stats').catch(() => undefined);
@@ -117,6 +119,15 @@ export class SessionUI {
     });
     element('dark').addEventListener('change', actions.toggleTheme);
     element('pause').addEventListener('click', () => this.pause(actions.resetInput));
+    const rankingsPanel = element('rankings-panel');
+    for (const type of ['pointerdown', 'pointerup', 'pointermove']) {
+      rankingsPanel.addEventListener(type, (event) => event.stopPropagation());
+    }
+    element('rankings-toggle').addEventListener('click', (event) => {
+      this.expandRanks(!this.ranksExpanded);
+      if (event.detail) element('arena').focus({ preventScroll: true });
+      this.lastHud = -Infinity;
+    });
     window.addEventListener('keydown', (event) => {
       if (event.code === 'Escape' && this.running && !event.repeat) {
         event.preventDefault();
@@ -214,6 +225,15 @@ export class SessionUI {
     this.feedback = { label, until: now + 1400 };
   }
 
+  private expandRanks(expanded: boolean): void {
+    this.ranksExpanded = expanded;
+    const toggle = element('rankings-toggle');
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.textContent = expanded ? 'Close rankings' : 'Full rankings';
+    element('ranking').tabIndex = expanded ? 0 : -1;
+    element('rankings-panel').dataset.expanded = String(expanded);
+  }
+
   hud(model: ArenaModel, clock: MatchClock, now: number, bounds: WorldBounds) {
     const { combat, mass, position } = model.player;
     element('mass').textContent = String(mass);
@@ -240,7 +260,7 @@ export class SessionUI {
       combat.attack.phase === 'warning' ? 'Firing' : combat.attack.phase === 'cooldown' ? 'Cooling' : ready ? 'Ready' : 'Attack';
     const tutorial = model.tutorial;
     element('tutorial-task').textContent = tutorial?.instruction ?? '';
-    element('ranking').hidden = Boolean(tutorial);
+    element('rankings-panel').hidden = Boolean(tutorial);
     if (tutorial?.completed && !this.progress.tutorialDone) {
       this.progress.tutorialDone = true;
       saveProgress(this.progress);
@@ -254,13 +274,17 @@ export class SessionUI {
     }
     element('status').textContent = [
       this.feedback && this.feedback.until > now ? this.feedback.label : '',
+      combat.guardFor > 0 ? 'THEFT GUARD' : '',
       combat.heat >= 1 ? 'OVERHEATED' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
       combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '', tip,
     ].filter(Boolean).join(' · ');
     if (now - this.lastHud > 180) {
       this.lastHud = now;
       this.navigation.render(model, bounds);
-      const place = rankings(model.participants).find(({ participant }) => participant === model.player)!.place;
+      if (tutorial) return;
+      const all = rankings(model.participants);
+      const mine = all.find(({ participant }) => participant.kind === 'player')!;
+      const place = mine.place;
       if (this.ownPlace !== undefined && this.ownPlace !== place && !this.motionReduced &&
           !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         element('ranking').animate([{ opacity: 0.68 }, { opacity: 1 }], {
@@ -268,8 +292,9 @@ export class SessionUI {
         });
       }
       this.ownPlace = place;
-      const rows = this.rows(model);
-      const ranking = rows.join('\n');
+      const rows = this.ranksExpanded ? all : all.slice(0, this.compactRanks.matches ? 1 : 5);
+      if (!this.ranksExpanded && !rows.includes(mine)) rows.push(mine);
+      const ranking = rows.map(({ place, participant }) => place + '/' + participant.id + '/' + participant.mass).join(',');
       if (ranking !== this.rankingText) {
         this.rankingText = ranking;
         this.list('ranking', rows);
@@ -277,15 +302,17 @@ export class SessionUI {
     }
   }
 
-  private rows(model: ArenaModel) {
-    return rankings(model.participants).map(({ place, participant }) =>
-      place + '  ' + names[participant.id].padEnd(7) + String(participant.mass).padStart(5));
-  }
-
-  private list(id: string, rows: string[]) {
-    element(id).replaceChildren(...rows.map((text) => {
+  private list(id: string, rows: ReturnType<typeof rankings>) {
+    element(id).replaceChildren(...rows.map(({ place, participant }) => {
       const row = document.createElement('li');
-      row.textContent = text;
+      const rank = document.createElement('span');
+      const name = document.createElement('span');
+      const mass = document.createElement('span');
+      rank.textContent = String(place);
+      name.textContent = participant.name;
+      mass.textContent = String(participant.mass);
+      if (participant.kind === 'player') row.className = 'is-player';
+      row.append(rank, name, mass);
       return row;
     }));
   }
@@ -310,7 +337,8 @@ export class SessionUI {
     const summary = clock.mode === 'endless' ? 'Endless session' :
       place === 1 ? 'Victory' : place === 2 ? 'Second place' : place === 3 ? 'Third place' : 'Place ' + place;
     element('result-summary').textContent = summary + ' · ' + player.mass + ' mass' + (best ? ' · Personal best' : '');
-    this.list('result-ranking', this.rows(model));
+    this.list('result-ranking', rankings(model.participants));
+    element('result-ranking').scrollTop = 0;
     const stats = element('result-stats');
     stats.replaceChildren();
     void this.resultDetails?.then((details) => {

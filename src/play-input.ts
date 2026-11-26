@@ -1,4 +1,4 @@
-import { angleBetween, arm, bearingTo, cancelArm, gapBetween, release, shell } from './combat';
+import { angleBetween, arm, bearingTo, cancelArm, gapBetween, release, theftDamage } from './combat';
 import { theftConfig } from './competition-config';
 import type { Participant, Point, Steering } from './movement';
 
@@ -50,9 +50,10 @@ export function bindPlayInput(
     let best: Participant | undefined;
     let score = 0;
     for (const candidate of participants()) {
-      if (candidate === self || gapBetween(self, candidate) > theftConfig.reach ||
+      const gap = gapBetween(self, candidate);
+      if (candidate === self || candidate.combat.guardFor > 1e-9 || gap > theftConfig.reach ||
           angleBetween(self.heading, bearingTo(self.position, candidate.position)) > Math.PI / 2) continue;
-      const utility = (1 + shell(candidate)) * (candidate === tracked ? 1.2 : 1) / (1 + gapBetween(self, candidate));
+      const utility = theftDamage(self, candidate) * (candidate === tracked ? 1.2 : 1) / (1 + gap);
       if (utility > score) {
         score = utility;
         best = candidate;
