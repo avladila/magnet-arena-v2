@@ -1,15 +1,17 @@
 """Generate original in-game artwork from MAGNET's shared token palette."""
 import json
-from math import cos, pi, sin
+from math import cos, exp, hypot, pi, sin
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image, ImageColor, ImageDraw
 
 tokens = json.loads(Path('brand/tokens.json').read_text())
 roles = tokens['roles']
 steel = tokens['steel']
 ink = tokens['themes']['light']['ink']
+pickups = tokens['pickups']
+energy = pickups['energyMaterial']
 P = Path('public')
-E = Path('docs/evidence/rc2')
+E = Path('docs/evidence/rc3')
 N = 96
 
 
@@ -38,6 +40,14 @@ def pack(name, items):
     return sheet
 
 
+def mix(a, b, amount):
+    return tuple(round(x + (y - x) * amount) for x, y in zip(a, b))
+
+
+def rgb(value):
+    return ImageColor.getrgb(value) if isinstance(value, str) else value
+
+
 def magnet(index, stage):
     image, d = tile()
     trim = tokens['rivalTrim'][index]
@@ -46,13 +56,17 @@ def magnet(index, stage):
     d.ellipse((48-r, 48-r, 48+r, 48+r), fill=ink)
     d.ellipse((50-r, 50-r, 46+r, 46+r), fill=trim)
     d.ellipse((54-r, 54-r, 42+r, 42+r), fill=steel[3])
+    d.arc((51-r, 51-r, 45+r, 45+r), 181, 270, fill=steel[0], width=1)
     for x, y in radial(48, 48, r - 7, [4, 6, 8, 12, 16, 24][stage]):
         d.ellipse((x-3, y-3, x+3, y+3), fill=ink)
         d.ellipse((x-2, y-2, x, y), fill=steel[0])
     d.rounded_rectangle((21, 24, 72, 72), 11, fill=ink)
     for a, b, pole in [(28, 43, 'coral'), (53, 68, 'cobalt')]:
         d.rounded_rectangle((27, a, 68, b), 6, fill=roles[pole])
-        d.rounded_rectangle((58, a+2, 66, b-2), 4, fill=steel[0])
+        highlight = mix(rgb(roles[pole]), rgb(steel[0]), 0.66)
+        d.line((33, a+2, 59, a+2), fill=highlight, width=2)
+        d.rounded_rectangle((58, a+2, 66, b-2), 4, fill=steel[1])
+        d.line((60, a+3, 64, a+3),fill=steel[0],width=2)
     d.rounded_rectangle((23, 28, 38, 68), 8, fill=trim)
     if index == 2:
         d.polygon(radial(30, 48, 6, 6), fill=steel[0])
@@ -68,55 +82,137 @@ magnets = {f'{name}-{stage}': magnet(i, stage) for i, name in enumerate(['player
 pack('magnets', magnets)
 
 
-def scrap(i, palette, detailed):
-    image, d = tile()
-    c = palette[i]
-    d.ellipse((22, 32, 80, 80), fill=(35,54,74,64))
-    if not detailed:
-        d.polygon(radial(48, 48, 32, 6), fill=c, outline=ink, width=4)
-    elif i in (0, 1, 4):
-        if i == 1:
-            d.ellipse((18, 18, 78, 78), fill=c, outline=ink, width=5)
-        else:
-            d.polygon(radial(48, 48, 33, 6 if i == 0 else 12), fill=c, outline=ink, width=4)
-            if i == 4:
-                for x, y in radial(48, 48, 31, 6):
-                    d.ellipse((x-7,y-7,x+7,y+7), fill=c)
-        d.ellipse((37, 37, 59, 59), fill=ink)
-    elif i in (2, 3, 8):
-        d.rounded_rectangle((39, 30, 59, 78), 8, fill=c, outline=ink, width=4)
-        d.rounded_rectangle((25, 20, 72, 43), 10 if i == 8 else 5, fill=c, outline=ink, width=4)
-        if i == 3:
-            for y in (48, 57, 66):
-                d.line((40,y,59,y),fill=steel[1],width=3)
-    elif i == 5:
-        d.polygon([(20,25),(73,22),(78,59),(50,74),(29,61)],fill=c,outline=ink,width=4)
-    elif i == 6:
-        d.line([(32 + 30 * (j % 2), 19 + 8 * j) for j in range(8)],fill=c,width=10,joint='curve')
-    elif i == 7:
-        d.rounded_rectangle((29,18,67,78),16,outline=c,width=10)
-        d.line((30,53,66,53),fill=c,width=7)
+def glow(color, opacity, spread=19, center=(48, 48)):
+    """A colored falloff with transparent padding on all four atlas edges."""
+    x0, y0 = center
+    alpha = bytearray()
+    for y in range(N):
+        for x in range(N):
+            distance = hypot(x - x0, y - y0)
+            falloff = exp(-0.5 * (distance / spread) ** 2)
+            fade_edge = max(0, min(1, (46 - distance) / 12))
+            alpha.append(round(opacity * falloff * fade_edge))
+    halo = Image.new('RGBA', (N, N), rgb(color))
+    halo.putalpha(Image.frombytes('L', (N, N), bytes(alpha)))
+    return halo
+
+
+def material(base, highlight, mask, strength=1):
+    """Bake enamel shading and an upper-left specular reflection inside a silhouette."""
+    base, highlight = rgb(base), rgb(highlight)
+    shadow = mix(base, rgb(ink), 0.57)
+    pixels = []
+    for y in range(N):
+        for x in range(N):
+            light = max(0, min(1, 1.08 - (x + y - 52) / 101))
+            body = mix(shadow, base, light)
+            specular = exp(-0.5 * (((x - 38) / 11) ** 2 + ((y - 35) / 8) ** 2))
+            pixels.append(mix(body, highlight, min(1, specular * strength)))
+    shade = Image.new('RGB', (N, N))
+    shade.putdata(pixels)
+    shade.putalpha(mask)
+    return shade
+
+
+def scrap(i, mode):
+    # This rounded silhouette stays consistent at every zoom. Fine cuts and highlights
+    # disappear naturally as the Canvas sampler reduces the texture to a few pixels.
+    base = pickups['palette'][i]
+    image = glow(base, 153 if mode == 'dark' else 116, spread=20 if mode == 'dark' else 17)
+    d = ImageDraw.Draw(image)
+    edge = mix(rgb(tokens['themes'][mode]['scrap'][i]), rgb(ink), 0.48)
+    if i in (0, 4, 5, 9):
+        outline = radial(48, 48, 25, 8, pi / 8)
+        d.polygon(outline, fill=edge)
+        mask = Image.new('L', (N, N))
+        ImageDraw.Draw(mask).polygon(radial(48, 47, 21, 8, pi / 8), fill=255)
     else:
-        d.line((29,23,29,69,71,69),fill=c,width=14,joint='curve')
-    d.line((26, 29, 39, 22), fill=steel[0], width=3)
+        d.ellipse((24, 24, 72, 72), fill=edge)
+        mask = Image.new('L', (N, N))
+        ImageDraw.Draw(mask).ellipse((28, 27, 68, 67), fill=255)
+    image.alpha_composite(material(base, steel[0], mask, strength=0.96))
+    d = ImageDraw.Draw(image)
+    d.ellipse((35, 33, 45, 39), fill=steel[0])
+    # Industrial face details are subpixel at distant zoom, leaving a colored bead.
+    if i in (0, 1, 4, 7):
+        d.ellipse((46, 47, 57, 56), fill=edge)
+        d.arc((43, 44, 59, 59), 15, 105, fill=base, width=2)
+    elif i in (2, 3, 8):
+        d.line((45, 50, 58, 50), fill=edge, width=3)
+        d.line((46, 53, 57, 53), fill=base, width=2)
+    else:
+        d.line((45, 59, 56, 55, 61, 47), fill=edge, width=2)
+    return image
+
+
+def gold_ingot():
+    base = roles['gold']
+    image = glow(base, 145, spread=20)
+    d = ImageDraw.Draw(image)
+    d.polygon([(17, 54), (30, 32), (66, 32), (79, 53), (65, 67), (30, 67)],
+              fill=pickups['goldEdge'])
+    d.polygon([(22, 53), (34, 36), (63, 36), (74, 53)], fill=base)
+    d.polygon([(22, 55), (74, 55), (63, 63), (32, 63)], fill=mix(rgb(base), rgb(pickups['goldEdge']), 0.45))
+    d.line((34, 38, 62, 38), fill=steel[0], width=3)
+    d.line((27, 51, 68, 51), fill=mix(rgb(base), rgb(steel[0]), 0.65), width=2)
+    return image
+
+
+def energy_cell():
+    image = glow(energy['glow'], 173, spread=19)
+    d = ImageDraw.Draw(image)
+    for start in (18, 138, 258):
+        d.arc((13, 13, 83, 83), start, start + 72, fill=(*rgb(energy['edge']), 65), width=2)
+    d.polygon(radial(48, 48, 27, 6, pi / 6), fill=energy['shadow'])
+    d.polygon(radial(48, 48, 24, 6, pi / 6), fill=energy['edge'])
+    mask = Image.new('L', (N, N))
+    ImageDraw.Draw(mask).polygon(radial(48, 47, 21, 6, pi / 6), fill=255)
+    image.alpha_composite(material(energy['body'], energy['highlight'], mask))
+    d = ImageDraw.Draw(image)
+    d.line((29, 40, 39, 30, 52, 30), fill=energy['highlight'], width=2)
+    # The white bolt is wide enough to retain an unmistakable bright center at distance.
+    d.polygon([(49, 31), (35, 50), (46, 50), (43, 65), (62, 43), (50, 43), (55, 31)], fill=energy['core'])
+    return image
+
+
+def energy_orbit():
+    image = glow(energy['glow'], 100, spread=23)
+    d = ImageDraw.Draw(image)
+    for start in (6, 126, 246):
+        d.arc((12, 12, 84, 84), start, start + 75, fill=energy['edge'], width=5)
+        d.arc((12, 12, 84, 84), start + 3, start + 68, fill=energy['body'], width=2)
+    return image
+
+
+def sparkle(color, rays=4):
+    image = glow(color, 191, spread=20)
+    d = ImageDraw.Draw(image)
+    points = []
+    for i in range(rays * 2):
+        size = 31 if i % 2 == 0 else 8
+        angle = i * pi / rays
+        points.append((48 + size * cos(angle), 48 + size * sin(angle)))
+    d.polygon(points, fill=color)
+    d.ellipse((41, 41, 55, 55), fill=steel[0])
     return image
 
 
 def object_art(kind):
     im, d = tile()
-    if kind == 'gold':
-        d.polygon([(14,55),(26,32),(73,32),(83,58),(69,69),(23,69)],fill=roles['gold'],outline=ink,width=4)
-        d.line((28,37,66,37),fill=steel[0],width=4)
-    elif kind == 'energy':
-        d.ellipse((12,29,84,67),outline=roles['energy'],width=5)
-        d.polygon(radial(48,48,24,6,pi/6),fill=roles['energy'],outline=ink,width=4)
-        d.line((36,41,49,29),fill=steel[0],width=3)
-    elif kind.startswith('debris'):
+    if kind.startswith('debris'):
         rank = int(kind[-1])
-        d.polygon(radial(48,48,23 + rank*5,6,.23),fill=steel[2-rank],outline=ink,width=5)
-        d.line((27,43,46,35,64,42),fill=steel[0],width=5)
-        for i in range(rank+1):
-            d.ellipse((35+i*10,47,40+i*10,52),fill=ink)
+        base = steel[2 - rank]
+        im = glow(base, 58 + rank * 44, spread=16 + rank * 2)
+        d = ImageDraw.Draw(im)
+        points = radial(48, 48, 23 + rank * 5, 6, .23)
+        d.polygon(points, fill=steel[3], outline=ink, width=4)
+        mask = Image.new('L', (N, N))
+        ImageDraw.Draw(mask).polygon(radial(48, 47, 19 + rank * 5, 6, .23), fill=255)
+        im.alpha_composite(material(base, steel[0], mask))
+        d = ImageDraw.Draw(im)
+        d.line((34, 39, 46, 34, 59, 38), fill=steel[0], width=3)
+        for i in range(rank + 1):
+            d.ellipse((38+i*8, 49, 42+i*8, 53), fill=ink)
     elif kind == 'flux':
         d.ellipse((10,10,86,86),outline=roles[kind],width=4)
         for angle in range(6):
@@ -143,10 +239,12 @@ def object_art(kind):
         d.rounded_rectangle((13,21,83,75),8,fill=roles[kind],outline=ink,width=4)
         for y in (30,42,54,66):
             d.line((25,y,71,y),fill=ink,width=4)
+            d.line((27,y+3,69,y+3),fill=mix(rgb(roles['heat']), rgb(steel[0]), 0.74),width=1)
     else:
         outline = ([(13,46),(22,25),(44,28),(62,17),(79,27),(86,51),(69,63),(47,73),(31,68),(16,61)]
                    if kind == 'acid' else [(10,42),(23,29),(48,24),(76,30),(88,50),(76,63),(47,73),(20,68)])
         d.polygon(outline, fill=roles[kind],outline=ink,width=4)
+        d.arc((18, 28, 75, 61), 190, 282, fill=steel[0], width=2)
         d.ellipse((26,36,69,61),outline=steel[0],width=3)
         if kind == 'acid':
             d.polygon(radial(48,48,12,6),fill=ink)
@@ -155,17 +253,20 @@ def object_art(kind):
     return im
 
 
-for mode, theme in tokens['themes'].items():
-    for i in range(10):
-        for detail in (0,1):
-            frames[f'{mode}-scrap-{i}-{detail}'] = scrap(i, theme['scrap'], detail)
-for kind in ['gold','energy','debris-0','debris-1','debris-2','flux','cold','heat','water','acid','prop-grate','prop-drain']:
+for mode in tokens['themes']:
+    for index in range(10):
+        frames[f'{mode}-scrap-{index}'] = scrap(index, mode)
+frames['gold'] = gold_ingot()
+frames['energy'] = energy_cell()
+frames['energy-orbit'] = energy_orbit()
+frames['pole-charge'] = glow(energy['highlight'], 230, spread=19)
+for kind in ['debris-0','debris-1','debris-2','flux','cold','heat','water','acid','prop-grate','prop-drain']:
     frames[kind] = object_art(kind)
 for role in ['steel', 'gold', 'energy', 'teal', 'heat', 'cold', 'flux', 'acid', 'water']:
-    im, d = tile()
-    d.polygon(radial(48, 48, 34, 6), fill=steel[0] if role == 'steel' else roles[role])
-    d.ellipse((29, 27, 43, 39), fill=steel[0])
-    frames['fleck-' + role] = im
+    tone = steel[0] if role == 'steel' else roles[role]
+    frames['fleck-' + role] = sparkle(tone, rays=6 if role == 'gold' else 4)
+for index, tone in enumerate(pickups['palette']):
+    frames[f'fleck-scrap-{index}'] = sparkle(tone)
 pack('workshop', frames)
 
 
@@ -222,7 +323,11 @@ for side, mode in enumerate(tokens['themes']):
     for i,(key,img) in enumerate(entries):
         x, y = start + 5 + i % 6 * 104, 31 + i // 6 * 49
         draw.text((x,y+35), key.replace(mode + '-', ''), fill=palette['ink'])
-        sizes = (22, 39, 12) if key in magnets else (13, 25, 7)
+        sizes = (22, 39, 12) if key in magnets else (14, 26, 8)
+        if key in ('energy', 'energy-orbit'):
+            sizes = (24, 38, 19)
+        elif key == 'gold':
+            sizes = (21, 34, 12)
         for offset, size in zip((0, 25, 70), sizes):
             thumb = img.resize((size,size), Image.Resampling.LANCZOS)
             proof.paste(thumb, (x+offset,y+(35-size)//2), thumb)

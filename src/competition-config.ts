@@ -18,3 +18,21 @@ export const tacticsConfig = {
   normal: { search: 610, decision: 3.65, pursuit: 140, arming: 0.35, reconsider: 0.8, safety: 50 },
   hard: { search: 720, decision: 2.15, pursuit: 120, arming: 0.17, reconsider: 0.4, safety: 95 },
 } as const;
+
+export const navigationConfig = {
+  lookAheadSeconds: 0.7,
+  clearance: 12,
+  exitClearance: 60,
+  commitmentSeconds: 0.8,
+  evaluationSeconds: 0.25,
+  waypointArrival: 22,
+  turnRate: 240 * Math.PI / 180,
+  turnLookAheadSeconds: 0.32,
+  hazardTurningSpeedScale: 0.55,
+  emergencyTurnRate: 360 * Math.PI / 180,
+  stuckSeconds: 1,
+  stuckProgress: 0.2,
+  targetAdvantage: 1.2,
+  pursuitEnterGap: 190,
+  pursuitExitGap: 150,
+} as const;

@@ -8,14 +8,14 @@ import { element, SessionUI } from './session-ui';
 import Phaser from 'phaser';
 import { ArenaModel } from './arena-model';
 import { ArenaFloor } from './art';
-import { createMagnetSprite, magnetAtlas, renderMagnet } from './magnet-art';
+import { createMagnetSprite, magnetAtlas, PoleCharge, renderMagnet } from './magnet-art';
 import { bindInput } from './browser-input';
 import { BotView } from './bot-view';
 import { touch, viewConfig } from './config';
 import { GrowthFeedbackView } from './growth-feedback';
 import type { Point } from './movement';
 import { ParticleView } from './particle-view';
-import type { Collection, WorldBounds } from './particles';
+import type { Collection, Scrap, WorldBounds } from './particles';
 import { cssColor } from './theme';
 import { applyThemeToPage, bindThemeToggle, localThemePreference } from './theme-control';
 import { PickupFeedback } from './pickup-feedback';
@@ -56,6 +56,8 @@ class ArenaScene extends Phaser.Scene {
   private readonly botNames: WorldBounds[] = [];
   private field!: GrowthFeedbackView;
   private magnet!: Phaser.GameObjects.Sprite;
+  private poleCharge!: PoleCharge;
+  private readonly kindOf = (scrap: Scrap) => this.model.particles.kind(scrap);
   private controls!: ReturnType<typeof bindInput>;
   private pixelRatio = 1;
   private width = 0;
@@ -75,8 +77,9 @@ class ArenaScene extends Phaser.Scene {
     this.particleView = new ParticleView(this, true);
     this.effects = new WorkshopParticles(this);
     this.pickupFeedback = new PickupFeedback(surface);
-    this.botViews = this.model.bots.map((bot) => new BotView(this, bot));
+    this.botViews = this.model.bots.map((bot) => new BotView(this, bot, true));
     this.magnet = createMagnetSprite(this, player.id).setDepth(2);
+    this.poleCharge = new PoleCharge(this);
     const toggleTheme = () => {
       theme.toggle();
       applyThemeToPage(themeButton, theme);
@@ -110,7 +113,7 @@ class ArenaScene extends Phaser.Scene {
     const bounds = this.framing.bounds;
     this.floor.render(bounds, theme.palette);
     this.field.render(player, 0, theme.palette, reducedMotion.matches);
-    this.particleView.render(this.model.particles.slots, bounds, [], 0, theme.palette);
+    this.renderPickups(bounds, [], 0, reducedMotion.matches || this.menu.motionReduced);
     this.renderBots(0, bounds);
   }
 
@@ -128,6 +131,8 @@ class ArenaScene extends Phaser.Scene {
     this.competition.reset();
     this.effects.reset();
     this.pickupFeedback.reset();
+    this.particleView.reset();
+    this.poleCharge.reset();
     this.lastLanding = 0;
     this.positionCamera();
     this.menu.hud(this.model, this.clock, performance.now(), this.framing.bounds);
@@ -182,27 +187,29 @@ class ArenaScene extends Phaser.Scene {
     this.floor.render(bounds, theme.palette);
     const lessMotion = reducedMotion.matches || this.menu.motionReduced;
     this.effects.configure(this.menu.quality, lessMotion);
-    if (this.field.render(player, advanced, theme.palette, lessMotion)) {
+    if (this.field.render(player, advanced, theme.palette, lessMotion, player.pickupsCollected > previousPickups)) {
       this.audio.play('milestone');
       this.effects.burst(player.position, 'teal', 24, brand.motion.milestone);
     }
-    this.particleView.render(this.model.particles.slots, bounds, collections, advanced, theme.palette,
-      (scrap) => this.model.particles.kind(scrap), theme.current, this.framing.zoom,
-      lessMotion, this.effects);
+    this.renderPickups(bounds, collections, advanced, lessMotion);
     let ownGold: Collection | undefined;
     let ownEnergy: Collection | undefined;
+    let ordinarySparks = this.menu.quality === 'high' ? 10 : 5;
     for (const item of collections) {
-      const role = item.kind === 'gold' ? 'gold' : item.kind === 'energy' ? 'energy' : 'steel';
-      this.effects.burst(item, role, role === 'gold' ? 6 : 2, role === 'gold' ? brand.motion.gold : brand.motion.pickup);
       if (item.ownerId === player.id) {
-        if (role === 'gold') ownGold = item;
-        else if (role === 'energy') ownEnergy = item;
+        if (item.kind === 'gold') ownGold = item;
+        else if (item.kind === 'energy') ownEnergy = item;
       }
+      if (item.x < bounds.left || item.x > bounds.right || item.y < bounds.top || item.y > bounds.bottom) continue;
+      const collector = this.model.participants.find(({ id }) => id === item.ownerId);
+      if (!collector) continue;
+      if (item.kind === 'gold' || item.kind === 'energy' || ordinarySparks-- > 0) this.effects.collect(item, collector);
     }
     if (lessMotion) this.pickupFeedback.reset();
     else {
       if (ownGold) this.pickupFeedback.show('gold', this.framing.toScreen(ownGold));
-      if (ownEnergy) this.pickupFeedback.show('energy', this.framing.toScreen(ownEnergy));
+      if (ownEnergy) this.pickupFeedback.show('energy', this.framing.toScreen(ownEnergy), player.combat.energy - previousEnergy);
+      if (player.combat.energy === 100 && previousEnergy < 100) this.pickupFeedback.ready();
     }
     for (const shard of this.model.salvage.chunks) {
       if (shard.age >= theftConfig.flight && shard.age - advanced < theftConfig.flight) {
@@ -213,7 +220,7 @@ class ArenaScene extends Phaser.Scene {
         }
       }
     }
-    this.renderBots(advanced, bounds);
+    this.renderBots(advanced, bounds, lessMotion);
     this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
       this.menu.quality, advanced, this.framing.zoom, reducedMotion.matches || this.menu.motionReduced);
     if (releaseFrame && advanced > 0 && player.combat.attack.phase === 'warning') {
@@ -250,7 +257,7 @@ class ArenaScene extends Phaser.Scene {
     if (player.combat.lostToTheft + player.combat.lostToHazards > previousLoss) {
       this.effects.burst(player.position, 'steel', 6, brand.vfx.debrisFlash);
     }
-    this.effects.render(bounds, advanced, player.position);
+    this.effects.render(bounds, advanced, player.position, this.framing.zoom);
     const incoming = player.combat.lostToTheft + player.combat.lostToHazards - previousLoss;
     if (player.combat.hits > previousHits || incoming > 0) this.audio.play('hit');
     const hazardActivated = (!previousBrittle && player.combat.brittle) ||
@@ -267,12 +274,13 @@ class ArenaScene extends Phaser.Scene {
       this.audio.play('gold');
       this.menu.vibrate(15);
     }
+    else if (ownEnergy) this.audio.play('energy');
     else if (player.pickupsCollected > previousPickups && time - this.lastPickupSound > 110) {
-      this.audio.play(player.combat.energy > previousEnergy ? 'energy' : 'scrap');
+      this.audio.play('scrap');
       this.lastPickupSound = time;
     }
     this.menu.hud(this.model, this.clock, time, bounds);
-    this.renderPlayer();
+    this.renderPlayer(advanced, lessMotion);
     this.positionCamera();
     this.renderJoystick();
     if (this.clock.ended) this.finish();
@@ -313,14 +321,21 @@ class ArenaScene extends Phaser.Scene {
     camera.centerOn(center.x, center.y);
   }
 
-  private renderPlayer(): void {
-    renderMagnet(this.magnet, this.model.player, this.heading.angle, this.magnetScale.scale);
+  private renderPickups(bounds: WorldBounds, collections: readonly Collection[], seconds: number, reducedMotion: boolean): void {
+    this.particleView.render(this.model.particles.slots, bounds, collections, seconds, theme.palette, this.kindOf, {
+      mode: theme.current, zoom: this.framing.zoom, quality: this.menu.quality, reducedMotion, effects: this.effects,
+    });
   }
 
-  private renderBots(seconds: number, bounds: WorldBounds): void {
+  private renderPlayer(seconds = 0, lessMotion = false): void {
+    renderMagnet(this.magnet, this.model.player, this.heading.angle, this.magnetScale.scale);
+    this.poleCharge.render(this.model.player, this.heading.angle, this.magnetScale.scale, seconds, true, lessMotion);
+  }
+
+  private renderBots(seconds: number, bounds: WorldBounds, lessMotion = false): void {
     this.botNames.length = 0;
     for (const view of this.botViews) {
-      view.render(seconds, this.framing.zoom, bounds, theme.palette, this.model.participants, this.botNames);
+      view.render(seconds, this.framing.zoom, bounds, theme.palette, this.model.participants, this.botNames, lessMotion);
     }
   }
 

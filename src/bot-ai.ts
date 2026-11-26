@@ -58,6 +58,7 @@ export class BotAI {
     let densityReady = false;
     for (const bot of bots) {
       bot.decisionIn -= seconds;
+      if (bot.target && bot.navigation.mode !== 'direct') continue;
       const arrival = bot.strategy === 'collector' ? bot.radius * collector.arrivalRadiusRatio : roamer.arrivalRadius;
       const goal = bot.target?.point;
       const onRoute = goal !== undefined && distanceSquared(bot.position, goal) > arrival ** 2 &&

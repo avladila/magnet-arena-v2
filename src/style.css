@@ -237,9 +237,18 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #result-stats { display: grid; grid-template-columns: 1fr auto; gap: .3rem 1rem; font-size: .85rem; }
 #result-stats dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) {
-  .game-guide { inset-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); }
+  .game-guide {
+    inset-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
+    top: max(8px, env(safe-area-inset-top));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: .5rem;
+    align-items: start;
+  }
+  .guide-heading { grid-column: 1 / -1; }
   .game-guide p.mouse-guide, .game-guide p.touch-guide { display: none; }
-  #ranking { top: 42px; }
+  .field-hud { grid-column: 1; box-sizing: border-box; max-width: 100%; }
+  #ranking { position: static; grid-column: 2; margin: .5rem 0 0; }
 }
 @media (max-height: 470px) { .menu-art { display: none; } }
 
@@ -289,6 +298,18 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   to { background-position: top center, top center; }
 }
 
-.pickup-gain, .pickup-charge { position: absolute; z-index: 5; inset: 0 auto auto 0; opacity: 0; pointer-events: none; }
+.pickup-gain, .pickup-charge, .pickup-energy-gain { position: absolute; z-index: 5; inset: 0 auto auto 0; opacity: 0; pointer-events: none; }
 .pickup-gain { color: var(--brand-ink); background: var(--brand-gold); padding: 1px 5px; border-radius: var(--brand-radius-8); font-weight: 850; }
-.pickup-charge { width: 11px; height: 5px; border-radius: var(--brand-radius-4); background: var(--brand-energy); }
+.pickup-charge {
+  width: 14px; height: 5px; border-radius: var(--brand-radius-4); background: var(--brand-energy);
+  box-shadow: 0 0 9px var(--brand-energy);
+}
+.pickup-energy-gain {
+  border-radius: var(--brand-radius-8); padding: 1px 5px; color: var(--hud-text); background: var(--hud-surface);
+  outline: 1px solid var(--brand-energy); font-weight: 850; font-variant-numeric: tabular-nums;
+}
+#energy-ready {
+  display: block; width: fit-content; margin-block-start: 3px; padding: 1px 5px;
+  background: var(--brand-energy); color: var(--brand-ink); border-radius: var(--brand-radius-4); font-weight: 850;
+}
+#attack[data-ready="true"] { box-shadow: 0 0 16px var(--brand-energy); }

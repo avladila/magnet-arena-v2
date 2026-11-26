@@ -1,4 +1,5 @@
 import { brand, color } from './brand';
+import { BotNavigation } from './bot-navigation';
 import { botConfig } from './config';
 import { createParticipant, type Participant, type Point } from './movement';
 import { seedRandom } from './random';
@@ -12,6 +13,7 @@ export type Bot = Participant<'bot'> & {
   readonly accent: number;
   readonly random: () => number;
   decisionIn: number;
+  readonly navigation: BotNavigation;
   thinkFor?: number;
   target?: BotTarget;
 };
@@ -31,6 +33,6 @@ export function createBots(seed: number): Bot[] {
       x: x + (2 * random() - 1) * botConfig.spawnJitter,
       y: y + (2 * random() - 1) * botConfig.spawnJitter,
     };
-    return { ...createParticipant(id, 'bot', position), name, strategy, accent, random, decisionIn: 0 };
+    return { ...createParticipant(id, 'bot', position), name, strategy, accent, random, navigation: new BotNavigation(), decisionIn: 0 };
   });
 }

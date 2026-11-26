@@ -1,3 +1,4 @@
+import { brand } from './brand';
 import type Phaser from 'phaser';
 import { pullMultiplier } from './combat';
 import { growthFeedback, scrapConfig } from './config';
@@ -48,25 +49,33 @@ export class GrowthFeedbackView {
   private readonly rings: Phaser.GameObjects.Graphics;
   private feedback: GrowthFeedback;
   private spin = 0;
+  private pickupLight = 0;
 
   constructor(scene: Phaser.Scene, player: Player, private readonly segmented = false) {
     this.rings = scene.add.graphics();
     this.feedback = new GrowthFeedback(player);
   }
 
-  reset(player: Player) { this.feedback = new GrowthFeedback(player); }
+  reset(player: Player) {
+    this.feedback = new GrowthFeedback(player);
+    this.spin = 0;
+    this.pickupLight = 0;
+  }
 
-  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean): number | undefined {
+  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean, collecting = false): number | undefined {
     const milestone = this.feedback.update(player, seconds, reducedMotion);
     const radius = this.feedback.haloRadius;
     this.rings.setPosition(player.position.x, player.position.y);
-    this.rings.clear().lineStyle(2, palette.field.edge, player.combat.heat >= 1 ? 0.16 : 0.34);
+    const flashSeconds = brand.motion.pickup / 1000;
+    this.pickupLight = collecting ? flashSeconds : Math.max(0, this.pickupLight - seconds);
+    const flash = reducedMotion ? 0 : this.pickupLight / flashSeconds;
+    this.rings.clear().lineStyle(1.5, palette.field.edge, player.combat.heat >= 1 ? 0.12 : 0.29 + flash * 0.17);
     if (!this.segmented || reducedMotion) this.rings.strokeCircle(0, 0, radius);
     else {
       this.spin = (this.spin + seconds * 0.32) % (Math.PI * 2);
       this.arcRing(radius, 0, 12);
       if (player.combat.heat < 1 && radius - player.radius > 16) {
-        this.rings.lineStyle(1, palette.field.edge, 0.19);
+        this.rings.lineStyle(1, palette.field.edge, 0.14 + flash * 0.15);
         this.arcRing(radius - 8, -this.spin, 12);
       }
     }

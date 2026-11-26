@@ -286,6 +286,8 @@ test('a giant bot label stays at CSS size and chooses room clear of the player a
   view.render(5, 0.25, bounds, themes.dark, [player, bot], names);
   assert.ok(label.visible && label.top > bot.position.y + bot.radius);
   assert.equal(names.length, 2);
+  view.render(5, 0.25, bounds, themes.dark, [player, bot], []);
+  assert.ok(label.visible && label.top > bot.position.y + bot.radius, 'the readable label stays on its current side');
 
   player.position = { x: bot.position.x, y: 2500 };
   const occupied = [above];

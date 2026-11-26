@@ -16,7 +16,7 @@ Keep each magnet bilateral along its heading. Use six-fold devices for Flux and 
 
 ## Color and materials
 
-The exact palette is in `brand/tokens.json`. Cobalt and coral identify opposing poles. Faceted charge uses energy red and an orbit ring. Gold means value. Teal means safe or positive. Identify hazards by pattern and outline as well as by hue. Keep dark surfaces colorful. Verify WCAG AA for text.
+The exact palette is in `brand/tokens.json`. Cobalt and coral identify opposing poles. Faceted charge uses crimson, a pale lightning mark, and a segmented orbit ring. Ordinary pickups share a glossy colored body and soft falloff that stays recognizable as detail recedes at distant zoom. Gold means value. Teal means safe or positive. Identify hazards by pattern and outline as well as by hue. Keep dark surfaces colorful. Verify WCAG AA for text.
 
 Use a single soft upper-left light and a short lower-right grounding shadow. Enamel has one pale highlight and one shaded edge. Steel uses the five-step neutral scale. Gold has one highlight and edge. Rubber is matte. Energy has a contained halo. Frost, rust, and acid are reserved for hazards. Favor material contrast on the object and subdued floor markings.
 

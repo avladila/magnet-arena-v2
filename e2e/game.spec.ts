@@ -239,3 +239,50 @@ test('master mute keeps the live music and effects buses silent after hide and r
   });
   expect(silent).toBe(true);
 });
+
+test('giant mobile energy stays recognizable in Low and reduced motion, then charges without growth', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await inspectScene(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.locator('#quality').selectOption('low');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const { model } = scene;
+    const { player } = model;
+    player.mass = player.combat.highest = 4352;
+    player.physicalScale = scene.magnetScale.scale = 12;
+    player.radius = 360;
+    player.combat.energy = 96;
+    model.hazards.sites.length = 0;
+    model.replenish = () => {};
+    for (const bot of model.bots) bot.position = { x: 400, y: 400 };
+    for (const scrap of model.particles.slots) scrap.state = 'inactive';
+    const cell = model.particles.slots[0];
+    let identity = 0;
+    while (model.particles.kind({ resourceId: identity }) !== 'energy') identity++;
+    Object.assign(cell, { x: player.position.x + 540, y: player.position.y + 105, state: 'active', resourceId: identity });
+    scene.framing.follow(player.position, 15, player.mass);
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const image = scene.particleView.sprites.find((sprite: { visible: boolean; frame: { name: string } }) =>
+      sprite.visible && sprite.frame.name === 'energy');
+    return image ? image.displayWidth * scene.framing.zoom * 0.5 : 0;
+  })).toBeGreaterThanOrEqual(9.49);
+  const hudClear = await page.evaluate(() =>
+    document.querySelector('#pause')!.getBoundingClientRect().bottom <= document.querySelector('#ranking')!.getBoundingClientRect().top);
+  expect(hudClear).toBe(true);
+  await page.evaluate(() => {
+    const { model } = Reflect.get(window, 'trainingScene');
+    const cell = model.particles.slots[0];
+    cell.x = model.player.position.x + model.player.radius + 3;
+    cell.y = model.player.position.y;
+  });
+  await expect(page.locator('#energy-ready')).toBeVisible();
+  await expect(page.locator('#attack')).toHaveText('Ready');
+  await expect(page.locator('#mass')).toHaveText('4352');
+});

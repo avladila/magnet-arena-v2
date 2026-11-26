@@ -233,9 +233,11 @@ export class SessionUI {
     element<HTMLProgressElement>('energy').value = combat.energy;
     element('energy-readout').textContent = combat.energy + '%';
     const attack = element('attack');
-    attack.dataset.ready = String(combat.energy === 100 && combat.attack.phase !== 'cooldown');
+    const ready = combat.energy === 100 && combat.attack.phase === 'idle';
+    attack.dataset.ready = String(ready || combat.attack.phase === 'armed' || combat.attack.phase === 'warning');
+    element('energy-ready').hidden = !ready;
     attack.textContent = combat.attack.phase === 'armed' ? 'Release' :
-      combat.attack.phase === 'warning' ? 'Firing' : combat.attack.phase === 'cooldown' ? 'Cooling' : 'Attack';
+      combat.attack.phase === 'warning' ? 'Firing' : combat.attack.phase === 'cooldown' ? 'Cooling' : ready ? 'Ready' : 'Attack';
     const tutorial = model.tutorial;
     element('tutorial-task').textContent = tutorial?.instruction ?? '';
     element('ranking').hidden = Boolean(tutorial);

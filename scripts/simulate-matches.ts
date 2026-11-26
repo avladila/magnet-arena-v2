@@ -23,6 +23,10 @@ for (let trial = 0; trial < Number(process.env.MAGNET_TRIALS ?? 36); trial++) {
   let firstAttack: number | undefined;
   let rankChanges = 0;
   let lastRank = 1;
+  let maxCachedRegions = 0;
+  let duplicateClaims = 0;
+  let botHazardSamples = 0;
+  const generations = new Int32Array(model.particles.slots.length).fill(-1);
   const start = performance.now();
   for (let frame = 0; !clock.ended; frame++) {
     if (frame % 30 === 0 && clock.countdown === 0) {
@@ -35,6 +39,13 @@ for (let trial = 0; trial < Number(process.env.MAGNET_TRIALS ?? 36); trial++) {
       for (const site of model.hazards!.sites) {
         if (Math.hypot(site.x - position.x, site.y - position.y) < site.radius + player.radius) hazards.add(site.kind);
       }
+      const sites = model.hazards!.sites;
+      for (const bot of model.bots) {
+        if (sites.some((site) => (bot.position.x - site.x) ** 2 + (bot.position.y - site.y) ** 2 < (site.radius + bot.radius) ** 2)) {
+          botHazardSamples++;
+        }
+      }
+      maxCachedRegions = Math.max(maxCachedRegions, model.particles.regionStats.cachedRegions);
       let point: Point | undefined;
       if (strategy === 'edge') {
         const corners = [{ x: 150, y: 150 }, { x: arena.width - 150, y: 150 },
@@ -67,7 +78,11 @@ for (let trial = 0; trial < Number(process.env.MAGNET_TRIALS ?? 36); trial++) {
       steering = point ? { kind: 'target', point } : { kind: 'idle' };
     }
     clock.advance(dt, (step) => {
-      model.step(steering, step);
+      const result = model.step(steering, step);
+      for (const event of result?.collections ?? []) {
+        if (event.generation <= generations[event.id]) duplicateClaims++;
+        generations[event.id] = event.generation;
+      }
       if (frame % 2 === 0) {
         const { x, y } = player.position;
         model.replenish({ left: x - 650, right: x + 650, top: y - 500, bottom: y + 500 });
@@ -86,6 +101,10 @@ for (let trial = 0; trial < Number(process.env.MAGNET_TRIALS ?? 36); trial++) {
     salvage: state.salvage, encounters: encounters.size, hazards: [...hazards], hazardLoss: state.lostToHazards,
     rankChanges, place: order.find(({ participant }) => participant === player)!.place,
     winner: order[0].participant.id, botHits: model.bots.reduce((n, bot) => n + bot.combat.hits, 0),
+    botPickups: model.bots.reduce((n, bot) => n + bot.pickupsCollected, 0),
+    botAttacks: model.bots.reduce((n, bot) => n + bot.combat.hits + bot.combat.misses, 0),
+    botPeakMass: Math.max(...model.bots.map((bot) => bot.combat.highest)),
+    botHazardSamples, maxCachedRegions, duplicateClaims,
     activeResources: model.particles.slots.filter(({ state }) => state === 'active').length,
     ms: Math.round(performance.now() - start),
   }));

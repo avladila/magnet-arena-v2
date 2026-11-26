@@ -3,93 +3,172 @@ import type Phaser from 'phaser';
 import type { WorkshopParticles } from './workshop-particles';
 import { scrapConfig, viewConfig } from './config';
 import type { Collection, ResourceKind, Scrap, WorldBounds } from './particles';
-import type { ThemePalette } from './theme';
+import type { Quality } from './progress';
+import type { ThemeMode, ThemePalette } from './theme';
 
 const effectDuration = viewConfig.collectionEffectSeconds;
 const glintWidth = 1.5;
-const spriteFrames = Object.fromEntries(['light', 'dark'].map((mode) => [mode,
-  Array.from({ length: 10 }, (_, index) => [mode + '-scrap-' + index + '-0', mode + '-scrap-' + index + '-1'])]));
+const settings = brand.pickups;
+const ordinaryFrames = {
+  light: Array.from({ length: scrapConfig.colorCount }, (_, index) => 'light-scrap-' + index),
+  dark: Array.from({ length: scrapConfig.colorCount }, (_, index) => 'dark-scrap-' + index),
+};
+
+type ParticleDisplay = {
+  mode: ThemeMode;
+  zoom: number;
+  quality: Quality;
+  reducedMotion: boolean;
+  effects: WorkshopParticles;
+};
+
+/** The artwork's opaque core is smaller than its padded glow frame. */
+export function pickupFrameSize(kind: ResourceKind, zoom: number): number {
+  const size = settings.sizes[kind];
+  const core = Math.min(size.maxCoreWorld, Math.max(size.baseCore, size.minCoreCss / zoom));
+  return Math.min(core / size.coreFraction, size.maxFrameCss / zoom);
+}
+
+function inView(x: number, y: number, extent: number, view: WorldBounds): boolean {
+  return x + extent >= view.left && x - extent <= view.right && y + extent >= view.top && y - extent <= view.bottom;
+}
+
+function phase(scrap: Scrap): number {
+  return (Math.imul(scrap.resourceId ?? scrap.id, 2654435761) >>> 0) / 2 ** 32;
+}
 
 export class ParticleView {
-  private readonly pieces: Phaser.GameObjects.Graphics;
-  private readonly glints: Phaser.GameObjects.Graphics;
+  private readonly pieces?: Phaser.GameObjects.Graphics;
+  private readonly glints?: Phaser.GameObjects.Graphics;
   private readonly effects = Array.from({ length: viewConfig.maxCollectionEffects }, () => ({
     x: 0, y: 0, colorIndex: 0, kind: undefined as ResourceKind | undefined, remaining: 0,
   }));
   private nextEffect = 0;
   private readonly sprites?: Phaser.GameObjects.Image[];
+  private readonly orbits: Phaser.GameObjects.Image[];
   private visibleCount = 0;
+  private orbitCount = 0;
   private readonly previousX = new Float32Array(scrapConfig.capacity);
   private readonly previousY = new Float32Array(scrapConfig.capacity);
-  private readonly generations = new Int32Array(scrapConfig.capacity).fill(-1);
+  private readonly generations = new Int32Array(scrapConfig.capacity);
   private readonly samples = new Uint32Array(scrapConfig.capacity);
+  private readonly emitAt = new Float64Array(scrapConfig.capacity);
   private sample = 0;
+  private elapsed = 0;
 
   constructor(scene: Phaser.Scene, useAtlas = false) {
-    this.pieces = scene.add.graphics();
-    this.glints = scene.add.graphics().setDepth(1);
-    if (useAtlas) this.sprites = Array.from({ length: scrapConfig.activeCount }, () =>
-      scene.add.image(0, 0, 'workshop', 'gold').setVisible(false));
+    this.orbits = [];
+    if (useAtlas) {
+      this.sprites = Array.from({ length: scrapConfig.activeCount }, () =>
+        scene.add.image(0, 0, 'workshop', 'gold').setDepth(0.3).setVisible(false));
+      this.orbits = Array.from({ length: settings.energyOrbitPool }, () =>
+        scene.add.image(0, 0, 'workshop', 'energy-orbit').setDepth(0.2).setVisible(false));
+    } else {
+      this.pieces = scene.add.graphics();
+      this.glints = scene.add.graphics().setDepth(1);
+    }
+  }
+
+  reset(): void {
+    this.samples.fill(0);
+    this.emitAt.fill(0);
+    this.sample = 0;
+    this.elapsed = 0;
   }
 
   render(
-    slots: readonly Scrap[],
-    view: WorldBounds,
-    collections: readonly Collection[],
-    seconds: number,
-    palette: ThemePalette,
-    kindOf?: (scrap: Scrap) => ResourceKind,
-    mode = 'light', zoom = 1, reducedMotion = false, effects?: WorkshopParticles,
-  ) {
-    this.pieces.clear();
-    let visibleCount = 0;
-    let trails = 0;
+    slots: readonly Scrap[], view: WorldBounds, collections: readonly Collection[], seconds: number, palette: ThemePalette,
+    kindOf?: (scrap: Scrap) => ResourceKind, display?: ParticleDisplay,
+  ): void {
+    if (this.sprites && display) this.renderAtlas(this.sprites, slots, view, seconds, kindOf, display);
+    else if (this.pieces && this.glints) this.renderFallback(this.pieces, this.glints, slots, view, collections, seconds, palette, kindOf);
+  }
+
+  private renderAtlas(sprites: Phaser.GameObjects.Image[], slots: readonly Scrap[], view: WorldBounds, seconds: number,
+      kindOf: ((scrap: Scrap) => ResourceKind) | undefined, display: ParticleDisplay): void {
+    const { mode, zoom, quality, reducedMotion, effects } = display;
+    const ordinarySize = pickupFrameSize('ordinary', zoom);
+    const goldSize = pickupFrameSize('gold', zoom);
+    const energySize = pickupFrameSize('energy', zoom);
+    const maxExtent = Math.max(ordinarySize, goldSize, energySize) / 2;
+    const animate = !reducedMotion && quality !== 'low';
+    const oldTime = this.elapsed;
+    this.elapsed += seconds;
+    const time = this.elapsed;
     const sample = ++this.sample;
+    let visible = 0;
+    let orbits = 0;
+    let trails = quality === 'high' ? 8 : 4;
+    for (const scrap of slots) {
+      const { id, x, y, state, colorIndex, generation } = scrap;
+      if (state !== 'active' || !inView(x, y, maxExtent, view)) continue;
+      const kind = kindOf?.(scrap) ?? 'ordinary';
+      const size = kind === 'ordinary' ? ordinarySize : kind === 'gold' ? goldSize : energySize;
+      if (!inView(x, y, size / 2, view)) continue;
+
+      const image = sprites[visible++];
+      const frame = kind === 'ordinary' ? ordinaryFrames[mode][colorIndex] : kind;
+      if (image.frame.name !== frame) image.setFrame(frame).setDepth(kind === 'ordinary' ? 0.3 : 0.4);
+      image.setPosition(x, y).setDisplaySize(size, size).setVisible(true);
+
+      const continuing = this.samples[id] !== 0 && this.samples[id] === sample - 1 && this.generations[id] === generation;
+      if (kind === 'energy' || kind === 'gold') {
+        const offset = phase(scrap);
+        if (kind === 'energy' && orbits < this.orbits.length) {
+          const breath = animate ? 0.89 + 0.11 * Math.sin(2 * Math.PI * (time / settings.energyBreathSeconds + offset)) : 0.94;
+          const angle = animate ? 2 * Math.PI * offset + settings.energyTurnRate * Math.PI / 180 * time : 0;
+          this.orbits[orbits++].setPosition(x, y).setDisplaySize(size, size).setRotation(angle).setAlpha(breath).setVisible(true);
+        }
+        const period = settings.glintSeconds[kind];
+        if (animate && continuing && (kind === 'gold' || quality === 'high') &&
+            Math.floor(oldTime / period + offset) < Math.floor(time / period + offset)) {
+          effects.glint(scrap, kind);
+        }
+      }
+      if (animate && continuing && trails > 0 && seconds > 0 && time >= this.emitAt[id]) {
+        const dx = x - this.previousX[id];
+        const dy = y - this.previousY[id];
+        const moved = dx * dx + dy * dy;
+        if (moved > 0.65 ** 2 && moved <= (scrapConfig.pullMaxSpeed * seconds + 0.1) ** 2) {
+          effects.trail(x, y, Math.atan2(dy, dx), kind === 'ordinary' ? colorIndex : kind);
+          this.emitAt[id] = time + settings.trailInterval;
+          trails--;
+        }
+      }
+      this.samples[id] = sample;
+      this.generations[id] = generation;
+      this.previousX[id] = x;
+      this.previousY[id] = y;
+    }
+    for (let i = visible; i < this.visibleCount; i++) sprites[i].setVisible(false);
+    for (let i = orbits; i < this.orbitCount; i++) this.orbits[i].setVisible(false);
+    this.visibleCount = visible;
+    this.orbitCount = orbits;
+  }
+
+  // The Canvas-graphics fallback owns its own glints. Atlas games delegate collection
+  // to the shared effects pool once per frame.
+  private renderFallback(pieces: Phaser.GameObjects.Graphics, glints: Phaser.GameObjects.Graphics, slots: readonly Scrap[],
+      view: WorldBounds, collections: readonly Collection[], seconds: number, palette: ThemePalette,
+      kindOf?: (scrap: Scrap) => ResourceKind): void {
+    pieces.clear();
     for (const scrap of slots) {
       const { x, y, radius, state, colorIndex } = scrap;
-      if (state !== 'active' || x + radius < view.left || x - radius > view.right ||
-          y + radius < view.top || y - radius > view.bottom) continue;
+      if (state !== 'active' || !inView(x, y, radius, view)) continue;
       const kind = kindOf?.(scrap);
-      if (this.sprites) {
-        const sprite = this.sprites[visibleCount++];
-        const goldOrEnergy = kind === 'gold' || kind === 'energy';
-        const frame = goldOrEnergy ? kind : spriteFrames[mode][colorIndex][Number(zoom >= 0.65)];
-        sprite.setFrame(frame).setPosition(x, y).setDisplaySize(goldOrEnergy ? 19 : 14, goldOrEnergy ? 19 : 14)
-          .setVisible(true);
-        if (effects && !reducedMotion && trails < 8 && this.samples[scrap.id] === sample - 1 &&
-            this.generations[scrap.id] === scrap.generation && seconds > 0) {
-          const dx = x - this.previousX[scrap.id];
-          const dy = y - this.previousY[scrap.id];
-          if (dx * dx + dy * dy > 1) {
-            effects.trail(x, y, Math.atan2(dy, dx), kind === 'gold' || kind === 'energy' ? kind : 'steel');
-            trails++;
-          }
-        }
-        this.samples[scrap.id] = sample;
-        this.generations[scrap.id] = scrap.generation;
-        this.previousX[scrap.id] = x;
-        this.previousY[scrap.id] = y;
-        continue;
-      }
       if (kind === 'gold' || kind === 'energy') {
         const gold = kind === 'gold';
-        this.pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color1) : rgb(brand.legacy.particle_view.color2)).fillCircle(x, y, 7);
-        this.pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color3) : rgb(brand.legacy.particle_view.color4)).fillTriangle(x - 6, y, x, y - 7, x + 6, y);
-        this.pieces.fillStyle(rgb(brand.legacy.particle_view.color5)).fillCircle(x, y - 2, 1.8);
-        continue;
-      }
-      if (kindOf) this.drawScrap(x, y, colorIndex, palette);
+        pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color1) : rgb(brand.legacy.particle_view.color2)).fillCircle(x, y, 7);
+        pieces.fillStyle(gold ? rgb(brand.legacy.particle_view.color3) : rgb(brand.legacy.particle_view.color4))
+          .fillTriangle(x - 6, y, x, y - 7, x + 6, y);
+        pieces.fillStyle(rgb(brand.legacy.particle_view.color5)).fillCircle(x, y - 2, 1.8);
+      } else if (kindOf) this.drawScrap(pieces, x, y, colorIndex, palette);
       else {
-        this.pieces.fillStyle(palette.scrap[colorIndex]).fillRect(x - 3.5, y - 3.5, 7, 7);
-        this.pieces.fillStyle(palette.scrapHighlight, 0.78).fillRect(x - 2.5, y - 2.5, 3, 2);
+        pieces.fillStyle(palette.scrap[colorIndex]).fillRect(x - 3.5, y - 3.5, 7, 7);
+        pieces.fillStyle(palette.scrapHighlight, 0.78).fillRect(x - 2.5, y - 2.5, 3, 2);
       }
     }
 
-    if (this.sprites) {
-      for (let i = visibleCount; i < this.visibleCount; i++) this.sprites[i].setVisible(false);
-      this.visibleCount = visibleCount;
-      return;
-    }
     for (const effect of this.effects) effect.remaining = Math.max(0, effect.remaining - seconds);
     for (const collection of collections) {
       const effect = this.effects[this.nextEffect];
@@ -97,37 +176,24 @@ export class ParticleView {
       effect.y = collection.y;
       effect.colorIndex = collection.colorIndex;
       effect.kind = collection.kind;
-      effect.remaining = this.sprites
-        ? (collection.kind === 'gold' ? brand.motion.gold : brand.motion.pickup) / 1000 : effectDuration;
+      effect.remaining = effectDuration;
       this.nextEffect = (this.nextEffect + 1) % this.effects.length;
     }
-    this.glints.clear();
+    glints.clear();
     for (const effect of this.effects) {
-      if (reducedMotion || effect.remaining <= 0) continue;
-      const duration = this.sprites ? (effect.kind === 'gold' ? brand.motion.gold : brand.motion.pickup) / 1000 : effectDuration;
-      const opacity = effect.remaining / duration;
+      if (effect.remaining <= 0) continue;
+      const opacity = effect.remaining / effectDuration;
       const radius = 5 + (1 - opacity) * 8;
-      const extent = radius + glintWidth / 2;
-      if (effect.x + extent < view.left || effect.x - extent > view.right ||
-          effect.y + extent < view.top || effect.y - extent > view.bottom) continue;
+      if (!inView(effect.x, effect.y, radius + glintWidth / 2, view)) continue;
       const color = effect.kind === 'gold' ? rgb(brand.roles.gold) : effect.kind === 'energy' ? rgb(brand.roles.energy) : palette.scrap[effect.colorIndex];
-      this.glints.lineStyle(glintWidth, color, 0.8 * opacity);
-      if (!this.sprites) this.glints.strokeCircle(effect.x, effect.y, radius);
-      else {
-        this.glints.fillStyle(color, 0.8 * opacity);
-        const count = effect.kind === 'gold' ? 6 : 2;
-        for (let spoke = 0; spoke < count; spoke++) {
-          const angle = spoke * 2 * Math.PI / count;
-          this.glints.fillCircle(effect.x + radius * Math.cos(angle), effect.y + radius * Math.sin(angle), 1 + opacity);
-        }
-      }
+      glints.lineStyle(glintWidth, color, 0.8 * opacity).strokeCircle(effect.x, effect.y, radius);
     }
   }
 
-  private drawScrap(x: number, y: number, index: number, palette: ThemePalette) {
+  private drawScrap(pieces: Phaser.GameObjects.Graphics, x: number, y: number, index: number, palette: ThemePalette) {
     const color = palette.scrap[index];
     const metal = palette.scrapHighlight;
-    const art = this.pieces.fillStyle(color);
+    const art = pieces.fillStyle(color);
     switch (index) {
       case 0: // Hex nut
         art.fillPoints([[-4, 0], [-2, -4], [2, -4], [4, 0], [2, 4], [-2, 4]]
@@ -170,5 +236,4 @@ export class ParticleView {
         break;
     }
   }
-
 }

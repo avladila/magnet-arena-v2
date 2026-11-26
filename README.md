@@ -39,7 +39,7 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-See the [RC2 verification report](docs/rc2.md) for the test evidence and remaining release gates.
+See the [RC3 verification report](docs/rc3.md) for the test evidence and remaining release gates.
 
 ## Growth and balance
 

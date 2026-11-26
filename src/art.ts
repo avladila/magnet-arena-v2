@@ -11,7 +11,7 @@ function firstMarker(minimum: number, origin: number, spacing: number): number {
 export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: ThemePalette, bounds: WorldBounds) {
   const { left, top, right, bottom } = bounds;
   art.clear().fillStyle(colors.background).fillRect(left, top, right - left, bottom - top);
-  art.fillStyle(colors.grid);
+  art.fillStyle(colors.grid, 0.68);
   const { gridSpacing, referenceSpacing, referenceSize } = arenaArt;
   for (let x = firstMarker(left, gridSpacing / 2, gridSpacing); x < right; x += gridSpacing) {
     for (let y = firstMarker(top, gridSpacing / 2, gridSpacing); y < bottom; y += gridSpacing) {
@@ -23,7 +23,7 @@ export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: T
   const inset = (referenceSpacing - gridSpacing) / 2;
   const half = referenceSize / 2;
   const arm = referenceSize / 4;
-  art.lineStyle(2, colors.markings, 0.65).beginPath();
+  art.lineStyle(2, colors.markings, 0.37).beginPath();
   const stopX = Math.min(right + half, arena.width - half);
   const stopY = Math.min(bottom + half, arena.height - half);
   for (let x = firstMarker(left - half, inset, referenceSpacing); x < stopX; x += referenceSpacing) {
