@@ -85,3 +85,21 @@ test('an Easy Collector in an open field keeps moving when changing collection p
     assert.ok(Math.hypot(bot.velocity.x, bot.velocity.y) > 50);
   }
 });
+
+test('a committed Scavenger leaves a Salvage Signal after that public opportunity clears', () => {
+  const { model, internals } = situation('normal');
+  const bot = model.bots.find(({ strategy }) => strategy === 'scavenger')!;
+  bot.position = { x: 7000, y: 5000 };
+  const route = { x: 7020, y: 6400 };
+  bot.target = { kind: 'waypoint', point: route };
+  const { activity } = model as unknown as {
+    activity: { signal?: { x: number; y: number; starts: number; expires: number; resources: number } };
+  };
+  activity.signal = { x: 7980, y: 5000, starts: 0, expires: 24, resources: 45 };
+  internals.botSteering(bot, dt);
+  assert.notDeepEqual(bot.navigation.strategicTarget, route);
+  activity.signal = undefined;
+  internals.elapsed = 0.26;
+  internals.botSteering(bot, dt);
+  assert.deepEqual(bot.navigation.strategicTarget, route);
+});

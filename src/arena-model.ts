@@ -8,7 +8,7 @@ import { Hazards } from './hazards';
 import { pullMultiplier, type Attack } from './combat-state';
 import { debrisPullSpeed, debrisRadius } from './salvage';
 import { Tutorial } from './tutorial';
-import { rankings, type Difficulty } from './match';
+import { placeOf, rankings, type Difficulty } from './match';
 import type { Point } from './movement';
 import { advanceAttraction, AttractionGrid, type AttractionResult } from './attraction';
 import { BotAI } from './bot-ai';
@@ -49,6 +49,7 @@ export class ArenaModel {
   readonly hazards?: Hazards;
   readonly combatRules: CombatRules;
   readonly tutorial?: Tutorial;
+  bestPlace?: number;
   private readonly activity?: ArenaActivity;
   private elapsed = 0;
   private readonly tactics = new Map<Bot, BotTactics>();
@@ -104,7 +105,12 @@ export class ArenaModel {
       this.hazards.step(this.participants, this.salvage, seconds);
     }
     this.tutorial?.step();
-    return advanceAttraction(this.particles, this.tutorial ? [this.player] : this.participants, seconds, this.attractionGrid);
+    const result = advanceAttraction(this.particles, this.tutorial ? [this.player] : this.participants, seconds, this.attractionGrid);
+    if (this.difficulty && !this.tutorial && this.player.mass > playerConfig.initialMass && this.bestPlace !== 1) {
+      const place = placeOf(this.player, this.participants);
+      if (place !== undefined && (this.bestPlace === undefined || place < this.bestPlace)) this.bestPlace = place;
+    }
+    return result;
   }
 
   private botSteering(bot: Bot, seconds: number): Steering {

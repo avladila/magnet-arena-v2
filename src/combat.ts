@@ -1,4 +1,5 @@
 import { hazardConfig, theftConfig } from './competition-config';
+import { hitThreshold } from './combat-state';
 import { growthConfig, playerConfig } from './config';
 import { massForPhysicalScale, physicalScaleForMass } from './growth';
 import { clamp, type Participant, type Point } from './movement';
@@ -79,7 +80,7 @@ export function angleBetween(a: number, b: number): number {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 }
 
-type Request = { attacker: Participant; value: number; bearing: number };
+type Request = { attacker: Participant; value: number; bearing: number; scale: number };
 
 export function resolveTheft(participants: readonly Participant[], salvage: Salvage, seconds: number,
     rules: CombatRules = 'impact'): void {
@@ -117,7 +118,7 @@ export function resolveTheft(participants: readonly Participant[], salvage: Salv
       if (!requests) damage.set(victim, requests = []);
       const bearing = attacker.position.x === victim.position.x && attacker.position.y === victim.position.y
         ? attack.bearing + Math.PI : bearingTo(victim.position, attacker.position);
-      requests.push({ attacker, value, bearing });
+      requests.push({ attacker, value, bearing, scale: attacker.physicalScale });
     }
     state.energy = Math.max(0, state.energy - (contact ? theftConfig.energy : theftConfig.missCost));
     if (damaging || (legacy && contact)) state.hits++;
@@ -145,13 +146,14 @@ function detachDamage(victim: Participant, requests: Request[], salvage: Salvage
   const limit = legacy ? shell(victim) : combatShell(victim);
   const actual = Math.min(limit, legacy ? total : strongest.value);
   const originalScale = victim.physicalScale;
-  const reduction = 1 - physicalScaleForMass(victim.mass - actual) / originalScale;
+  const remainingScale = physicalScaleForMass(victim.mass - actual);
+  const reduction = 1 - remainingScale / originalScale;
   const credits: { id: string; value: number }[] = [];
   let cumulative = 0;
   let credited = 0;
   let x = 0;
   let y = 0;
-  for (const { attacker, value, bearing } of requests) {
+  for (const { attacker, value, bearing, scale } of requests) {
     cumulative += value;
     const next = Math.floor(cumulative * actual / total);
     const share = next - credited;
@@ -162,6 +164,9 @@ function detachDamage(victim: Participant, requests: Request[], salvage: Salvage
     state.detached += share;
     state.largestTheft = Math.max(state.largestTheft, share);
     state.largestReduction = Math.max(state.largestReduction, reduction);
+    if (reduction >= hitThreshold.massive) state.massiveHits++;
+    if (originalScale >= hitThreshold.giant && remainingScale < hitThreshold.giant) state.giantsCracked++;
+    if (originalScale > scale) state.largerVictims.add(victim.id);
     if (brittle) state.brittleHits++;
     x += Math.cos(bearing) * share;
     y += Math.sin(bearing) * share;

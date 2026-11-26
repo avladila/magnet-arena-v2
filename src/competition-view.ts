@@ -8,6 +8,7 @@ import type { Quality } from './progress';
 import type { HazardKind } from './hazards';
 import type { Participant, Point } from './movement';
 import type { WorldBounds } from './particles';
+import { salvageEligible } from './salvage';
 
 const debrisFrames = ['debris-0', 'debris-1', 'debris-2', 'debris-3'];
 export const sceneryAtlas = 'scenery';
@@ -73,6 +74,7 @@ export class CompetitionView {
     this.floor.clear();
     this.renderStructures(bounds, quality);
     this.effects.clear();
+    this.renderOpportunities(model, bounds, zoom);
     let siteIndex = 0;
     for (const site of model.hazards?.sites ?? []) {
       const art = this.sites[siteIndex++];
@@ -91,34 +93,46 @@ export class CompetitionView {
     }
     for (; siteIndex < this.sites.length; siteIndex++) this.sites[siteIndex].setVisible(false);
     let shardIndex = 0;
+    let gleams = quality === 'low' ? 7 : 14;
     for (const chunk of model.salvage.chunks) {
       if (!visible(chunk, bounds, 55)) continue;
-      const lift = chunk.age < theftConfig.flight ? 28 * Math.sin(Math.PI * chunk.age / theftConfig.flight) : 0;
+      const airborne = chunk.age < theftConfig.flight;
+      const collectable = salvageEligible(chunk, model.player.id);
+      const lift = airborne ? 28 * Math.sin(Math.PI * chunk.age / theftConfig.flight) : 0;
       const tier = chunk.value >= 70 ? 3 : chunk.value >= 20 ? 2 : chunk.value >= 5 ? 1 : 0;
       const size = Math.min(52, Math.max(14 + 6 * tier, (5 + 2 * tier) / zoom));
-      if (lift > 0 && !reducedMotion && quality !== 'low') {
+      if (airborne && !reducedMotion) {
         const progress = chunk.age / theftConfig.flight;
-        this.effects.lineStyle(2 + tier, rgb(combatColor.impact), 0.55 * (1 - progress));
+        this.effects.lineStyle(2 + tier, tier >= 2 ? yellow : white, 0.76 * Math.sin(Math.PI * progress));
         this.effects.lineBetween(chunk.x, chunk.y - lift,
           chunk.x - (chunk.destination.x - chunk.origin.x) * Math.min(0.08, progress),
           chunk.y - lift - (chunk.destination.y - chunk.origin.y) * Math.min(0.08, progress) + 4);
-        this.effects.fillStyle(rgb(brand.themes.light.ink), 0.25).fillEllipse(chunk.x, chunk.y + 3, size, size * 0.5);
+        this.floor.fillStyle(ink, 0.32).fillEllipse(chunk.x, chunk.y + 3, size, size * 0.5);
+      }
+      if (collectable && tier >= 2 && gleams > 0) {
+        gleams--;
+        const opacity = reducedMotion ? 0.66 : 0.59 + 0.24 * Math.cos((chunk.age + chunk.origin.x * 0.03) * 5);
+        const glint = size * (tier === 3 ? 0.25 : 0.17);
+        const x = chunk.x + size * 0.46;
+        const y = chunk.y - size * 0.33;
+        this.floor.fillStyle(yellow, 0.13 + tier * 0.04).fillCircle(chunk.x, chunk.y, size * 0.75);
+        this.effects.lineStyle(Math.max(1.5, glint / 4), ink, opacity);
+        this.effects.lineBetween(x - glint, y, x + glint, y).lineBetween(x, y - glint, x, y + glint);
+        this.effects.lineStyle(Math.max(1, glint / 6), white, opacity);
+        this.effects.lineBetween(x - glint, y, x + glint, y).lineBetween(x, y - glint, x, y + glint);
       }
       const sprite = this.shards[shardIndex] ??= this.scene.add.image(0, 0, 'workshop', 'debris-0').setDepth(4);
       shardIndex++;
       const frame = debrisFrames[tier];
       if (sprite.frame.name !== frame) sprite.setFrame(frame);
       sprite.setPosition(chunk.x, chunk.y - (reducedMotion ? 0 : lift)).setDisplaySize(size, size)
-        .setRotation(reducedMotion ? 0 : chunk.age * 4).setVisible(true);
+        .setRotation(reducedMotion ? 0 : Math.min(chunk.age, theftConfig.flight) * 4).setVisible(true);
       const expiring = chunk.age > theftConfig.lifetime - 1;
-      sprite.setAlpha(expiring && !reducedMotion ? 0.72 + 0.28 * Math.cos(chunk.age * Math.PI * 3) : 1);
+      const fade = expiring && !reducedMotion ? 0.78 + 0.22 * Math.cos(chunk.age * Math.PI * 3) : 1;
+      sprite.setAlpha(fade * (collectable ? 1 : airborne ? 0.86 : 0.52));
     }
     for (let i = shardIndex; i < this.visibleShards; i++) this.shards[i].setVisible(false);
     this.visibleShards = shardIndex;
-    if (model.signal && visible(model.signal, bounds, 160)) {
-      this.effects.lineStyle(4, rgb(brand.legacy.competition_view.color13), 0.8).strokeCircle(model.signal.x, model.signal.y, 120);
-      this.effects.lineStyle(2, rgb(brand.legacy.competition_view.color13), 0.45).strokeCircle(model.signal.x, model.signal.y, 150);
-    }
     for (const [index, participant] of model.participants.entries()) {
       this.renderDamage(index, participant, seconds, zoom, bounds, reducedMotion);
       const attack = participant.combat.attack;
@@ -137,6 +151,28 @@ export class CompetitionView {
       if (participant.combat.guardFor > 0) this.guard(participant);
     }
     if (tracked) this.effects.lineStyle(4, rgb(brand.legacy.competition_view.color15)).strokeCircle(tracked.position.x, tracked.position.y, tracked.radius + 12);
+  }
+
+  private renderOpportunities(model: ArenaModel, bounds: WorldBounds, zoom: number): void {
+    for (const spot of model.hotspots) {
+      if (spot.strength <= 0 || !visible(spot, bounds, spot.radius)) continue;
+      for (let quarter = 0; quarter < 4; quarter++) {
+        const angle = quarter * Math.PI / 2 + Math.PI / 8;
+        this.floor.beginPath().arc(spot.x, spot.y, spot.radius * 0.91, angle, angle + Math.PI / 4, false);
+        this.floor.lineStyle(5 / zoom, ink, 0.24 * spot.strength).strokePath();
+        this.floor.lineStyle(2 / zoom, cyan, 0.54 * spot.strength).strokePath();
+      }
+    }
+    const signal = model.signal;
+    if (!signal || !visible(signal, bounds, 160)) return;
+    const { x, y } = signal;
+    this.floor.fillStyle(yellow, 0.12).fillCircle(x, y, 126);
+    this.floor.lineStyle(5 / zoom, ink, 0.76).strokeCircle(x, y, 126);
+    this.floor.lineStyle(2.5 / zoom, yellow, 0.96).strokeCircle(x, y, 126);
+    const size = 15 / zoom;
+    this.floor.fillStyle(ink, 0.90).fillCircle(x, y, size);
+    this.floor.fillStyle(yellow, 1).fillTriangle(x, y + size * 0.63, x - size * 0.59, y - size * 0.30,
+      x + size * 0.59, y - size * 0.30);
   }
 
   reset(): void {

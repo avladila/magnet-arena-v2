@@ -170,8 +170,11 @@ class ArenaScene extends Phaser.Scene {
     const previousGuarded = player.combat.guarded;
     const previousProtected = player.combat.protectedHits;
     const previousBrittleHits = player.combat.brittleHits;
+    const previousMassiveHits = player.combat.massiveHits;
+    const previousGiantsCracked = player.combat.giantsCracked;
     const previousDetached = player.combat.detached;
     const previousSalvage = player.combat.salvage;
+    const previousOwnSalvage = player.combat.ownSalvage;
     const previousLoss = player.combat.lostToTheft + player.combat.lostToHazards;
     const collections: Collection[] = [];
     const steering = this.playInput.steering(this.controls.input.steering((point) => this.screenToWorld(point)));
@@ -241,7 +244,10 @@ class ArenaScene extends Phaser.Scene {
     }
     const detached = player.combat.detached - previousDetached;
     if (player.combat.hits > previousHits) {
-      this.menu.attackFeedback(detached + ' MASS DETACHED' + (player.combat.brittleHits > previousBrittleHits ? ' · BRITTLE HIT' : ''), time);
+      const hit = player.combat.giantsCracked > previousGiantsCracked ? 'GIANT CRACKED'
+        : player.combat.massiveHits > previousMassiveHits ? 'MASSIVE HIT' : '';
+      this.menu.attackFeedback([hit, detached + ' MASS DETACHED',
+        player.combat.brittleHits > previousBrittleHits ? 'BRITTLE HIT' : ''].filter(Boolean).join(' · '), time);
     } else if (player.combat.guarded > previousGuarded) {
       this.audio.play('guarded');
       this.menu.attackFeedback('ATTACK GUARDED', time);
@@ -251,9 +257,9 @@ class ArenaScene extends Phaser.Scene {
     } else if (player.combat.misses > previousMisses) {
       this.audio.play('miss');
       this.menu.attackFeedback('MISS', time);
-    } else if (player.combat.salvage > previousSalvage) {
-      this.menu.attackFeedback('+' + (player.combat.salvage - previousSalvage) + ' SALVAGE', time);
     }
+    if (player.combat.salvage > previousSalvage) this.menu.salvageFeedback(player.combat.salvage - previousSalvage,
+      player.combat.ownSalvage - previousOwnSalvage, this.clock.elapsed);
     if (!previousBrittle && player.combat.brittle) {
       this.audio.play('freeze');
       this.effects.burst(player.position, 'cold', 6, brand.motion.gold);

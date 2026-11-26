@@ -339,7 +339,7 @@ test('live release shrinks a giant, launches salvage and reports a guarded follo
   await page.keyboard.down('Space');
   await expect(page.locator('#attack')).toHaveText('Release');
   await page.keyboard.up('Space');
-  await expect(page.locator('#status')).toHaveText('3301 MASS DETACHED');
+  await expect(page.locator('#status')).toHaveText('GIANT CRACKED · 3301 MASS DETACHED');
   const impact = await page.evaluate(() => {
     const { model } = Reflect.get(window, 'trainingScene');
     return { mass: model.bots[0].mass, radius: model.bots[0].radius, chunks: model.salvage.chunks.length };
@@ -353,6 +353,59 @@ test('live release shrinks a giant, launches salvage and reports a guarded follo
   await page.keyboard.up('Space');
   await expect(page.locator('#status')).toHaveText('ATTACK GUARDED');
   await expect(page.locator('#energy-readout')).toHaveText('65%');
+});
+
+test('arena signals use one direction cue and results show recorded progression on a phone-sized viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => { crypto.getRandomValues = (buffer) => { (buffer as Uint32Array).fill(11216); return buffer; }; });
+  await inspectScene(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Play Arena' }).click();
+  const played = await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const start = performance.now();
+    for (let frame = 0; frame < 240 && !scene.model.signal; frame++) scene.update(start + frame * 145, 145);
+    const { model, framing } = scene;
+    const signal = model.signal;
+    return { elapsed: scene.clock.elapsed, signal: Boolean(signal),
+      offscreen: signal && (signal.x < framing.bounds.left || signal.x > framing.bounds.right ||
+        signal.y < framing.bounds.top || signal.y > framing.bounds.bottom) };
+  });
+  expect(played.signal).toBe(true);
+  expect(played.elapsed).toBeGreaterThanOrEqual(23);
+  expect(played.elapsed).toBeLessThan(30);
+  const signal = page.locator('#salvage-signal');
+  await expect(signal).toHaveText(played.offscreen ? /^Salvage Signal \d+ m$/ : 'Salvage Signal');
+  if (played.offscreen) {
+    await expect(signal).toHaveAttribute('data-offscreen', '');
+    expect(await signal.evaluate((node) => getComputedStyle(node, '::before').display)).toBe('inline-block');
+  }
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const { model } = scene;
+    scene.menu.lastHud = -Infinity;
+    const point = model.player.position;
+    const victimId = model.bots[0].id;
+    model.salvage.chunks.push({ ...point, origin: point, destination: point, age: 1, value: 31,
+      offset: 0, source: { victimId, credits: [{ id: model.player.id, value: 31 }] } });
+  });
+  await expect(page.locator('#salvage-reward')).toHaveText('SALVAGE SECURED +31');
+  await expect(page.locator('#rank-record')).toContainText(/Best #\d+ · Peak \d+/);
+  await page.evaluate(() => {
+    const scene = Reflect.get(window, 'trainingScene');
+    scene.clock.elapsed = 299.99;
+  });
+  await expect(page.locator('#menu-title')).toHaveText('Results');
+  const stats = page.locator('#result-stats');
+  await expect(stats.getByText('Best rank', { exact: true })).toBeVisible();
+  await expect(stats.locator('dt', { hasText: /^Salvage from your attacks$/ }).locator('+ dd')).toHaveText('31');
+  await expect(stats.getByText('Larger rivals damaged')).toBeVisible();
+  await expect(stats.getByText('Best recovery after theft')).toBeVisible();
+  expect(await page.locator('#menu').evaluate((dialog) => dialog.getBoundingClientRect().width <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Play Again' }).click();
+  await expect(page.locator('#mass')).toHaveText('20');
+  await expect(page.locator('#rank-record')).toBeEmpty();
+  await expect(page.locator('#salvage-reward')).toBeEmpty();
 });
 
 test('cartoon expressions follow a real attack and both Arena outcomes display matching art', async ({ page }) => {

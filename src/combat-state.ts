@@ -1,6 +1,8 @@
 import { hazardConfig } from './competition-config';
 import type { Participant, Point } from './movement';
 
+export const hitThreshold = { massive: 0.25, giant: 8 } as const;
+
 export type Attack =
   { phase: 'idle' | 'armed' } |
   { phase: 'warning'; remaining: number; bearing: number } |
@@ -23,5 +25,6 @@ export function combatState() {
     detached: 0, lostToTheft: 0, lostToHazards: 0, resourceMass: 0,
     guardFor: 0, impact: undefined as TheftImpact | undefined,
     largestTheft: 0, largestReduction: 0, ownSalvage: 0, reclaimedSalvage: 0,
+    massiveHits: 0, giantsCracked: 0, largerVictims: new Set<string>(), bestRecovery: 0,
   };
 }

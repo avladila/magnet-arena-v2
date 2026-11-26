@@ -2,7 +2,7 @@ import { brand } from './brand';
 import type { ArenaModel } from './arena-model';
 import { matchConfig } from './competition-config';
 import type { GameAudio } from './audio';
-import { rankings, type Difficulty, type MatchClock, type Mode } from './match';
+import { RankFeedback, rankings, type Difficulty, type MatchClock, type Mode } from './match';
 import type { WorldBounds } from './particles';
 import { Navigation } from './navigation';
 import { clearProgress, loadProgress, saveProgress, type Quality } from './progress';
@@ -29,10 +29,12 @@ export class SessionUI {
   private rankingText = '';
   private ranksExpanded = false;
   private readonly compactRanks = matchMedia('(max-width: 600px), (pointer: coarse)');
-  private ownPlace?: number;
+  private ranks = new RankFeedback();
+  private rankNoticeUntil = 0;
   private resultDetails?: Promise<typeof import('./result-stats') | undefined>;
   private lastHud = 0;
   private feedback?: { label: string; until: number };
+  private salvageNotice?: { value: number; own: number; latest: number };
   private readonly navigation = new Navigation();
   private changeDifficulty = false;
 
@@ -62,9 +64,13 @@ export class SessionUI {
         this.duringSession = true;
         this.changeDifficulty = false;
         this.feedback = undefined;
+        this.salvageNotice = undefined;
         this.expandRanks(false);
         this.lastHud = -Infinity;
-        this.ownPlace = undefined;
+        this.ranks = new RankFeedback();
+        this.rankNoticeUntil = 0;
+        element('rank-event').textContent = '';
+        element('rank-record').textContent = '';
         this.resultDetails ??= import('./result-stats').catch(() => undefined);
         actions.start(this.mode, this.progress.difficulty);
         this.resume();
@@ -225,6 +231,15 @@ export class SessionUI {
     this.feedback = { label, until: now + 1400 };
   }
 
+  salvageFeedback(value: number, own: number, elapsed: number): void {
+    const previous = this.salvageNotice;
+    const group = previous && elapsed - previous.latest <= 0.6 ? previous : { value: 0, own: 0, latest: elapsed };
+    group.value += value;
+    group.own += own;
+    group.latest = elapsed;
+    this.salvageNotice = group;
+  }
+
   private expandRanks(expanded: boolean): void {
     this.ranksExpanded = expanded;
     const toggle = element('rankings-toggle');
@@ -266,17 +281,27 @@ export class SessionUI {
       saveProgress(this.progress);
     }
     const signal = model.signal;
+    const signalHud = element('salvage-signal');
+    const offscreen = signal && (signal.x < bounds.left || signal.x > bounds.right || signal.y < bounds.top || signal.y > bounds.bottom);
     let tip = '';
     if (signal) {
-      const angle = Math.atan2(signal.y - position.y, signal.x - position.x);
-      const arrow = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][(Math.round(angle / (Math.PI / 4)) + 8) % 8];
-      tip = 'Salvage signal ' + arrow + ' ' + Math.round(Math.hypot(signal.x - position.x, signal.y - position.y)) + ' m';
+      tip = 'Salvage Signal';
+      if (offscreen) {
+        const angle = Math.atan2(signal.y - position.y, signal.x - position.x);
+        signalHud.style.setProperty('--signal-bearing', 45 * Math.round(angle / (Math.PI / 4)) + 'deg');
+        tip += ' ' + Math.round(Math.hypot(signal.x - position.x, signal.y - position.y)) + ' m';
+      }
     }
+    signalHud.toggleAttribute('data-offscreen', Boolean(offscreen));
+    this.writeText('salvage-signal', tip);
+    const reward = this.salvageNotice;
+    this.writeText('salvage-reward', reward && clock.elapsed - reward.latest < 1.25
+      ? 'SALVAGE SECURED +' + reward.value + (reward.own > 0 && reward.own < reward.value ? ' · ' + reward.own + ' yours' : '') : '');
     element('status').textContent = [
       this.feedback && this.feedback.until > now ? this.feedback.label : '',
       combat.guardFor > 0 ? 'THEFT GUARD' : '',
       combat.heat >= 1 ? 'OVERHEATED' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
-      combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '', tip,
+      combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '',
     ].filter(Boolean).join(' · ');
     if (now - this.lastHud > 180) {
       this.lastHud = now;
@@ -292,16 +317,27 @@ export class SessionUI {
         this.rankingText = ranking;
         this.list('ranking', rows);
       }
-      if (this.ownPlace !== undefined && this.ownPlace !== place && !this.motionReduced &&
+      if (model.bestPlace !== undefined) {
+        this.writeText('rank-record', 'Best #' + model.bestPlace + ' · Peak ' + combat.highest);
+      }
+      const notice = this.ranks.update(place, all[1]?.place > 1 ? all[0].participant : undefined, clock.elapsed);
+      if (notice) {
+        this.rankNoticeUntil = clock.elapsed + 1.9;
+        this.writeText('rank-event', notice.label);
+      } else if (clock.elapsed >= this.rankNoticeUntil) this.writeText('rank-event', '');
+      if (notice?.climbing && !this.motionReduced &&
           !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const rising = place < this.ownPlace;
-        element('ranking').querySelector('.is-player')?.animate([
-          { transform: `translateX(${rising ? -7 : 7}px)`, backgroundColor: rising ? brand.arcade.green : brand.arcade.orange, color: brand.arcade.ink },
+        element('rank-event').animate([
+          { transform: 'translateX(-5px)', backgroundColor: brand.arcade.green, color: brand.arcade.ink },
           { transform: 'translateX(0)' },
         ], { duration: 240, easing: 'cubic-bezier(' + brand.motion.snap.join(',') + ')' });
       }
-      this.ownPlace = place;
     }
+  }
+
+  private writeText(id: string, text: string): void {
+    const target = element(id);
+    if (target.textContent !== text) target.textContent = text;
   }
 
   private list(id: string, rows: ReturnType<typeof rankings>) {
@@ -344,7 +380,7 @@ export class SessionUI {
     const stats = element('result-stats');
     stats.replaceChildren();
     void this.resultDetails?.then((details) => {
-      if (details) details.renderResultStats(stats, player);
+      if (details) details.renderResultStats(stats, player, model.bestPlace);
       else {
         const label = document.createElement('dt');
         const value = document.createElement('dd');

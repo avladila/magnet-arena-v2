@@ -203,13 +203,25 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #energy::-webkit-progress-bar { background: var(--arcade-navy); border: 1px solid var(--arcade-ink); border-radius: .2rem; }
 #energy::-webkit-progress-value { background: var(--brand-energy); border-radius: .1rem; }
 #energy::-moz-progress-bar { background: var(--brand-energy); border-radius: .1rem; }
-#status:empty { display: none; }
-#status { margin-top: .25rem; max-width: min(19rem, 40vw); overflow-wrap: anywhere; }
+#status:empty, #salvage-reward:empty, #salvage-signal:empty, #rank-record:empty, #rank-event:empty { display: none; }
+#status, #salvage-reward, #salvage-signal { margin-top: .25rem; max-width: min(19rem, 42vw); overflow-wrap: anywhere; }
+#salvage-signal, #salvage-reward, #rank-event {
+  padding: .18rem .32rem; font-weight: 900; border: 1px solid var(--arcade-ink); border-radius: .24rem;
+}
+#salvage-signal { background: var(--arcade-yellow); color: var(--arcade-ink); }
+#salvage-signal[data-offscreen]::before {
+  content: ''; display: inline-block; width: .84em; height: .84em; margin-inline-end: .3em; vertical-align: -.05em;
+  background: currentColor; transform: rotate(var(--signal-bearing));
+  clip-path: polygon(0 34%, 48% 34%, 48% 4%, 100% 50%, 48% 96%, 48% 66%, 0 66%);
+}
+#salvage-reward { background: var(--arcade-navy); color: var(--arcade-white); }
 #rankings-panel {
   position: absolute; top: 62px; right: 0; width: clamp(7rem, 20vw, 10.5rem);
   padding: .3rem .45rem; font: 700 .78rem/1.5 'Magnet Sans', sans-serif;
 }
 #ranking { margin: 0; padding: 0; list-style: none; }
+#rank-record, #rank-event { margin-top: .24rem; font-size: .7rem; line-height: 1.27; }
+#rank-event { background: var(--arcade-green); color: var(--arcade-ink); overflow-wrap: anywhere; }
 #rankings-panel[data-expanded="true"] { pointer-events: auto; }
 #rankings-panel[data-expanded="true"] #ranking { overflow-y: auto; overscroll-behavior: contain; max-height: min(33vh, 19rem); }
 #rankings-toggle {
