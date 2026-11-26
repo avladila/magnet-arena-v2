@@ -94,6 +94,7 @@ export class CompetitionView {
     for (; siteIndex < this.sites.length; siteIndex++) this.sites[siteIndex].setVisible(false);
     let shardIndex = 0;
     let gleams = quality === 'low' ? 7 : 14;
+    let trails = quality === 'low' ? 12 : 48;
     for (const chunk of model.salvage.chunks) {
       if (!visible(chunk, bounds, 55)) continue;
       const airborne = chunk.age < theftConfig.flight;
@@ -101,7 +102,8 @@ export class CompetitionView {
       const lift = airborne ? 28 * Math.sin(Math.PI * chunk.age / theftConfig.flight) : 0;
       const tier = chunk.value >= 70 ? 3 : chunk.value >= 20 ? 2 : chunk.value >= 5 ? 1 : 0;
       const size = Math.min(52, Math.max(14 + 6 * tier, (5 + 2 * tier) / zoom));
-      if (airborne && !reducedMotion) {
+      if (airborne && !reducedMotion && trails > 0) {
+        trails--;
         const progress = chunk.age / theftConfig.flight;
         this.effects.lineStyle(2 + tier, tier >= 2 ? yellow : white, 0.76 * Math.sin(Math.PI * progress));
         this.effects.lineBetween(chunk.x, chunk.y - lift,
