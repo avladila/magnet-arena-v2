@@ -270,13 +270,18 @@ test('a giant bot label stays at CSS size and chooses room clear of the player a
     setScale(scale: number) { this.scale = scale; return this; },
     setVisible(visible: boolean) { this.visible = visible; return this; },
   };
-  const scene = { add: { graphics: () => new GraphicsRecorder(), text: () => label } } as unknown as Phaser.Scene;
+  const sprite = Object.assign(new GraphicsRecorder(), {
+    frame: { name: 'bot-1-0' },
+    setFrame(name: string) { this.frame.name = name; return this; },
+  });
+  const scene = { add: { sprite: () => sprite, text: () => label } } as unknown as Phaser.Scene;
   const view = new BotView(scene, bot);
   const bounds = { left: 500, top: 1250, right: 3500, bottom: 2750 };
   const names: WorldBounds[] = [];
   view.render(5, 0.25, bounds, themes.light, [player, bot], names);
   assert.ok(label.visible && label.top + label.height / 0.25 < bot.position.y - bot.radius);
   assert.equal(label.scale * 0.25, 1);
+  assert.equal(sprite.frame.name, 'bot-1-3');
   const [above] = names;
   view.render(5, 0.25, bounds, themes.dark, [player, bot], names);
   assert.ok(label.visible && label.top > bot.position.y + bot.radius);

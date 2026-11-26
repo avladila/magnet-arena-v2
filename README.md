@@ -1,6 +1,10 @@
 # MAGNET
 
-A 15,360 × 10,000 top-down browser arena built with Phaser 3, TypeScript and Vite. Steer the magnet near colored scrap to pull it in. Each piece adds one mass, increasing the magnet's size and reach as the camera eases out. Copper, Spark, Drift, and Orbit collect from the same arena.
+MAGNET is a single-player salvage competition built with Phaser 3, TypeScript and Vite. Collect scrap and gold to grow, charge Magnetic Theft with red cells, and race Copper, Spark, Drift and Orbit for mass across a 15,360 × 10,000 arena.
+
+- **Arena** starts with a three-second countdown and runs for five minutes. Final rank uses current mass, highest mass and resource mass in that order.
+- **Endless** uses the same economy, rivals and hazards. End the session from Pause to see your stats and replay.
+- **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming and recovering stolen salvage.
 
 ## Run locally
 
@@ -13,8 +17,8 @@ npm run dev -- --host 0.0.0.0
 
 Open the address printed by Vite. For phone playtesting, open the Vite host machine's LAN address and port from a phone on the same network.
 
-- **Desktop:** Move the mouse over the arena to steer. Bring it back over the magnet or leave the arena to stop.
-- **Touch:** Tap to move to that point. Touch and drag to use the floating joystick. Return to the center or lift your finger to stop. Try both portrait and landscape.
+- **Desktop:** Steer with the mouse, WASD or arrow keys. Return the mouse over the magnet or leave the arena to stop mouse steering. At full energy, hold Space to aim and release to fire. Escape pauses.
+- **Touch:** Tap a destination or drag to steer with the floating joystick. Hold Attack with a second finger to aim, drag that thumb to override the assisted bearing, and release to fire. The Pause button opens the session controls.
 
 Light is the first-run theme. Use the moon or sun button beside the mass counter to switch. The game remembers the choice when local storage is available. Tab to the button and use Space or Enter to toggle with the keyboard.
 
@@ -32,7 +36,10 @@ Light is the first-run theme. Use the moon or sun button beside the mass counter
 npm test
 npm run typecheck
 npm run build
+npm exec -- tsx scripts/simulate-matches.ts
 ```
+
+See the [release verification report](docs/release-verification.md) for the test evidence and remaining release gates.
 
 ## Growth and balance
 
@@ -40,7 +47,7 @@ The simulation owns position, velocity, mass, size, and scrap. Each collected sl
 
 The camera applies the two-phase mass multiplier to its viewport baseline. It eases out further as needed to fit the magnetic field within 70% of the shorter viewport side, subject to the floor that keeps the view inside the world. Camera zoom and eased drawing scale are separate from authoritative collision geometry. The proposed tuning, measurements and acceptance checks are recorded in [giant growth](docs/giant-growth.md).
 
-`src/config.ts` holds the 720 active pieces in a 1,500-slot pool, pull speeds of 300–700 world units per second, and presentation timing. The 460 world-unit-per-second movement speed carries forward from Task 001. Future shared-economy context is 94% ordinary scrap, 1% gold, and 5% energy. All active pickups in this milestone are ordinary scrap.
+`src/config.ts` holds the 720 active pieces in a 1,500-slot pool, pull speeds of 300–700 world units per second, and presentation timing. The 460 world-unit-per-second movement speed carries forward from Task 001. Competitive sessions use the same pool with a deterministic 94% ordinary scrap, 1% gold and 5% red energy site distribution. Gold pays ten mass and red cells charge Magnetic Theft.
 
 The magnetic halo eases toward the actual field reach in world units. The 64-unit floor brackets are spaced 480 units apart. Milestones at 50, 100, 200 and 400 give a 340 ms visual pulse. If a collection batch crosses multiple thresholds, it shows one pulse for the highest. The palettes in `src/theme.ts` share the same ten ordinary scrap indices.
 
@@ -48,6 +55,6 @@ The magnetic halo eases toward the actual field reach in world units. The 64-uni
 
 Copper and Spark are Collectors. They score 240-unit regions within 720 units using live scrap counts, travel distance, and heading. They commit to a line through a selected region until a scheduled decision at 2.3 seconds or earlier arrival on a shorter safe route. A route needs about 1.5 seconds of travel to qualify. Individual pickups leave the route in place. Drift and Orbit are Roamers. They sample seeded waypoints 600–1,500 units out with a fallback away from walls, replace a waypoint within 12 units of arrival, and reconsider after 2.6–4.2 seconds. These provisional values live in `src/config.ts`.
 
-The arena model updates bot decisions and then moves all five magnets. Each piece picks one winner by smallest signed surface gap, which puts contact before pull. Ties use ascending participant ID. A slot's current generation accepts one claim, and mass is applied in a batch after all pieces have been resolved. A shared region manager keeps the 720 active slots near all five magnets, with offscreen prefetch around the player's camera. See [world infrastructure and playtest results](docs/world-infrastructure.md).
+The arena model updates bot decisions and then moves all five magnets. Each piece picks one winner by smallest signed surface gap, which puts contact before pull. Ties use ascending participant ID. A slot's current generation accepts one claim, and mass is applied in a batch after all pieces have been resolved. A shared region manager keeps the 720 active slots near all five magnets, with offscreen prefetch around the player's camera. The release rules add public Salvage Signals, tactical attacks and local hazard avoidance. See [world infrastructure and playtest results](docs/world-infrastructure.md).
 
 Run `npm exec -- tsx scripts/measure-competition.ts` to repeat five seeded 60-second runs at 30 Hz. Each solo and competitive pair begins with the same scrap layout and follows the same timed, center-relative world targets. The script prints pickups and physical scales at 10, 20, 40, and 60 seconds, plus bot motion, target assignments, and encounter times. The earlier Collector correction is documented in [Collector balance results](docs/collector-balance.md).

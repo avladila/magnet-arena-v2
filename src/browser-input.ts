@@ -18,6 +18,7 @@ export function bindInput(surface: HTMLElement, toWorld: (point: Point) => Point
   }
 
   surface.addEventListener('pointerdown', (event) => {
+    if (event.target instanceof Element && event.target.closest('button, input, select')) return;
     if (event.pointerType === 'mouse') {
       input.mouseMove(point(event));
       return;
@@ -27,7 +28,10 @@ export function bindInput(surface: HTMLElement, toWorld: (point: Point) => Point
     surface.setPointerCapture(event.pointerId);
   }, options);
   surface.addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'mouse') input.mouseMove(point(event));
+    if (event.pointerType === 'mouse') {
+      if (event.target instanceof Element && event.target.closest('button, input, select')) input.mouseLeave();
+      else input.mouseMove(point(event));
+    }
     else input.move(event.pointerId, point(event));
   }, options);
   surface.addEventListener('pointerleave', (event) => {

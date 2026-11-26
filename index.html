@@ -7,22 +7,92 @@
     <title>MAGNET</title>
   </head>
   <body>
+    <div id="loading" role="status">Loading MAGNET…</div>
     <main id="arena" aria-label="MAGNET game arena">
-      <header class="game-guide">
+      <header class="game-guide" hidden>
         <div class="guide-heading">
           <h1>MAGNET<span aria-hidden="true">.</span></h1>
+          <div id="clock" aria-label="Match time"></div>
           <div class="hud-controls">
             <p class="mass-hud">Mass <strong id="mass">20</strong></p>
             <button id="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false">
               <span class="theme-icon" aria-hidden="true"></span>
             </button>
+            <button id="pause" type="button" aria-label="Pause"><span class="pause-icon" aria-hidden="true"></span></button>
           </div>
         </div>
-        <p class="mouse-guide">Move your mouse to steer</p>
+        <p class="mouse-guide">Mouse or WASD to steer · Hold and release Space to attack</p>
         <p class="touch-guide">Tap to move · Hold and drag to steer</p>
+        <div class="field-hud">
+          <label for="energy">Energy <span id="energy-readout">0%</span></label>
+          <progress id="energy" value="0" max="100"></progress>
+          <div id="status"></div>
+          <div id="tutorial-task"></div>
+          <div id="district"></div>
+        </div>
+        <ol id="ranking" aria-label="Live ranking"></ol>
       </header>
+      <div class="map-hud">
+        <button id="map-toggle" type="button" aria-expanded="false" aria-controls="minimap" hidden>Map</button>
+        <canvas id="minimap" width="240" height="156" role="img" aria-label="Arena map with your position, nearby opponents and public salvage signal" hidden></canvas>
+      </div>
+      <div id="countdown" hidden></div>
+      <button id="attack" type="button" hidden>Attack</button>
       <div id="joystick" hidden aria-hidden="true"><div></div></div>
     </main>
+    <dialog id="menu" class="menu" aria-labelledby="menu-title">
+      <div class="menu-art" aria-hidden="true"></div>
+      <div class="menu-content">
+        <h2 id="menu-title">MAGNET<span>.</span></h2>
+        <div id="menu-home">
+          <p>Collect scrap, build mass, and steal your rivals’ salvage.</p>
+          <label class="setting">Difficulty <select id="difficulty">
+            <option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option>
+          </select></label>
+          <div class="menu-actions">
+            <button class="primary" data-action="arena">Play Arena</button>
+            <button data-action="endless">Endless</button>
+          </div>
+          <div class="menu-actions secondary">
+            <button data-action="tutorial" id="tutorial-start">Tutorial</button>
+            <button data-action="help">How to Play</button>
+            <button data-action="settings">Settings</button>
+          </div>
+          <p id="records"></p>
+        </div>
+        <div id="menu-help" hidden>
+          <p>Move with the mouse or WASD. On touchscreens, tap a destination or drag to steer.</p>
+          <p>Scrap adds mass. Gold adds ten. Red energy charges Magnetic Theft. With a full charge, hold Space or Attack to aim and release to fire.</p>
+          <p>Keep clear of Flux Spikes as you grow. Heat weakens your field, water and acid corrode your shell, and cryogenic vents make you brittle.</p>
+          <div class="menu-actions"><button data-action="tutorial">Play Tutorial</button><button data-action="back">Back</button></div>
+        </div>
+        <div id="menu-settings" hidden>
+          <label class="setting">Sound effects <input id="volume" type="range" min="0" max="100"></label>
+          <label class="setting">Music <input id="music" type="range" min="0" max="100"></label>
+          <label class="setting">Haptic feedback <input id="haptics" type="checkbox"></label>
+          <label class="setting">Graphics <select id="quality"><option value="low">Low</option><option value="balanced">Balanced</option><option value="high">High</option></select></label>
+          <label class="setting">Reduced motion <input id="motion" type="checkbox"></label>
+          <label class="setting">Dark theme <input id="dark" type="checkbox"></label>
+          <div class="menu-actions"><button data-action="back">Back</button><button data-action="reset">Reset progress</button></div>
+        </div>
+        <div id="menu-reset" hidden>
+          <p>Clear saved records and settings on this device?</p>
+          <div class="menu-actions"><button data-action="settings">Cancel</button><button data-action="confirm-reset">Reset</button></div>
+        </div>
+        <div id="menu-pause" hidden>
+          <div class="menu-actions"><button class="primary" data-action="resume">Resume</button><button data-action="settings">Settings</button></div>
+          <div class="menu-actions"><button id="skip-tutorial" data-action="home">Skip Tutorial</button><button id="end-session" data-action="end">End Session</button><button data-action="leave">Main Menu</button></div>
+        </div>
+        <div id="menu-leave" hidden>
+          <p>Return to the main menu and discard this session?</p>
+          <div class="menu-actions"><button data-action="back">Cancel</button><button data-action="home">Leave</button></div>
+        </div>
+        <div id="menu-results" hidden>
+          <p id="result-summary"></p><ol id="result-ranking"></ol><dl id="result-stats"></dl>
+          <div class="menu-actions"><button class="primary" data-action="replay">Play Again</button><button data-action="change">Change Difficulty</button><button data-action="home">Main Menu</button></div>
+        </div>
+      </div>
+    </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

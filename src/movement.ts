@@ -1,3 +1,4 @@
+import { combatState } from './combat-state';
 import { arena, playerConfig, viewConfig } from './config';
 
 export type Point = { x: number; y: number };
@@ -12,6 +13,7 @@ export type Participant<Kind extends 'player' | 'bot' = 'player' | 'bot'> = {
   physicalScale: number;
   radius: number;
   pickupsCollected: number;
+  combat: ReturnType<typeof combatState>;
 };
 export type Player = Participant<'player'>;
 
@@ -42,6 +44,7 @@ export function createParticipant<Kind extends Participant['kind']>(
     physicalScale: 1,
     radius: playerConfig.radius,
     pickupsCollected: 0,
+    combat: combatState(),
   };
 }
 

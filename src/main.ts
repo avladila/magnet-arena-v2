@@ -1,13 +1,20 @@
+import { GameAudio } from './audio';
+import { CompetitionView } from './competition-view';
+import { matchConfig } from './competition-config';
+import { MatchClock, type Difficulty, type Mode } from './match';
+import { bindPlayInput } from './play-input';
+import { element, SessionUI } from './session-ui';
 import Phaser from 'phaser';
 import { ArenaModel } from './arena-model';
-import { ArenaFloor, drawMagnet } from './art';
+import { ArenaFloor } from './art';
+import { createMagnetSprite, magnetAtlas, renderMagnet } from './magnet-art';
 import { bindInput } from './browser-input';
 import { BotView } from './bot-view';
 import { touch, viewConfig } from './config';
 import { GrowthFeedbackView } from './growth-feedback';
 import type { Point } from './movement';
 import { ParticleView } from './particle-view';
-import type { WorldBounds } from './particles';
+import type { Collection, WorldBounds } from './particles';
 import { cssColor } from './theme';
 import { applyThemeToPage, bindThemeToggle, localThemePreference } from './theme-control';
 import { ArenaCamera, Heading, MagnetScale } from './view';
@@ -24,7 +31,15 @@ applyThemeToPage(themeButton, theme);
 stick.style.setProperty('--joystick-size', touch.radius * 2 + 'px');
 
 class ArenaScene extends Phaser.Scene {
-  private model = new ArenaModel(Math.floor(Math.random() * 0x100000000));
+  private model = new ArenaModel(1, 'normal');
+  private clock = new MatchClock('arena');
+  private readonly audio = new GameAudio();
+  private menu!: SessionUI;
+  private readonly stepSize = matchConfig.step;
+  private accumulated = 0;
+  private lastPickupSound = 0;
+  private playInput!: ReturnType<typeof bindPlayInput>;
+  private competition!: CompetitionView;
   private heading = new Heading();
   private magnetScale = new MagnetScale();
   private framing = new ArenaCamera(this.model.player.position);
@@ -33,33 +48,52 @@ class ArenaScene extends Phaser.Scene {
   private botViews!: BotView[];
   private readonly botNames: WorldBounds[] = [];
   private field!: GrowthFeedbackView;
-  private magnet!: Phaser.GameObjects.Graphics;
+  private magnet!: Phaser.GameObjects.Sprite;
   private controls!: ReturnType<typeof bindInput>;
   private pixelRatio = 1;
   private width = 0;
   private height = 0;
 
+  preload(): void {
+    const base = import.meta.env.BASE_URL;
+    this.load.atlas(magnetAtlas, base + 'magnets.webp', base + 'magnets.json');
+  }
+
   create(): void {
     this.floor = new ArenaFloor(this.add.graphics());
+    this.competition = new CompetitionView(this);
     const player = this.model.player;
     this.field = new GrowthFeedbackView(this, player);
     this.particleView = new ParticleView(this);
     this.botViews = this.model.bots.map((bot) => new BotView(this, bot));
-    this.magnet = drawMagnet(this);
-    const unbindTheme = bindThemeToggle(themeButton, () => {
+    this.magnet = createMagnetSprite(this, player.id).setDepth(2);
+    const toggleTheme = () => {
       theme.toggle();
       applyThemeToPage(themeButton, theme);
       this.floor.render(this.framing.bounds, theme.palette);
       this.cameras.main.setBackgroundColor(theme.palette.arena.background);
-    });
+    };
+    const unbindTheme = bindThemeToggle(themeButton, toggleTheme);
     this.controls = bindInput(surface, (point) => this.screenToWorld(point));
+    this.playInput = bindPlayInput(surface, element('attack'), () => this.model.participants,
+      () => this.menu.running && this.clock.countdown <= 0 && !this.clock.ended,
+      (point) => this.screenToWorld(point), () => this.controls.input.mouseLeave(),
+      () => this.audio.play('pulse'));
+    this.menu = new SessionUI(this.audio, {
+      start: (mode, difficulty) => this.start(mode, difficulty),
+      resetInput: () => this.resetInput(),
+      end: () => this.finish(),
+      toggleTheme,
+    });
     const observer = new ResizeObserver(() => this.resize());
     observer.observe(surface);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       observer.disconnect();
       this.controls.destroy();
+      this.playInput.destroy();
       unbindTheme();
     });
+    element('loading').hidden = true;
     this.resize();
     this.renderPlayer();
     mass.textContent = String(player.mass);
@@ -70,26 +104,94 @@ class ArenaScene extends Phaser.Scene {
     this.renderBots(0, bounds);
   }
 
-  update(_time: number, delta: number): void {
+  private start(mode: Mode, difficulty: Difficulty): void {
+    this.resetInput();
+    this.model = new ArenaModel(mode === 'tutorial' ? 4815 : crypto.getRandomValues(new Uint32Array(1))[0], difficulty, mode === 'tutorial');
+    this.clock = new MatchClock(mode);
+    this.accumulated = 0;
+    this.heading = new Heading();
+    this.magnetScale = new MagnetScale();
+    this.framing = new ArenaCamera(this.model.player.position);
+    this.framing.resize(this.width, this.height);
+    for (let i = 0; i < this.botViews.length; i++) this.botViews[i].setBot(this.model.bots[i]);
+    this.field.reset(this.model.player);
+    this.competition.reset();
+    this.positionCamera();
+    this.menu.hud(this.model, this.clock, performance.now(), this.framing.bounds);
+  }
+
+  private resetInput(): void {
+    this.controls.reset();
+    this.playInput.reset();
+    stick.hidden = true;
+  }
+
+  private finish(): void {
+    this.resetInput();
+    this.clock.ended = true;
+    for (const participant of this.model.participants) participant.combat.attack = { phase: 'idle' };
+    this.menu.results(this.model, this.clock);
+  }
+
+  update(time: number, delta: number): void {
     this.resize();
-    const seconds = delta / 1000;
+    if (!this.menu.running) return;
     const player = this.model.player;
-    const previousMass = player.mass;
-    const result = this.model.step(this.controls.input.steering((point) => this.screenToWorld(point)), seconds);
-    if (!result) return;
-    this.heading.update(player.heading, seconds);
-    this.magnetScale.update(player.physicalScale, seconds);
-    this.framing.follow(player.position, seconds, player.mass);
+    const previousEnergy = player.combat.energy;
+    const previousGold = player.combat.gold;
+    const previousPickups = player.pickupsCollected;
+    const previousHits = player.combat.hits;
+    const previousMisses = player.combat.misses;
+    const previousDetached = player.combat.detached;
+    const previousLoss = player.combat.lostToTheft + player.combat.lostToHazards;
+    const collections: Collection[] = [];
+    const steering = this.playInput.steering(this.controls.input.steering((point) => this.screenToWorld(point)));
+    this.accumulated += Math.min(delta / 1000, 0.15);
+    let advanced = 0;
+    while (this.accumulated >= this.stepSize && !this.clock.ended) {
+      this.accumulated -= this.stepSize;
+      this.clock.advance(this.stepSize, (step) => {
+        const result = this.model.step(steering, step);
+        if (result) collections.push(...result.collections);
+        advanced += step;
+      });
+    }
+    this.heading.update(player.heading, advanced);
+    this.magnetScale.update(player.physicalScale, advanced);
+    this.framing.follow(player.position, advanced, player.mass);
     const bounds = this.framing.bounds;
-    this.model.replenish(bounds);
+    if (advanced > 0) this.model.replenish(bounds);
     this.floor.render(bounds, theme.palette);
-    this.field.render(player, seconds, theme.palette, reducedMotion.matches);
-    this.particleView.render(this.model.particles.slots, bounds, result.collections, seconds, theme.palette);
-    this.renderBots(seconds, bounds);
-    if (player.mass !== previousMass) mass.textContent = String(player.mass);
+    this.field.render(player, advanced, theme.palette, reducedMotion.matches || this.menu.motionReduced);
+    this.particleView.render(this.model.particles.slots, bounds, collections, advanced, theme.palette,
+      (scrap) => this.model.particles.kind(scrap));
+    this.renderBots(advanced, bounds);
+    this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
+      this.menu.quality, advanced, this.framing.zoom, reducedMotion.matches || this.menu.motionReduced);
+    if (player.combat.hits > previousHits) {
+      const detached = player.combat.detached - previousDetached;
+      this.menu.attackFeedback(detached > 0 ? detached + ' mass detached' : 'Core protected', time);
+    } else if (player.combat.misses > previousMisses) this.menu.attackFeedback('Miss', time);
+    if (player.combat.hits > previousHits || player.combat.lostToTheft + player.combat.lostToHazards > previousLoss) {
+      this.audio.play('hit');
+      this.menu.vibrate(35);
+    }
+    if (player.combat.energy === 100 && previousEnergy < 100) {
+      this.audio.play('ready');
+      this.menu.vibrate(22);
+    } else if (player.combat.gold > previousGold) {
+      this.audio.play('gold');
+      this.menu.vibrate(15);
+    }
+    else if (player.pickupsCollected > previousPickups && time - this.lastPickupSound > 110) {
+      this.audio.play('scrap');
+      this.lastPickupSound = time;
+    }
+    this.menu.hud(this.model, this.clock, time, bounds);
     this.renderPlayer();
     this.positionCamera();
     this.renderJoystick();
+    if (this.clock.ended) this.finish();
   }
 
   private screenToWorld(point: Point): Point {
@@ -100,10 +202,11 @@ class ArenaScene extends Phaser.Scene {
   private resize(): void {
     const width = surface.clientWidth;
     const height = surface.clientHeight;
-    const ratio = Math.min(window.devicePixelRatio || 1, viewConfig.maxPixelRatio);
+    const cap = this.menu?.quality === 'low' ? 1 : this.menu?.quality === 'high' ? viewConfig.maxPixelRatio : 2;
+    const ratio = Math.min(window.devicePixelRatio || 1, cap);
     if (!width || !height) return;
     if (width === this.width && height === this.height && ratio === this.pixelRatio) return;
-    this.controls.reset();
+    this.resetInput();
     this.width = width;
     this.height = height;
     this.pixelRatio = ratio;
@@ -127,10 +230,7 @@ class ArenaScene extends Phaser.Scene {
   }
 
   private renderPlayer(): void {
-    const { x, y } = this.model.player.position;
-    this.magnet.setPosition(x, y);
-    this.magnet.setRotation(this.heading.angle);
-    this.magnet.setScale(this.magnetScale.scale);
+    renderMagnet(this.magnet, this.model.player, this.heading.angle, this.magnetScale.scale);
   }
 
   private renderBots(seconds: number, bounds: WorldBounds): void {
@@ -152,7 +252,7 @@ class ArenaScene extends Phaser.Scene {
 }
 
 new Phaser.Game({
-  type: Phaser.AUTO,
+  type: Phaser.CANVAS,
   parent: surface,
   backgroundColor: cssColor(theme.palette.arena.background),
   scale: { mode: Phaser.Scale.NONE, width: 1, height: 1 },
