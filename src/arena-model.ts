@@ -85,7 +85,8 @@ export class ArenaModel {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
     if (!this.tutorial) this.elapsedSinceReplenish += seconds;
     if (!this.tutorial) {
-      this.botAI.update(this.bots, this.particles.slots, seconds, this.difficulty, this.populated ? this.kindOf : undefined);
+      this.botAI.update(this.bots, this.particles.slots, seconds, this.difficulty, this.populated ? this.kindOf : undefined,
+        this.difficulty && this.populated ? this.participants : undefined);
     }
     advance(this.player, steering, seconds);
     this.elapsed += seconds;

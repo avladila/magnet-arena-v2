@@ -2,7 +2,7 @@ import { botTactics, tacticsConfig, theftConfig } from './competition-config';
 import type { Difficulty } from './match';
 import type { Bot, BotTarget } from './bots';
 import { arena, botConfig, playerConfig } from './config';
-import { clampToArena, type Point } from './movement';
+import { clampToArena, type Participant, type Point } from './movement';
 import type { ResourceKind, Scrap } from './particles';
 
 const { collector, roamer } = botConfig;
@@ -53,7 +53,7 @@ export class BotAI {
   private readonly occupiedCells: number[] = [];
 
   update(bots: readonly Bot[], slots: readonly Scrap[], seconds: number, difficulty?: Difficulty,
-      kindOf?: (scrap: Scrap) => ResourceKind): void {
+      kindOf?: (scrap: Scrap) => ResourceKind, participants?: readonly Participant[]): void {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
     const profile = difficulty && tacticsConfig[difficulty];
     const decision = profile ? profile.decision : collector.decisionSeconds;
@@ -89,7 +89,7 @@ export class BotAI {
         const charging = role && bot.combat.energy < theftConfig.energy;
         const energy = profile ? (charging ? profile.charge * role : bot.combat.energy < theftConfig.energy ? profile.energy - 1 : 0) : 0;
         const target = this.pickRoute(bot, arrival, charging ? search * 1.22 : search, decision, energy,
-          profile ? profile.density : collector.densityWeight, profile ? profile.overrun : Infinity);
+          profile ? profile.density : collector.densityWeight, profile ? profile.overrun : Infinity, participants);
         if (target) {
           bot.target = target;
         } else if (!onRoute || bot.target?.kind === 'region') {
@@ -105,7 +105,7 @@ export class BotAI {
   }
 
   private pickRoute(bot: Bot, arrival: number, search: number, decision: number, energy: number,
-      densityWeight: number, overrun: number): BotTarget | undefined {
+      densityWeight: number, overrun: number, participants?: readonly Participant[]): BotTarget | undefined {
     const { x, y } = bot.position;
     const forwardX = Math.cos(bot.heading);
     const forwardY = Math.sin(bot.heading);
@@ -142,8 +142,22 @@ export class BotAI {
         if (travel < Math.max(minimum, distance - arrival)) continue;
 
         const alignment = moving ? (1 + ux * forwardX + uy * forwardY) / 2 : 1;
+        let shared = 1;
+        // A rival can make an existing supply cell worth contesting. The route still goes through the cell.
+        if (participants && this.density[index] >= 3) {
+          for (const rival of participants) {
+            if (rival === bot) continue;
+            const dx = center.x - rival.position.x - rival.velocity.x * 0.32;
+            const dy = center.y - rival.position.y - rival.velocity.y * 0.32;
+            const vicinity = (rival.radius + 490) ** 2;
+            const distance = dx * dx + dy * dy;
+            if (distance >= vicinity) continue;
+            const danger = rival.combat.energy === theftConfig.energy && bot.physicalScale >= 4;
+            shared = Math.max(shared, 1 + (danger ? 0.07 : 0.79) * (1 - distance / vicinity));
+          }
+        }
         const score = (1 + densityWeight * (population - 1)) *
-          (1 - collector.turnPenalty * (1 - alignment)) / (1 + distance / collector.distanceBias);
+          (1 - collector.turnPenalty * (1 - alignment)) * shared / (1 + distance / collector.distanceBias);
         if (score <= bestScore) continue;
         bestScore = score;
         best = { kind: 'region', cell: index, point: { x: x + ux * travel, y: y + uy * travel } };

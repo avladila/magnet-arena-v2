@@ -62,12 +62,22 @@ export class ArenaActivity {
       if (this.signal.resources < config.depleted) this.signal = undefined;
     }
     if (!needsSignal) return;
-    const selected = this.scratch.find(({ point, competitors }) => competitors >= 3 && this.countNear(slots, point) >= config.signalMinimum);
-    if (!selected) {
+    const player = participants.find(({ kind }) => kind === 'player');
+    let candidate: { point: Point; resources: number } | undefined;
+    for (const { point, competitors } of this.scratch) {
+      if (competitors < 3) continue;
+      const reachable = player && distanceSquared(point, player.position) <= config.visiblePlayerTravel ** 2;
+      if (candidate && !reachable) continue;
+      const resources = this.countNear(slots, point);
+      if (resources < config.signalMinimum) continue;
+      candidate = { point, resources };
+      if (reachable) break;
+    }
+    if (!candidate) {
       this.nextSignal = time + 2;
       return;
     }
-    this.signal = { ...selected.point, starts: time, expires: time + config.signalDuration, resources: this.countNear(slots, selected.point) };
+    this.signal = { ...candidate.point, starts: time, expires: time + config.signalDuration, resources: candidate.resources };
     this.nextSignal = time + config.signalInterval + this.random() * config.signalJitter;
   }
 

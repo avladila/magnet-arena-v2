@@ -89,6 +89,8 @@ export class GameplayPilot {
     }
     const sites = (model.hazards?.sites ?? []).filter((site) => onScreen(site, bounds, site.radius) &&
       (site.kind !== 'flux' || player.mass >= hazardConfig.flux.threshold));
+    const region = model.hotspots?.find((spot) => spot.strength > 0.20 && onScreen(spot, bounds) &&
+      distance(start, spot) > spot.radius * 0.6);
     let best = -Infinity;
     let point: Point | undefined;
     for (let i = 0; i < 24; i++) {
@@ -125,6 +127,7 @@ export class GameplayPilot {
       if (signal && distance(start, signal) < 2200 && this.strategy !== 'defensive') {
         score += Math.max(-3, Math.min(6, (distance(start, signal) - distance(aim, signal)) / 100));
       }
+      if (region) score += Math.max(-2, Math.min(7, (distance(start, region) - distance(aim, region)) / 85));
       if (score > best) { best = score; point = aim; }
     }
     return this.choice = { point, victim };
