@@ -7,6 +7,7 @@ import { clamp, type Participant, type Point } from './movement';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 import { Heading, MagnetScale } from './view';
+import type { CharacterIntent } from './character-pose';
 
 export class BotView {
   private readonly body: Phaser.GameObjects.Sprite;
@@ -51,6 +52,8 @@ export class BotView {
     names: WorldBounds[],
     reducedMotion = false,
     pickup?: Point,
+    intent?: CharacterIntent,
+    detail = true,
   ): void {
     const bot = this.bot;
     if (!bot) return;
@@ -61,7 +64,7 @@ export class BotView {
     const bodyRadius = playerConfig.radius * this.scale.scale;
     const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
-    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, pickup);
+    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, pickup, intent, detail);
     else {
       this.body.setVisible(visible);
       if (visible) renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);

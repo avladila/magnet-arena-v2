@@ -26,22 +26,54 @@ export class Navigation {
     if (!context) return;
     const { width, height } = this.canvas;
     context.clearRect(0, 0, width, height);
+    context.lineWidth = 1;
+    context.strokeStyle = brand.arcade.steel;
+    context.globalAlpha = 0.42;
+    context.strokeRect(7, 7, width - 14, height - 14);
+    context.globalAlpha = 1;
+    const screenX = (x: number) => 7 + (width - 14) * x / arena.width;
+    const screenY = (y: number) => 7 + (height - 14) * y / arena.height;
     const place = (worldX: number, worldY: number, radius: number, color: string) => {
-      const x = 7 + (width - 14) * worldX / arena.width;
-      const y = 7 + (height - 14) * worldY / arena.height;
       context.beginPath();
-      context.arc(x, y, radius, 0, Math.PI * 2);
+      context.arc(screenX(worldX), screenY(worldY), radius, 0, Math.PI * 2);
       context.fillStyle = color;
       context.fill();
     };
-    for (const district of districts) place(district.x, district.y, 6, '#' + district.accent.toString(16).padStart(6, '0'));
+    context.globalAlpha = 0.52;
+    for (const district of districts) {
+      context.fillStyle = '#' + district.accent.toString(16).padStart(6, '0');
+      context.fillRect(screenX(district.x) - 4, screenY(district.y) - 4, 8, 8);
+    }
+    context.globalAlpha = 1;
     for (const bot of model.bots) {
       const { x, y } = bot.position;
       if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) {
         place(x, y, 2.8, '#' + bot.accent.toString(16).padStart(6, '0'));
       }
     }
-    if (model.signal) place(model.signal.x, model.signal.y, 5, brand.legacy.navigation.color2);
-    place(position.x, position.y, 4, brand.legacy.navigation.color3);
+    if (model.signal) {
+      const x = screenX(model.signal.x);
+      const y = screenY(model.signal.y);
+      context.strokeStyle = brand.arcade.yellow;
+      context.beginPath();
+      context.moveTo(x, y - 7);
+      context.lineTo(x + 7, y);
+      context.lineTo(x, y + 7);
+      context.lineTo(x - 7, y);
+      context.closePath();
+      context.stroke();
+    }
+    context.save();
+    context.translate(screenX(position.x), screenY(position.y));
+    context.rotate(model.player.heading);
+    context.fillStyle = brand.arcade.white;
+    context.beginPath();
+    context.moveTo(7, 0);
+    context.lineTo(-4, -4.5);
+    context.lineTo(-2, 0);
+    context.lineTo(-4, 4.5);
+    context.closePath();
+    context.fill();
+    context.restore();
   }
 }

@@ -4,10 +4,12 @@ import { playerConfig } from './config';
 import type { Participant } from './movement';
 
 export type Expression = 'idle' | 'move' | 'collect' | 'ready' | 'attack' | 'hit' | 'hurt' | 'hot' | 'cold' | 'rust';
+export type CharacterIntent = 'pursuit' | 'escape';
 
 const reactionSeconds = 0.4;
 const recoilSeconds = 0.22;
 const collectingSeconds = 0.29;
+const settleSeconds = 0.13;
 
 export class CharacterPose {
   expression: Expression = 'idle';
@@ -15,6 +17,7 @@ export class CharacterPose {
   stretchY = 1;
   recoil = 0;
   markProgress = 0;
+  blink = false;
   private clock = 0;
   private lastLoss = 0;
   private lastPickups = 0;
@@ -23,9 +26,12 @@ export class CharacterPose {
   private hitFor = 0;
   private collectFor = 0;
   private recoilFor = 0;
+  private takeoffFor = 0;
+  private settleFor = 0;
+  private moving = false;
   private injury?: { until: number; mass: number };
 
-  update(magnet: Participant, seconds: number, reducedMotion: boolean): void {
+  update(magnet: Participant, seconds: number, reducedMotion: boolean, intent?: CharacterIntent): void {
     const state = magnet.combat;
     this.clock += seconds;
     const loss = state.lostToTheft + state.lostToHazards;
@@ -48,6 +54,10 @@ export class CharacterPose {
     this.previousAttack = phase;
 
     const speed = Math.hypot(magnet.velocity.x, magnet.velocity.y);
+    const moving = speed > 18;
+    this.takeoffFor = moving && !this.moving ? 0.12 : Math.max(0, this.takeoffFor - seconds);
+    this.settleFor = !moving && this.moving ? settleSeconds : Math.max(0, this.settleFor - seconds);
+    this.moving = moving;
     if (this.hitFor > 0) this.expression = 'hit';
     else if (phase === 'armed' || phase === 'warning' || this.recoilFor > 0) this.expression = 'attack';
     else if (state.heat >= 0.24) this.expression = 'hot';
@@ -56,16 +66,21 @@ export class CharacterPose {
     else if (this.injury) this.expression = 'hurt';
     else if (state.energy === theftConfig.energy && phase === 'idle') this.expression = 'ready';
     else if (this.collectFor > 0) this.expression = 'collect';
-    else this.expression = speed > 18 ? 'move' : 'idle';
+    else this.expression = moving ? 'move' : 'idle';
 
     this.stretchX = 1;
     this.stretchY = 1;
     this.recoil = 0;
     this.markProgress = 0;
+    this.blink = false;
     if (reducedMotion) return;
-    const offset = (magnet.id.charCodeAt(magnet.id.length - 1) % 9) * 0.7;
+    const offset = (magnet.id.charCodeAt(magnet.id.length - 1) % 9) * 0.47;
+    const blinkPeriod = 3.7 + offset * 0.31;
+    this.blink = (this.expression === 'idle' || this.expression === 'move' && !intent) &&
+      (this.clock + offset) % blinkPeriod > blinkPeriod - 0.12;
     this.markProgress = this.hitFor > 0 ? 1 - this.hitFor / reactionSeconds : this.clock * 0.8 + offset;
-    const tension = Math.min(1, speed / playerConfig.speed) * 0.056;
+    const heavy = Math.min(1, (magnet.physicalScale - 1) / 8);
+    const tension = Math.min(1, speed / playerConfig.speed) * (0.068 - 0.032 * heavy);
     if (this.hitFor > 0) {
       const hit = (this.hitFor / reactionSeconds) ** 3;
       this.stretchX -= 0.16 * hit;
@@ -76,16 +91,19 @@ export class CharacterPose {
       this.stretchY += 0.085 * force;
       this.recoil = 7 * force;
     } else if (phase === 'armed') {
-      this.stretchX -= 0.06;
-      this.stretchY += 0.035;
+      this.stretchX -= 0.085;
+      this.stretchY += 0.052;
     } else if (this.collectFor > 0 && this.expression === 'collect') {
       const bounce = Math.sin(Math.PI * this.collectFor / collectingSeconds) * 0.07;
       this.stretchX += bounce;
       this.stretchY -= bounce * 0.65;
     } else {
-      const breath = this.expression === 'idle' ? Math.sin(this.clock * 3.05 + offset) * 0.018 : 0;
-      this.stretchX += tension + breath;
-      this.stretchY -= tension * 0.52 + breath * 0.67;
+      const breath = this.expression === 'idle' ? Math.sin(this.clock * 2.65 + offset) * (0.018 - 0.010 * heavy) : 0;
+      const compression = moving ? this.takeoffFor / 0.12 * 0.024 : 0;
+      const settling = !moving ? Math.sin(Math.PI * this.settleFor / settleSeconds) * 0.029 : 0;
+      const intentStretch = moving && intent ? (intent === 'pursuit' ? 0.022 : 0.034) : 0;
+      this.stretchX += tension + breath + intentStretch - compression - settling;
+      this.stretchY -= tension * 0.52 + breath * 0.67 - compression * 0.7 - settling * 0.6;
     }
   }
 }

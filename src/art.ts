@@ -4,56 +4,70 @@ import { arena, arenaArt, playerConfig } from './config';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 
-function firstMarker(minimum: number, origin: number, spacing: number): number {
-  return origin + Math.max(0, Math.ceil((minimum - origin) / spacing)) * spacing;
-}
+const slabWidth = 1170;
+const slabHeight = 520;
+const serviceLanes = [1880, 3900, 6220, 8450];
+const stripWidth = 24;
 
 export function drawArena(art: Phaser.GameObjects.Graphics, { arena: colors }: ThemePalette, bounds: WorldBounds) {
   const { left, top, right, bottom } = bounds;
   art.clear().fillStyle(colors.background).fillRect(left, top, right - left, bottom - top);
-  art.fillStyle(colors.grid, 0.56);
-  const { gridSpacing, referenceSpacing, referenceSize } = arenaArt;
-  for (let x = firstMarker(left, gridSpacing / 2, gridSpacing); x < right; x += gridSpacing) {
-    for (let y = firstMarker(top, gridSpacing / 2, gridSpacing); y < bottom; y += gridSpacing) {
-      art.fillRect(x - 1.5, y - 1.5, 3, 3);
-    }
-  }
-
-  // Include a whole floor mark when the cached rectangle cuts through it.
-  const inset = (referenceSpacing - gridSpacing) / 2;
-  const half = referenceSize / 2;
-  const arm = referenceSize / 4;
-  art.lineStyle(2, colors.markings, 0.37).beginPath();
-  const stopX = Math.min(right + half, arena.width - half);
-  const stopY = Math.min(bottom + half, arena.height - half);
-  for (let x = firstMarker(left - half, inset, referenceSpacing); x < stopX; x += referenceSpacing) {
-    for (let y = firstMarker(top - half, inset, referenceSpacing); y < stopY; y += referenceSpacing) {
-      for (const horizontal of [-1, 1]) {
-        for (const vertical of [-1, 1]) {
-          const cornerX = x + horizontal * half;
-          const cornerY = y + vertical * half;
-          art.moveTo(cornerX - horizontal * arm, cornerY);
-          art.lineTo(cornerX, cornerY);
-          art.lineTo(cornerX, cornerY - vertical * arm);
-        }
+  for (let row = Math.floor(top / slabHeight); row * slabHeight < bottom; row++) {
+    const offset = (row % 3) * 310 - 620;
+    const y = row * slabHeight;
+    for (let column = Math.floor((left - offset) / slabWidth); offset + column * slabWidth < right; column++) {
+      const x = Math.max(0, offset + column * slabWidth);
+      const edge = Math.min(arena.width, offset + (column + 1) * slabWidth - 5);
+      const end = Math.min(arena.height, y + slabHeight - 5);
+      if (edge <= x || end <= y) continue;
+      const variation = ((row * 37 + column * 17) % 7 + 7) % 7;
+      const section = edge - x;
+      art.fillStyle(colors.grid, 0.09 + variation * 0.025).fillRect(x, y, section, end - y);
+      art.fillStyle(colors.markings, 0.24).fillRect(x, end - 2, section, 2).fillRect(edge - 2, y, 2, end - y);
+      art.fillStyle(colors.markings, 0.24);
+      if (section > 65 && end - y > 28) {
+        art.fillRect(x + 14, y + 12, 8, 4).fillRect(edge - 22, end - 16, 8, 4);
+      }
+      // The scuffs belong to the plate rather than the camera.
+      if (section > 220 && end - y > 200 && variation % 2 === 0) {
+        const px = x + Math.min(section - 55, 54 + variation * 33);
+        const py = y + Math.min(end - y - 25, 150 + variation * 27);
+        art.fillStyle(colors.markings, 0.075).fillRect(px, py, Math.min(108, edge - px), 25);
+        art.fillStyle(colors.grid, 0.28).fillRect(px + 4, py + 4, Math.min(54, edge - px - 4), 3);
       }
     }
   }
-  art.strokePath();
 
-  // Raised plates and small service seams are anchored to the world, like the reference marks.
-  for (let x = firstMarker(left - referenceSpacing, 32, referenceSpacing); x < right; x += referenceSpacing) {
-    for (let y = firstMarker(top - referenceSpacing, 28, referenceSpacing); y < bottom; y += referenceSpacing) {
-      const width = Math.min(referenceSpacing - 32, arena.width - x - 20);
-      const height = Math.min(referenceSpacing - 36, arena.height - y - 20);
-      if (width <= 0 || height <= 0) continue;
-      art.fillStyle(colors.grid, 0.24).fillRect(x, y, width, height);
-      art.fillStyle(colors.markings, 0.16).fillRect(x, y + height, width, 3);
-      art.fillRect(x + width, y + 8, 3, height - 8);
-      art.fillStyle(colors.markings, 0.29).fillRect(x + 8, y + 8, 5, 5);
-      art.fillRect(x + width - 13, y + height - 13, 5, 5);
+  for (const lane of serviceLanes) {
+    if (lane + 58 < top || lane > bottom) continue;
+    art.fillStyle(colors.markings, 0.11).fillRect(left, lane, right - left, 54);
+    art.fillStyle(colors.markings, 0.20).fillRect(left, lane + 3, right - left, 2)
+      .fillRect(left, lane + 49, right - left, 3);
+    art.fillStyle(colors.markings, 0.28);
+    for (let x = Math.ceil(left / 360) * 360; x + 72 < right; x += 360) art.fillRect(x, lane + 25, 72, 4);
+  }
+
+  // This steel strip meets the actual movement limit on every side.
+  const boundary = color(brand.arcade.ink);
+  art.fillStyle(boundary, 0.23);
+  if (left === 0) art.fillRect(0, top, stripWidth, bottom - top);
+  if (right === arena.width) art.fillRect(right - stripWidth, top, stripWidth, bottom - top);
+  if (top === 0) art.fillRect(left, 0, right - left, stripWidth);
+  if (bottom === arena.height) art.fillRect(left, bottom - stripWidth, right - left, stripWidth);
+  art.lineStyle(6, color(brand.arcade.yellow), 0.34).beginPath();
+  for (const x of [0, arena.width - stripWidth]) {
+    if (x === 0 ? left > 0 : right < arena.width) continue;
+    for (let y = Math.ceil(top / 42) * 42; y + stripWidth < bottom; y += 42) {
+      art.moveTo(x, y).lineTo(x + stripWidth, y + stripWidth);
     }
   }
+  for (const y of [0, arena.height - stripWidth]) {
+    if (y === 0 ? top > 0 : bottom < arena.height) continue;
+    for (let x = Math.ceil(left / 42) * 42; x + stripWidth < right; x += 42) {
+      art.moveTo(x, y).lineTo(x + stripWidth, y + stripWidth);
+    }
+  }
+  art.strokePath();
 }
 
 export class ArenaFloor {
@@ -64,12 +78,13 @@ export class ArenaFloor {
 
   render(view: WorldBounds, palette: ThemePalette): void {
     const size = arenaArt.cacheSpacing;
-    const left = Math.max(0, Math.floor(view.left / size) * size);
-    const top = Math.max(0, Math.floor(view.top / size) * size);
-    const right = Math.min(arena.width, Math.ceil(view.right / size) * size);
-    const bottom = Math.min(arena.height, Math.ceil(view.bottom / size) * size);
-    if (this.palette === palette && this.cached?.left === left && this.cached.top === top &&
-        this.cached.right === right && this.cached.bottom === bottom) return;
+    const cached = this.cached;
+    if (this.palette === palette && cached && cached.left <= Math.max(0, view.left) && cached.top <= Math.max(0, view.top) &&
+        cached.right >= Math.min(arena.width, view.right) && cached.bottom >= Math.min(arena.height, view.bottom)) return;
+    const left = Math.max(0, (Math.floor(view.left / size) - 1) * size);
+    const top = Math.max(0, (Math.floor(view.top / size) - 1) * size);
+    const right = Math.min(arena.width, (Math.ceil(view.right / size) + 1) * size);
+    const bottom = Math.min(arena.height, (Math.ceil(view.bottom / size) + 1) * size);
     this.cached = { left, top, right, bottom };
     this.palette = palette;
     drawArena(this.graphics, palette, this.cached);

@@ -17,6 +17,8 @@ const formatTime = (seconds: number) => {
 };
 const pages = ['home', 'help', 'settings', 'reset', 'pause', 'leave', 'results'] as const;
 type Page = typeof pages[number];
+const attackLabel = { unavailable: 'Attack', charging: 'Charging', ready: 'Ready', armed: 'Release',
+  release: 'Firing', firing: 'Firing', cooling: 'Cooling' } as const;
 
 export class SessionUI {
   private readonly dialog = element<HTMLDialogElement>('menu');
@@ -251,8 +253,8 @@ export class SessionUI {
 
   hud(model: ArenaModel, clock: MatchClock, now: number, bounds: WorldBounds) {
     const { combat, mass, position } = model.player;
-    element('mass').textContent = String(mass);
-    element('clock').textContent = clock.mode === 'arena' ? formatTime(matchConfig.duration - clock.elapsed) : clock.mode === 'tutorial' ? 'Training' : 'Endless';
+    this.writeText('mass', String(mass));
+    this.writeText('clock', clock.mode === 'arena' ? formatTime(matchConfig.duration - clock.elapsed) : clock.mode === 'tutorial' ? 'Training' : 'Endless');
     const countdown = element('countdown');
     const remaining = matchConfig.duration - clock.elapsed;
     const message = clock.countdown > 0 ? String(Math.ceil(clock.countdown)) :
@@ -265,16 +267,29 @@ export class SessionUI {
       countdown.textContent = message;
     }
     countdown.hidden = !message;
-    element<HTMLProgressElement>('energy').value = combat.energy;
-    element('energy-readout').textContent = combat.energy + '%';
+    const meter = element<HTMLProgressElement>('energy');
+    if (meter.value !== combat.energy) {
+      if (meter.value < combat.energy && !this.motionReduced && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        meter.animate([{ filter: 'brightness(1.42)' }, { filter: 'brightness(1)' }], { duration: 135 });
+      }
+      meter.value = combat.energy;
+    }
+    this.writeText('energy-readout', combat.energy + '%');
     const attack = element('attack');
     const ready = combat.energy === 100 && combat.attack.phase === 'idle';
-    attack.dataset.ready = String(ready || combat.attack.phase === 'armed' || combat.attack.phase === 'warning');
+    const attackState = clock.countdown > 0 ? 'unavailable' : combat.attack.phase === 'armed' ? 'armed'
+      : combat.attack.phase === 'warning' ? (combat.attack.remaining > 0.125 ? 'release' : 'firing')
+        : combat.attack.phase === 'cooldown' ? 'cooling' : ready ? 'ready' : 'charging';
+    if (attack.dataset.state !== attackState) {
+      attack.dataset.ready = String(ready || combat.attack.phase === 'armed' || combat.attack.phase === 'warning');
+      attack.dataset.state = attackState;
+      this.writeText('attack', attackLabel[attackState]);
+    }
+    const full = String(combat.energy === 100);
+    if (meter.dataset.full !== full) meter.dataset.full = full;
     element('energy-ready').hidden = !ready;
-    attack.textContent = combat.attack.phase === 'armed' ? 'Release' :
-      combat.attack.phase === 'warning' ? 'Firing' : combat.attack.phase === 'cooldown' ? 'Cooling' : ready ? 'Ready' : 'Attack';
     const tutorial = model.tutorial;
-    element('tutorial-task').textContent = tutorial?.instruction ?? '';
+    this.writeText('tutorial-task', tutorial?.instruction ?? '');
     element('rankings-panel').hidden = Boolean(tutorial);
     if (tutorial?.completed && !this.progress.tutorialDone) {
       this.progress.tutorialDone = true;
@@ -297,12 +312,12 @@ export class SessionUI {
     const reward = this.salvageNotice;
     this.writeText('salvage-reward', reward && clock.elapsed - reward.latest < 1.25
       ? 'SALVAGE SECURED +' + reward.value + (reward.own > 0 && reward.own < reward.value ? ' · ' + reward.own + ' yours' : '') : '');
-    element('status').textContent = [
+    this.writeText('status', [
       this.feedback && this.feedback.until > now ? this.feedback.label : '',
       combat.guardFor > 0 ? 'THEFT GUARD' : '',
       combat.heat >= 1 ? 'OVERHEATED' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
       combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '',
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(' · '));
     if (now - this.lastHud > 180) {
       this.lastHud = now;
       this.navigation.render(model, bounds);
@@ -382,11 +397,13 @@ export class SessionUI {
     void this.resultDetails?.then((details) => {
       if (details) details.renderResultStats(stats, player, model.bestPlace);
       else {
+        const list = document.createElement('dl');
         const label = document.createElement('dt');
         const value = document.createElement('dd');
         label.textContent = 'Peak mass';
         value.textContent = String(player.combat.highest);
-        stats.replaceChildren(label, value);
+        list.append(label, value);
+        stats.replaceChildren(list);
       }
     });
     if (best) this.audio.play('best');

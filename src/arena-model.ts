@@ -81,6 +81,12 @@ export class ArenaModel {
   get signal() { return this.activity?.signal; }
   get hotspots() { return this.activity?.hotspots ?? noHotspots; }
 
+  botIntent(bot: Bot): 'escape' | 'pursuit' | undefined {
+    const state = this.tactics.get(bot);
+    if (state?.retreat || state?.dodge) return 'escape';
+    if (state?.pursuing) return 'pursuit';
+  }
+
   step(steering: Steering, seconds: number): AttractionResult | undefined {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
     if (!this.tutorial) this.elapsedSinceReplenish += seconds;

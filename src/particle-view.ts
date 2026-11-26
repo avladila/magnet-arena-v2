@@ -95,7 +95,7 @@ export class ParticleView {
     const sample = ++this.sample;
     let visible = 0;
     let orbits = 0;
-    let trails = quality === 'high' ? 8 : 4;
+    let trails = quality === 'high' ? 10 : 6;
     for (const scrap of slots) {
       const { id, x, y, state, colorIndex, generation } = scrap;
       if (state !== 'active' || !inView(x, y, maxExtent, view)) continue;
@@ -105,22 +105,23 @@ export class ParticleView {
 
       const image = sprites[visible] ??= this.scene.add.image(0, 0, 'workshop', 'gold').setDepth(0.4);
       visible++;
-      const frame = kind === 'ordinary' ? ordinaryFrames[mode][colorIndex] : kind;
+      const animatedOrbit = kind === 'energy' && animate && orbits < settings.energyOrbitPool;
+      const frame = kind === 'ordinary' ? ordinaryFrames[mode][colorIndex] : kind === 'energy' && !animatedOrbit ? 'energy-static' : kind;
       if (image.frame.name !== frame) image.setFrame(frame).setDepth(kind === 'ordinary' ? 0.3 : 0.4);
       image.setPosition(x, y).setDisplaySize(size, size).setVisible(true);
 
       const continuing = this.samples[id] !== 0 && this.samples[id] === sample - 1 && this.generations[id] === generation;
       if (kind === 'energy' || kind === 'gold') {
         const offset = phase(scrap);
-        if (kind === 'energy') {
-          const breath = animate ? 0.89 + 0.11 * Math.sin(2 * Math.PI * (time / settings.energyBreathSeconds + offset)) : 0.94;
-          const angle = animate ? 2 * Math.PI * offset + settings.energyTurnRate * Math.PI / 180 * time : 0;
+        if (animatedOrbit) {
+          const breath = 0.89 + 0.11 * Math.sin(2 * Math.PI * (time / settings.energyBreathSeconds + offset));
+          const angle = 2 * Math.PI * offset + settings.energyTurnRate * Math.PI / 180 * time;
           const orbit = this.orbits[orbits] ??= this.scene.add.image(0, 0, 'workshop', 'energy-orbit').setDepth(0.2);
           orbits++;
           orbit.setPosition(x, y).setDisplaySize(size, size).setRotation(angle).setAlpha(breath).setVisible(true);
         }
         const period = settings.glintSeconds[kind];
-        if (animate && continuing && (kind === 'gold' || quality === 'high') &&
+        if (animate && continuing &&
             Math.floor(oldTime / period + offset) < Math.floor(time / period + offset)) {
           effects.glint(scrap, kind);
         }

@@ -3,9 +3,11 @@ import { brand } from './brand';
 import type { Participant, Point } from './movement';
 import type { Collection, WorldBounds } from './particles';
 import type { Quality } from './progress';
+import { playerConfig } from './config';
 
 type Role = 'steel' | 'gold' | 'energy' | 'teal' | 'heat' | 'cold' | 'flux' | 'acid' | 'water';
 type Motion = 'spark' | 'trail' | 'glint' | 'streak';
+type Travel = { x: number; y: number; wait: number; inView: boolean };
 type Fleck = {
   image: Phaser.GameObjects.Image;
   x: number;
@@ -31,6 +33,7 @@ export class WorkshopParticles {
   private quality: Quality = 'balanced';
   private enabled = true;
   private ambient = 0;
+  private routes = new WeakMap<Participant, Travel>();
   peakVisible = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -43,6 +46,7 @@ export class WorkshopParticles {
   reset(): void {
     this.next = 0;
     this.ambient = 0;
+    this.routes = new WeakMap();
     this.peakVisible = 0;
     for (const effect of this.pool) {
       effect.lifetime = 0;
@@ -113,10 +117,54 @@ export class WorkshopParticles {
   trail(x: number, y: number, angle: number, material: number | 'gold' | 'energy'): void {
     if (!this.enabled || this.quality === 'low') return;
     const frame = typeof material === 'number' ? scrapFrames[material] : frames[material];
-    const f = this.emit(frame, x, y, brand.motion.pickup, 'trail');
-    f.vx = -Math.cos(angle) * brand.vfx.speed;
-    f.vy = -Math.sin(angle) * brand.vfx.speed;
+    const f = this.emit(frame, x, y, material === 'energy' ? 190 : brand.motion.pickup, 'trail');
+    const speed = brand.vfx.speed * (material === 'energy' ? 1.45 : 1);
+    f.vx = -Math.cos(angle) * speed;
+    f.vy = -Math.sin(angle) * speed;
     f.image.setRotation(angle);
+  }
+
+  travel(magnet: Participant, bounds: WorldBounds, seconds: number, tactical: boolean): void {
+    if (!this.enabled || this.quality === 'low' || seconds <= 0) return;
+    if (magnet.kind === 'bot' && !tactical && this.quality !== 'high') return;
+    const { x, y } = magnet.position;
+    const inView = x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom;
+    let sample = this.routes.get(magnet);
+    if (!sample) {
+      sample = { x, y, wait: 0, inView };
+      this.routes.set(magnet, sample);
+      return;
+    }
+    const dx = x - sample.x;
+    const dy = y - sample.y;
+    const distance = Math.hypot(dx, dy);
+    sample.wait -= seconds;
+    if (inView && sample.inView && sample.wait <= 0 && distance >= seconds * 188 && distance <= seconds * playerConfig.speed + 0.15) {
+      const angle = Math.atan2(dy, dx);
+      const speedX = dx / distance;
+      const speedY = dy / distance;
+      const offset = magnet.radius * 0.72;
+      const f = this.emit(tactical ? frames.teal : frames.steel, x - speedX * offset, y - speedY * offset, 145, 'trail');
+      f.vx = -speedX * 55;
+      f.vy = -speedY * 55;
+      f.image.setRotation(angle);
+      sample.wait = tactical ? 0.073 : 0.115;
+    }
+    sample.x = x;
+    sample.y = y;
+    sample.inView = inView;
+  }
+
+  absorb(magnet: Participant, mass: number): void {
+    if (!this.enabled) return;
+    const count = this.quality === 'low' ? 2 : mass >= 70 ? 7 : 4;
+    const radius = magnet.radius + 12;
+    for (let index = 0; index < count; index++) {
+      const a = (index + 0.5) * 2 * Math.PI / count;
+      const f = this.emit(frames.steel, magnet.position.x + Math.cos(a) * radius, magnet.position.y + Math.sin(a) * radius,
+        160, 'streak');
+      f.target = magnet;
+    }
   }
 
   render(bounds: WorldBounds, seconds: number, center: Point, zoom = 1): void {

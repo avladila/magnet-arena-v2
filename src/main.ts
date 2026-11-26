@@ -52,6 +52,7 @@ class ArenaScene extends Phaser.Scene {
   private effects!: WorkshopParticles;
   private pickupFeedback!: PickupFeedback;
   private lastLanding = 0;
+  private nextEnvironment = 0;
   private botViews!: BotView[];
   private readonly botNames: WorldBounds[] = [];
   private field!: GrowthFeedbackView;
@@ -136,6 +137,7 @@ class ArenaScene extends Phaser.Scene {
     this.magnet.reset();
     this.recentPickups.clear();
     this.lastLanding = 0;
+    this.nextEnvironment = 0;
     this.positionCamera();
     this.menu.hud(this.model, this.clock, performance.now(), this.framing.bounds);
   }
@@ -196,7 +198,10 @@ class ArenaScene extends Phaser.Scene {
     this.floor.render(bounds, theme.palette);
     const lessMotion = reducedMotion.matches || this.menu.motionReduced;
     this.effects.configure(this.menu.quality, lessMotion);
-    if (this.field.render(player, advanced, theme.palette, lessMotion, player.pickupsCollected > previousPickups)) {
+    this.effects.travel(player, bounds, advanced, player.combat.energy === theftConfig.energy);
+    for (const bot of this.model.bots) this.effects.travel(bot, bounds, advanced, Boolean(this.model.botIntent(bot)));
+    if (this.field.render(player, advanced, theme.palette, lessMotion, player.pickupsCollected > previousPickups,
+        this.heading.angle, this.menu.quality !== 'low', this.framing.zoom)) {
       this.audio.play('milestone');
       this.effects.burst(player.position, 'teal', 24, brand.motion.milestone);
     }
@@ -237,8 +242,8 @@ class ArenaScene extends Phaser.Scene {
       }
     }
     this.renderBots(advanced, bounds, lessMotion);
-    this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
-      this.menu.quality, advanced, this.framing.zoom, reducedMotion.matches || this.menu.motionReduced);
+    const impact = this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
+      this.menu.quality, advanced, this.framing.zoom, lessMotion);
     if (releaseFrame && advanced > 0 && player.combat.attack.phase === 'warning') {
       this.effects.burst(player.position, 'energy', 6, brand.motion.pickup, player.combat.attack.bearing, Math.PI / 2);
     }
@@ -258,8 +263,11 @@ class ArenaScene extends Phaser.Scene {
       this.audio.play('miss');
       this.menu.attackFeedback('MISS', time);
     }
-    if (player.combat.salvage > previousSalvage) this.menu.salvageFeedback(player.combat.salvage - previousSalvage,
-      player.combat.ownSalvage - previousOwnSalvage, this.clock.elapsed);
+    if (player.combat.salvage > previousSalvage) {
+      const gained = player.combat.salvage - previousSalvage;
+      this.menu.salvageFeedback(gained, player.combat.ownSalvage - previousOwnSalvage, this.clock.elapsed);
+      this.effects.absorb(player, gained);
+    }
     if (!previousBrittle && player.combat.brittle) {
       this.audio.play('freeze');
       this.effects.burst(player.position, 'cold', 6, brand.motion.gold);
@@ -272,7 +280,10 @@ class ArenaScene extends Phaser.Scene {
       this.audio.play('overheat');
       this.effects.burst(player.position, 'heat', 6, brand.motion.gold);
     }
-    if (!previousCorrosion && player.combat.corrosion) this.audio.play('corrosion');
+    if (!previousCorrosion && player.combat.corrosion) {
+      this.audio.play(player.combat.corrosion === 'water' ? 'splash' : 'corrosion');
+      this.effects.burst(player.position, player.combat.corrosion, 5, 160, player.heading - Math.PI, Math.PI * 0.7);
+    }
     if (player.combat.lostToHazards > previousHazardLoss) {
       if (!player.combat.corrosion) this.audio.play('flux');
       this.effects.burst(player.position, player.combat.corrosion ?? 'flux', 6, brand.motion.gold);
@@ -282,20 +293,33 @@ class ArenaScene extends Phaser.Scene {
     }
     this.effects.render(bounds, advanced, player.position, this.framing.zoom);
     const incoming = player.combat.lostToTheft + player.combat.lostToHazards - previousLoss;
-    if (player.combat.hits > previousHits || incoming > 0) this.audio.play(Math.max(detached, incoming) >= 350 ? 'impact' : 'hit');
+    const significantHit = player.combat.hits > previousHits || incoming > 0;
+    if (significantHit) this.audio.play(impact === 'fracture' ? 'fracture' : impact === 'heavy' ? 'impact' : 'hit');
+    if (this.clock.elapsed >= this.nextEnvironment) {
+      this.nextEnvironment = this.clock.elapsed + 0.25;
+      let nearest = 330;
+      let local;
+      for (const site of this.model.hazards?.sites ?? []) {
+        const gap = Math.max(0, Math.hypot(site.x - player.position.x, site.y - player.position.y) - site.radius);
+        if (gap >= nearest) continue;
+        nearest = gap;
+        local = site.kind;
+      }
+      if (local) this.audio.environment(local, nearest);
+    }
     const hazardActivated = (!previousBrittle && player.combat.brittle) ||
       (previousHeat < 1 && player.combat.heat === 1) ||
       (!previousCorrosion && Boolean(player.combat.corrosion)) ||
       (player.combat.lostToHazards > previousHazardLoss && !player.combat.corrosion);
     if (player.combat.hits > previousHits || incoming >= Math.max(5, player.mass * 0.03) || hazardActivated) {
-      this.menu.vibrate(Math.max(detached, incoming) >= 350 ? 58 : 35);
+      this.menu.vibrate(impact === 'fracture' ? 58 : impact === 'heavy' ? 40 : 25);
     }
     if (player.combat.energy === 100 && previousEnergy < 100) {
       this.audio.play('ready');
-      this.menu.vibrate(22);
+      this.menu.vibrate(20);
     } else if (player.combat.gold > previousGold) {
       this.audio.play('gold');
-      this.menu.vibrate(15);
+      this.menu.vibrate(13);
     }
     else if (ownEnergy) this.audio.play('energy');
     else if (player.pickupsCollected > previousPickups && time - this.lastPickupSound > 110) {
@@ -352,7 +376,8 @@ class ArenaScene extends Phaser.Scene {
 
   private renderPlayer(seconds = 0, lessMotion = false): void {
     const player = this.model.player;
-    this.magnet.render(player, this.heading.angle, this.magnetScale.scale, seconds, true, lessMotion, this.recentPickups.get(player.id));
+    this.magnet.render(player, this.heading.angle, this.magnetScale.scale, seconds, true, lessMotion,
+      this.recentPickups.get(player.id), undefined, this.menu.quality !== 'low');
   }
 
   private renderBots(seconds: number, bounds: WorldBounds, lessMotion = false): void {
@@ -360,7 +385,7 @@ class ArenaScene extends Phaser.Scene {
     for (let i = 0; i < this.botViews.length; i++) {
       const bot = this.model.bots[i];
       this.botViews[i].render(seconds, this.framing.zoom, bounds, theme.palette, this.model.participants, this.botNames, lessMotion,
-        bot && this.recentPickups.get(bot.id));
+        bot && this.recentPickups.get(bot.id), bot && this.model.botIntent(bot), this.menu.quality !== 'low');
     }
   }
 

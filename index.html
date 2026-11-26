@@ -37,6 +37,7 @@
           <div id="district"></div>
         </div>
         <div id="rankings-panel">
+          <div class="scoreboard-title" aria-hidden="true">Standings</div>
           <ol id="ranking" aria-label="Live ranking"></ol>
           <div id="rank-record"></div>
           <div id="rank-event" role="status"></div>
@@ -56,7 +57,8 @@
       <div class="menu-content">
         <h2 id="menu-title">MAGNET<span>.</span></h2>
         <div id="menu-home">
-          <p>Collect scrap, charge Magnetic Theft, and outgrow your rivals.</p>
+          <p class="game-edition">Magnetic Chaos</p>
+          <p class="menu-intro">Collect scrap, charge Magnetic Theft, and outgrow your rivals.</p>
           <label class="setting">Difficulty <select id="difficulty">
             <option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option>
           </select></label>
@@ -101,7 +103,10 @@
           <div class="menu-actions"><button data-action="back">Cancel</button><button data-action="home">Leave</button></div>
         </div>
         <div id="menu-results" hidden>
-          <p id="result-summary"></p><ol id="result-ranking" aria-label="Final ranking" tabindex="0"></ol><dl id="result-stats"></dl>
+          <p id="result-summary"></p>
+          <h3 class="section-heading">Final rankings</h3>
+          <ol id="result-ranking" aria-label="Final ranking" tabindex="0"></ol>
+          <div id="result-stats"></div>
           <div class="menu-actions"><button class="primary" data-action="replay">Play Again</button><button data-action="change">Change Difficulty</button><button data-action="home">Main Menu</button></div>
         </div>
       </div>

@@ -51,6 +51,8 @@ export class GrowthFeedbackView {
   private feedback: GrowthFeedback;
   private spin = 0;
   private pickupLight = 0;
+  private disruption = 0;
+  private previousTheft = 0;
 
   constructor(scene: Phaser.Scene, player: Player, private readonly segmented = false) {
     this.rings = scene.add.graphics();
@@ -61,33 +63,36 @@ export class GrowthFeedbackView {
     this.feedback = new GrowthFeedback(player);
     this.spin = 0;
     this.pickupLight = 0;
+    this.disruption = 0;
+    this.previousTheft = 0;
   }
 
-  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean, collecting = false): number | undefined {
+  render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean, collecting = false,
+      heading = player.heading, detailed = true, zoom = 1): number | undefined {
     const milestone = this.feedback.update(player, seconds, reducedMotion);
     const radius = this.feedback.haloRadius;
     this.rings.setPosition(player.position.x, player.position.y);
     const flashSeconds = brand.motion.pickup / 1000;
     this.pickupLight = collecting ? flashSeconds : Math.max(0, this.pickupLight - seconds);
+    this.disruption = player.combat.lostToTheft > this.previousTheft ? 0.22 : Math.max(0, this.disruption - seconds);
+    this.previousTheft = player.combat.lostToTheft;
     const flash = reducedMotion ? 0 : this.pickupLight / flashSeconds;
-    this.rings.clear().lineStyle(1.5, palette.field.edge, player.combat.heat >= 1 ? 0.12 : 0.29 + flash * 0.17);
+    const weak = player.combat.heat >= 0.65;
+    const cold = player.combat.brittle;
+    const fieldColor = cold ? color(brand.arcade.cyan) : weak ? color(brand.arcade.orange) : palette.field.edge;
+    this.rings.clear().lineStyle(1.4 / zoom, fieldColor, weak ? 0.25 : 0.33 + flash * 0.19);
     if (!this.segmented || reducedMotion) this.rings.strokeCircle(0, 0, radius);
     else {
-      this.spin = (this.spin + seconds * 0.32) % (Math.PI * 2);
-      this.arcRing(radius, 0, 12);
-      if (player.combat.heat < 1 && radius - player.radius > 16) {
-        this.rings.lineStyle(1, palette.field.edge, 0.14 + flash * 0.15);
-        this.arcRing(radius - 8, -this.spin, 12);
-      }
-      if (player.combat.energy === theftConfig.energy && player.combat.attack.phase !== 'cooldown') {
-        this.rings.lineStyle(2.5, color(brand.arcade.yellow), 0.78).beginPath();
-        for (let i = 0; i < 4; i++) {
-          const angle = this.spin + i * Math.PI / 2;
-          this.rings.moveTo(radius * Math.cos(angle - .05), radius * Math.sin(angle - .05));
-          this.rings.lineTo((radius - 8) * Math.cos(angle), (radius - 8) * Math.sin(angle));
-          this.rings.lineTo(radius * Math.cos(angle + .07), radius * Math.sin(angle + .07));
-        }
-        this.rings.strokePath();
+      // Small, stationary ticks describe the actual circular reach. The inner curves are theatrical.
+      const contact = player.radius + scrapConfig.radius;
+      const worldReach = contact + Math.max(0, attractionReach(player.physicalScale) - contact) * pullMultiplier(player);
+      this.arcRing(worldReach, weak ? 14 : 12, weak ? 0.43 : 0.82);
+      if (detailed && !weak && radius - player.radius > 10) {
+        const charged = player.combat.energy === theftConfig.energy && player.combat.attack.phase !== 'cooldown';
+        const highlight = charged ? color(brand.arcade.yellow) : fieldColor;
+        this.spin = (this.spin + seconds * (charged ? 1.25 : 0.64)) % 1;
+        const alpha = (0.22 + flash * 0.24 + (charged ? 0.16 : 0)) * (1 - this.disruption * 3.2);
+        this.circulate(player.radius, radius, heading, highlight, alpha, zoom, cold);
       }
     }
 
@@ -100,14 +105,47 @@ export class GrowthFeedbackView {
     return milestone;
   }
 
-  private arcRing(radius: number, phase: number, count: number): void {
+  private arcRing(radius: number, count: number, length: number): void {
     const segment = Math.PI * 2 / count;
     this.rings.beginPath();
     for (let i = 0; i < count; i++) {
-      const angle = phase + i * segment;
+      const angle = i * segment;
       this.rings.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-      this.rings.arc(0, 0, radius, angle, angle + segment * 0.84, false);
+      this.rings.arc(0, 0, radius, angle, angle + segment * length, false);
     }
     this.rings.strokePath();
+  }
+
+  private circulate(body: number, radius: number, heading: number, tint: number, opacity: number, zoom: number, cold: boolean): void {
+    const c = Math.cos(heading);
+    const s = Math.sin(heading);
+    const jaw = body * 0.77;
+    const gap = body * 0.46;
+    const curl = Math.min(radius * 0.78, jaw + (radius - body) * 0.55);
+    for (const side of [-1, 1]) {
+      this.rings.lineStyle(1.6 / zoom, tint, opacity).beginPath();
+      const bright = cold ? 1 : Math.floor(this.spin * 8) + 1;
+      let x0 = 0, y0 = 0, x1 = 0, y1 = 0, lastX = 0, lastY = 0;
+      for (let step = 0; step <= 9; step++) {
+        const t = step / 9;
+        const bow = Math.sin(t * Math.PI);
+        const x = jaw + side * (curl - jaw) * bow;
+        const y = (2 * t - 1) * (gap + bow * (radius - body) * (side > 0 ? 0.65 : 1.15));
+        const px = x * c - y * s;
+        const py = x * s + y * c;
+        if (step) this.rings.lineTo(px, py);
+        else this.rings.moveTo(px, py);
+        if (step === bright) {
+          x0 = lastX;
+          y0 = lastY;
+          x1 = px;
+          y1 = py;
+        }
+        lastX = px;
+        lastY = py;
+      }
+      this.rings.strokePath();
+      this.rings.lineStyle(2.3 / zoom, tint, opacity * 1.45).lineBetween(x0, y0, x1, y1);
+    }
   }
 }

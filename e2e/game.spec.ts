@@ -270,9 +270,9 @@ test('giant mobile energy stays recognizable in Low and reduced motion, then cha
   await expect.poll(() => page.evaluate(() => {
     const scene = Reflect.get(window, 'trainingScene');
     const image = scene.particleView.sprites.find((sprite: { visible: boolean; frame: { name: string } }) =>
-      sprite.visible && sprite.frame.name === 'energy');
+      sprite.visible && sprite.frame.name === 'energy-static');
     return image ? image.displayWidth * scene.framing.zoom * 0.5 : 0;
-  })).toBeGreaterThanOrEqual(9.49);
+  })).toBeGreaterThanOrEqual(10.39);
   const hudClear = await page.evaluate(() =>
     document.querySelector('#pause')!.getBoundingClientRect().bottom <= document.querySelector('#ranking')!.getBoundingClientRect().top);
   expect(hudClear).toBe(true);
