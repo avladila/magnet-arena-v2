@@ -3,7 +3,8 @@ import json
 from math import cos, exp, hypot, pi, sin
 from pathlib import Path
 from PIL import Image, ImageColor, ImageDraw
-from arcade_art import (CHARACTER_TILE, FACE_BOX, MOODS, composed, expression, machinery, poster, pupil, shell, star, status_mark)
+from arcade_art import (CHARACTER_TILE, FACE_BOX, MOODS, Pen, composed, expression, poster, pupil, shell, star, status_mark)
+from scrapyard_art import DISTRICTS, HAZARDS, HAZARD_CELS, PROPS, device, district_pad, hazard_cel
 
 tokens = json.loads(Path('brand/tokens.json').read_text())
 roster = json.loads(Path('brand/roster.json').read_text())
@@ -14,7 +15,7 @@ ink = arcade['ink']
 pickups = tokens['pickups']
 energy = pickups['energyMaterial']
 P = Path('public')
-E = Path('docs/evidence/visual-identity')
+E = Path('docs/evidence/rc6')
 N = 96
 
 
@@ -63,6 +64,7 @@ for index, person in enumerate(people):
     for mood in MOODS:
         key = f'{name}-{mood}'
         faces[key], anchors[key] = expression(index, mood, arcade)
+    faces[f'{name}-blink'], anchors[f'{name}-blink'] = expression(index, 'idle', arcade, blink=True)
 person_by_id = {person['id']: (index, person) for index, person in enumerate(people)}
 pack('magnets', magnets, CHARACTER_TILE)
 pack('faces', faces, FACE_BOX[2] - FACE_BOX[0])
@@ -105,9 +107,9 @@ def scrap(i, mode):
     # This rounded silhouette stays consistent at every zoom. Fine cuts and highlights
     # disappear naturally as the Canvas sampler reduces the texture to a few pixels.
     base = pickups['palette'][i]
-    image = glow(base, 174 if mode == 'dark' else 143, spread=20 if mode == 'dark' else 18)
+    image = glow(base, 208 if mode == 'dark' else 176, spread=19 if mode == 'dark' else 16.5)
     d = ImageDraw.Draw(image)
-    edge = mix(rgb(tokens['themes'][mode]['scrap'][i]), rgb(ink), 0.67)
+    edge = mix(rgb(tokens['themes'][mode]['scrap'][i]), rgb(ink), 0.52)
     if i in (0, 4, 5, 9):
         outline = radial(48, 48, 25, 8, pi / 8)
         d.polygon(outline, fill=ink)
@@ -119,9 +121,10 @@ def scrap(i, mode):
         d.ellipse((26, 26, 70, 70), fill=edge)
         mask = Image.new('L', (N, N))
         ImageDraw.Draw(mask).ellipse((28, 27, 68, 67), fill=255)
-    image.alpha_composite(material(base, steel[0], mask, strength=0.96))
+    image.alpha_composite(material(base, steel[0], mask, strength=1.14))
     d = ImageDraw.Draw(image)
-    d.polygon([(34, 40), (37, 34), (45, 33), (47, 36), (39, 41)], fill=arcade['white'])
+    d.polygon([(33, 42), (36, 34), (46, 31), (51, 34), (42, 38), (37, 44)], fill=arcade['white'])
+    d.arc((29,29,67,68), 37, 122, fill=mix(rgb(base),rgb(arcade['white']),.40), width=3)
     # Industrial face details are subpixel at distant zoom, leaving a colored bead.
     if i in (0, 1, 4, 7):
         d.ellipse((46, 47, 57, 56), fill=edge)
@@ -135,38 +138,39 @@ def scrap(i, mode):
 
 
 def gold_ingot():
-    base = arcade['yellow']
-    image = glow(base, 147, spread=20)
+    image = glow(arcade['yellow'], 203, spread=20)
     d = ImageDraw.Draw(image)
-    d.polygon([(15,51),(26,34),(42,29),(52,33),(67,31),(80,45),(76,59),
-               (61,68),(43,65),(28,68)], fill=base, outline=ink, width=4)
-    d.polygon([(19,51),(39,52),(43,62),(29,64)], fill=arcade['orange'])
-    d.polygon([(39,52),(59,46),(76,47),(72,57),(61,64),(44,63)], fill=pickups['goldEdge'])
-    d.polygon([(31,38),(43,32),(54,37),(48,45),(37,45)], fill=arcade['pale'])
-    d.polygon([(34,39),(44,34),(48,36),(43,40)], fill=arcade['white'])
-    d.line((40,51,59,45,66,38), fill=arcade['pale'], width=2)
+    d.polygon([(14,52),(29,31),(46,20),(66,32),(81,44),(76,61),(61,75),
+               (34,72),(22,66)], fill=arcade['yellow'], outline=ink, width=4)
+    d.polygon([(19,52),(40,50),(47,66),(35,69),(24,64)], fill=arcade['orange'])
+    d.polygon([(47,65),(58,51),(77,45),(72,58),(60,71)], fill=pickups['goldEdge'])
+    d.polygon([(31,34),(46,24),(64,34),(57,48),(40,50)], fill=arcade['pale'])
+    d.polygon([(33,35),(45,26),(51,29),(42,36),(36,38)], fill=arcade['white'])
+    d.polygon([(59,49),(62,39),(76,45),(69,47)],fill=arcade['orange'])
+    d.line((43,51,58,49,64,35), fill=arcade['white'], width=2)
     return image
 
 
 def energy_cell():
-    image = glow(energy['glow'], 173, spread=19)
+    image = glow(energy['glow'], 224, spread=20)
     d = ImageDraw.Draw(image)
     for start in (18, 138, 258):
         d.arc((13, 13, 83, 83), start, start + 72, fill=(*rgb(energy['edge']), 65), width=2)
-    d.polygon(radial(48, 48, 27, 6, pi / 6), fill=ink)
+    d.polygon(radial(48, 48, 28, 6, pi / 6), fill=ink)
     d.polygon(radial(48, 48, 24, 6, pi / 6), fill=energy['edge'])
     mask = Image.new('L', (N, N))
     ImageDraw.Draw(mask).polygon(radial(48, 47, 21, 6, pi / 6), fill=255)
     image.alpha_composite(material(energy['body'], energy['highlight'], mask))
     d = ImageDraw.Draw(image)
-    d.line((29, 40, 39, 30, 52, 30), fill=energy['highlight'], width=2)
+    d.line((29, 40, 39, 30, 52, 30), fill=energy['highlight'], width=3)
+    d.line((31, 57, 40, 67, 58, 67), fill=energy['shadow'], width=4)
     # The white bolt is wide enough to retain an unmistakable bright center at distance.
     d.polygon([(49, 31), (35, 50), (46, 50), (43, 65), (62, 43), (50, 43), (55, 31)], fill=energy['core'])
     return image
 
 
 def energy_orbit():
-    image = glow(energy['glow'], 100, spread=23)
+    image = glow(energy['glow'], 119, spread=23)
     d = ImageDraw.Draw(image)
     for start in (6, 126, 246):
         d.arc((12, 12, 84, 84), start, start + 75, fill=energy['edge'], width=5)
@@ -189,21 +193,36 @@ def sparkle(color, rays=4):
     return image
 
 
-def debris(rank):
-    base = steel[max(0, 2 - rank)]
-    image = glow(base, 58 + rank * 44, spread=16 + rank * 2)
-    d = ImageDraw.Draw(image)
-    outer = [(13+3*(3-rank),54),(26,30),(50,23-rank*2),(77,34),(82,59),(64,76),(34,73)]
-    inner = [(x+(48-x)*.13,y+(48-y)*.13) for x,y in outer]
-    d.polygon(outer, fill=base, outline=ink, width=4)
-    d.polygon(inner, fill=mix(rgb(base),rgb(arcade['navy']),.27))
-    d.polygon([(20,51),(34,36),(52,30),(72,38),(65,48),(39,56)], fill=base)
-    d.line((32,39,46,34,59,37), fill=arcade['white'], width=3)
-    for i in range(rank + 1):
-        d.ellipse((37+i*8, 49, 42+i*8, 54), fill=ink)
-    if rank == 3:
-        d.line((28,55,48,68,68,59), fill=steel[2], width=4)
-        d.line((31,61,48,72,65,65), fill=steel[0], width=2)
+SHARDS = (
+    ((31,52),(42,36),(58,33),(70,44),(63,59),(54,60),(49,68),(33,66)),
+    ((20,48),(36,28),(47,35),(60,33),(73,44),(69,63),(55,73),(31,69),(33,56)),
+    ((15,48),(34,24),(59,27),(78,35),(83,57),(68,58),(68,73),(42,77),(22,63)),
+    ((13,51),(23,27),(44,18),(62,25),(81,25),(85,53),(75,73),(53,79),(30,69),(19,72)),
+)
+
+
+def debris(rank, cosmetic=None):
+    p = Pen(96, arcade)
+    base = steel[1] if rank >= 2 else steel[3]
+    outer = SHARDS[rank]
+    shade = mix(rgb(base),rgb(arcade['navy']),.54)
+    p.poly(outer, shade, 4.4)
+    p.poly([(x+(49-x)*.25,y+(45-y)*.20) for x,y in outer[:5]]+[(59,51),(30,61)], base, 1.8)
+    p.line([(30,46),(43,32 if rank >= 2 else 40),(61,36 if rank >= 2 else 44)],arcade['white'],3.7)
+    if rank:
+        for i in range(rank):
+            cx,cy = 40+i*11,52+(i%2)*8
+            p.ellipse((cx-3,cy-3,cx+3,cy+3),arcade['steel'],1.6)
+    if rank >= 2:
+        p.line([(36,61),(47,68),(64,66)],steel[4],3.8)
+        p.line([(37,59),(48,64),(61,63)],steel[1],1.7)
+    if cosmetic:
+        p.poly([(31,46),(43,36),(62,39),(56,46),(37,53)], arcade[cosmetic], 1.3)
+        for side,(x,y) in enumerate([(34,46),(43,49),(54,38)]):
+            p.line([(x-5,y+8),(x+1,y-6)],arcade['rust'] if side==0 else steel[4],1.5)
+        return p.finish()
+    image = glow(steel[0] if rank < 3 else arcade['cyan'], 69 + rank * 39, spread=17+rank)
+    image.alpha_composite(p.finish())
     return image
 
 
@@ -213,11 +232,20 @@ for mode in tokens['themes']:
 frames['gold'] = gold_ingot()
 frames['energy'] = energy_cell()
 frames['energy-orbit'] = energy_orbit()
+stationary_orbit = frames['energy-orbit'].copy()
+stationary_orbit.putalpha(stationary_orbit.getchannel('A').point(lambda alpha: round(alpha * 0.94)))
+frames['energy-static'] = Image.alpha_composite(stationary_orbit, frames['energy'])
 frames['pole-charge'] = glow(energy['highlight'], 230, spread=19)
 for i in range(4):
     frames[f'debris-{i}'] = debris(i)
-scenery = {kind: machinery(kind, arcade) for kind in ('flux','cold','heat','water','acid',
-    'prop-grate','prop-drain','prop-vent','prop-pipe','prop-sign','prop-stacks','prop-press','prop-crate')}
+for i, finish in enumerate(('red','steel','blue')):
+    frames[f'fracture-shard-{i}'] = debris(i+1, cosmetic=finish)
+scenery = {kind: device(kind, arcade) for kind in (*HAZARDS, 'flux-drained', *PROPS)}
+for kind in HAZARDS:
+    for index in range(HAZARD_CELS):
+        scenery[f'{kind}-motion-{index}'] = hazard_cel(kind, index, arcade)
+for index, name in enumerate(DISTRICTS):
+    scenery[f'floor-{name}'] = district_pad(index, arcade, tokens['legacy']['districts'][f'color{index+1}'])
 pack('scenery', scenery, 192)
 frames['eye-pupil'] = pupil(arcade)
 for kind in ('sweat', 'frost', 'rust', 'impact'):
@@ -243,16 +271,30 @@ def figure(id, stage, mood, pixels=CHARACTER_TILE):
 icon = figure('player', 0, 'ready')
 icon.resize((192,192),Image.Resampling.LANCZOS).save(P/'app-icon.png')
 icon.resize((32,32),Image.Resampling.LANCZOS).save(P/'favicon.png')
-hero = [(figure('bot-2', 2, 'attack', 384), .25, .57, .80, -20),
-        (figure('bot-6', 3, 'hit', 384), .77, .54, .86, 26),
-        (figure('player', 4, 'ready', 384), .52, .53, 1.15, -8)]
-for name, dimensions in [('hero',(1152,432)), ('social',(1200,630))]:
-    poster(dimensions, hero, arcade, 'hero').save(P/(name+'.webp'),quality=91)
-for mood, figures in {
-    'victory': [(figure('bot-1',2,'hit',384), .29, .66, .77, -19), (figure('player',5,'ready',384), .53, .55, 1.18, 8)],
-    'defeat': [(figure('bot-2',4,'ready',384), .69, .47, .86, 11), (figure('player',0,'hurt',384), .43, .60, 1.01, -18)],
-}.items():
-    poster((960,360), figures, arcade, mood).save(P/(mood+'.webp'),quality=90)
+plate_file = Path('art-source/assembly-bay.webp')
+with Image.open(plate_file) as plate:
+    hero = [(figure('bot-2', 2, 'attack', 384), .27, .57, .74, -28),
+            (figure('bot-6', 3, 'hit', 384), .76, .50, .82, 31),
+            (figure('player', 4, 'ready', 384), .51, .56, 1.14, -17)]
+    loose = [(frames[key],x,y,size,angle) for key,x,y,size,angle in (
+        ('fracture-shard-1',.17,.43,.15,-25), ('dark-scrap-3',.31,.24,.11,0),
+        ('gold',.71,.74,.16,34), ('fracture-shard-2',.83,.32,.19,29),
+        ('energy',.89,.65,.17,0), ('dark-scrap-0',.48,.87,.11,0), ('fracture-shard-0',.36,.73,.15,-17))]
+    for name, dimensions in [('hero',(1152,432)), ('social',(1200,630))]:
+        poster(dimensions, hero, arcade, 'hero', plate, loose).save(P/(name+'.webp'),quality=90)
+    portrait = [(figure('bot-2', 2, 'attack', 384), .25, .30, .49, -22),
+                (figure('bot-6', 3, 'hit', 384), .78, .68, .51, 29),
+                (figure('player', 4, 'ready', 384), .48, .49, .69, -16)]
+    poster((760, 840), portrait, arcade, 'hero', plate, loose).save(P/'hero-portrait.webp',quality=88)
+    for mood, figures in {
+        'victory': [(figure('bot-1',2,'hit',384), .24, .70, .67, -19),
+                    (figure('player',5,'ready',384), .53, .55, 1.15, 8)],
+        'defeat': [(figure('bot-2',3,'ready',384), .71, .46, .78, 17),
+                   (figure('player',1,'hurt',384), .43, .64, .94, -29)],
+        'endless': [(figure('player',2,'collect',384), .46,.55,1.04,-11),
+                    (figure('bot-14',1,'idle',384), .72,.65,.73,21)],
+    }.items():
+        poster((960,360), figures, arcade, mood, plate, loose).save(P/(mood+'.webp'),quality=89)
 
 E.mkdir(parents=True,exist_ok=True)
 sheet = Image.new('RGB', (1120, 50 + 132 * 4), tokens['themes']['dark']['background'])
@@ -284,6 +326,33 @@ for i,key in enumerate(('heat','cold','acid','water','flux','debris-3','gold','e
     sheet.paste(art,(i*106+8,349),art)
 sheet.save(E/'artwork.webp',quality=93)
 
+def contact_sheet(name, columns, width, height, frames_list, backdrop):
+    rows = (len(frames_list)+columns-1)//columns
+    sheet = Image.new('RGB', (columns*width, 38+rows*height), backdrop)
+    d = ImageDraw.Draw(sheet)
+    d.text((14,9), name.replace('-', ' ').upper(), fill=arcade['paper'], font_size=19)
+    for i, (title, art) in enumerate(frames_list):
+        x,y = i%columns*width,38+i//columns*height
+        size = min(width-9, height-17)
+        image = art.resize((size,size),Image.Resampling.LANCZOS)
+        sheet.paste(image,(x+(width-size)//2,y),image)
+        d.text((x+4,y+height-16),title,fill=arcade['paper'],font_size=12)
+    sheet.save(E/(name+'.webp'),quality=92)
+
+
+contact_sheet('all-growth-stages',6,120,101,
+    [(person['name']+' / '+str(tokens['shellStages'][stage]),figure(person['id'],stage,'idle')) for person in people for stage in range(6)],
+    arcade['navy'])
+contact_sheet('all-expressions',10,106,91,
+    [(person['name']+' / '+mood,figure(person['id'],2,mood)) for person in people for mood in MOODS],
+    arcade['navy'])
+contact_sheet('scenery',8,117,99,[(key,value) for key,value in scenery.items() if '-motion-' not in key],
+    arcade['navy'])
+
 manifest = {'paletteRoles': list(roles), 'atlases': {'magnets': list(magnets), 'faces': list(faces),
-    'workshop': list(frames), 'scenery': list(scenery)}}
+    'workshop': list(frames), 'scenery': list(scenery)},
+    'illustrations': ['app-icon.png','favicon.png','hero.webp','hero-portrait.webp','social.webp','victory.webp','defeat.webp','endless.webp'],
+    'audio': ['soundtrack.ogg'],
+    'sourceArtwork': [str(plate_file)],
+    'generators': ['scripts/generate-brand-art.py','scripts/generate-soundtrack.py']}
 Path('brand/asset-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

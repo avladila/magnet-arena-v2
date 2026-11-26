@@ -1,6 +1,6 @@
 """Original cel artwork for the playable MAGNET characters and scrapyard."""
 from math import cos, pi, sin
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image, ImageColor, ImageDraw, ImageOps
 
 CHARACTER_TILE = 128
 FACE_BOX = (14, 20, 86, 92)
@@ -121,73 +121,114 @@ def decal(p, kind, x, y, paint, edge):
             p.poly([(x-5+n,y+4),(x-2+n,y+4),(x+4+n,y-4),(x+1+n,y-4)], paint, 1.2)
 
 
+# Back curvature, fore-pole offset, jaw asymmetry, and trim family.
+CHASSIS = (
+    (0,  1, -1, 'forged'), (+1, -2,  1, 'cast'), (-1,  2, -2, 'cut'),
+    (2, -3, -2, 'cut'), (3, -1,  1, 'cast'), (0,  0, -1, 'forged'),
+    (-2,  3,  1, 'forged'), (2,  1,  3, 'cut'), (-1,  2, -2, 'forged'),
+    (2, -3,  0, 'cast'), (1,  2,  2, 'cast'), (-1,  3, -1, 'cut'),
+    (-3, -2,  2, 'forged'), (3,  1, -2, 'cut'), (3, -2,  1, 'cast'),
+    (1,  0,  2, 'cut'), (-3,  2,  0, 'forged'), (2, -1,  1, 'forged'),
+    (1,  2, -3, 'cut'), (1,  0, -1, 'cast'),
+)
+
+
 def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
     p = Pen(CHARACTER_TILE, palette)
-    black, white = palette['ink'], palette['white']
-    navy, grey = palette['navy'], palette['steel']
-    shadow, shine = tone(trim, navy, .53), tone(trim, white, .52)
-    shoulder = [30, 28, 25, 22, 19, 17][stage]
-    back = [21, 19, 17, 16, 15, 14][stage]
-    # The open jaw and the external plates stay inside the model's nominal diameter.
-    p.shape((104,23),[(114,24,117,32,117,43),(116,50,109,51,100,51),(80,52),
-        (73,52,70,56,70,63),(70,69,76,75,83,75),(106,75),
-        (114,76,117,82,117,89),(117,100,111,106,103,107),(59,109),
-        (37,112,back,98,back,76),(back-2,57,back,44,shoulder,29),
-        (44,13,48,15,65,17),(94,19),(104,23)], trim, 5.3)
-    p.shape((back+2,66),[(back+6,83,40,100,63,99),(104,98),(113,90),(114,97),
-        (111,103,105,104,98,105),(56,106),(30,109,back+1,92,back+2,66)], shadow)
-    p.shape((shoulder,35),[(32,21,49,18,66,20),(83,23),(60,24),(39,24,33,31,shoulder,35)], shine)
-    # Two hard cel planes on each magnetic pole and cold steel end caps.
-    for y, color in ((25,palette['red']), (78,palette['blue'])):
-        lower = y + 22
-        p.shape((57,y+2),[(77,y),(99,y),(105,y+3,105,y+16,102,lower),(58,lower),
-            (49,lower-2,49,y+5,57,y+2)], color, 3)
-        p.poly([(54,y+12),(69,y+15),(101,y+14),(101,lower-2),(58,lower-2)], tone(color, black, .33))
-        p.poly([(63,y+4),(83,y+3),(91,y+3),(86,y+6),(64,y+7)], tone(color, white, .72))
-        p.shape((99,y+1),[(106,y-1,112,y+1,113,y+5),(114,y+11,115,y+16,111,y+21),
-            (99,y+23),(94,y+16,94,y+5,99,y+1)], grey, 2.8)
-        p.poly([(99,y+12),(108,y+12),(112,y+9),(111,y+19),(99,y+21)], tone(grey, navy, .50))
-        p.poly([(99,y+4),(108,y+3),(110,y+6),(99,y+7)], white)
-    # One strong plain face plate keeps eyes and mouth legible on a small sprite.
-    p.shape((35,34),[(43,30,58,30,64,37),(68,45,70,58,68,71),(68,82,58,92,45,91),
-        (32,90,25,82,24,70),(21,56,24,42,35,34)], tone(trim, palette['paper'], .70), 2.4)
-    p.shape((26,68),[(30,81,47,90,59,84),(55,90,45,90,38,88),(29,85,26,77,26,68)], tone(trim, navy, .23))
-    p.line([(31,40),(38,35),(43,34)], palette['pale'], 2.2)
-    detail = PERSONALITIES[index][3]
-    decal(p, detail, 55, 94, palette['pale'], shadow)
-    bolt(p, shoulder+6, 28, 3.6, grey, white)
+    ink, white, navy, steel = (palette[k] for k in ('ink', 'white', 'navy', 'steel'))
+    arch, nose, tilt, family = CHASSIS[index]
+    back = [22, 21, 19, 16, 14, 12][stage] + arch
+    cap = [107, 108, 110, 111, 113, 114][stage] + nose
+    shoulder = [29, 27, 26, 23, 21, 19][stage]
+    top = 25 - stage * 1.45
+    bottom = 105 + stage * 1.45
+    upper, lower = 49 + tilt, 76 + tilt
+    frame_light = tone(steel, white, .55)
+    frame_dark = tone(steel, navy, .72)
+    enamel = tone(trim, navy, .58)
+    highlight = tone(trim, white, .58)
+    p.shape((cap-10, top), [(cap-1,top+1,cap+1,top+5,cap+2,top+14),
+        (cap+4,upper-5,cap,upper,cap-7,upper), (81,upper+3),
+        (72,upper+4,69,57+tilt,69,63+tilt), (68,69+tilt,73,lower-2,82,lower),
+        (cap-6,lower+1),(cap+5,lower+1,cap+5,lower+12,cap+1,lower+21),
+        (cap-1,bottom-2,cap-7,bottom,cap-13,bottom),(60,bottom+1),
+        (38,bottom+3,back,97,back,78),(back-4,59,back+1,41,shoulder,32),
+        (38,top+3,48,top-4,63,top-3),(cap-10,top)], frame_dark, 5.5)
+    # Polished upper light and a dark plane on the bend separate the materials.
+    p.shape((back+2,71), [(back-2,55,back+8,39,shoulder+6,32),
+        (41,22,61,top,78,top+3),(72,30),(54,33),(29,43),(back+2,71)], frame_light)
+    p.shape((back+1,76),[(back+6,90,40,bottom-7,61,bottom-8),(78,bottom-5),
+        (76,bottom-1),(52,bottom-1,back+5,99,back+1,76)], tone(trim, navy, .30))
+    p.shape((34,34), [(41,30,57,29,65,35),(70,42,72,58,69,74),
+        (68,88,57,97,43,94),(29,94,23,81,23,66),(21,52,26,40,34,34)], trim, 2.9)
+    p.shape((33,38),[(44,32,60,33,64,39),(68,50,69,62,66,74),
+        (65,85,55,89,44,89),(32,89,26,81,26,67),(25,52,28,42,33,38)],
+        tone(trim, palette['paper'], .60), 1.8)
+    p.shape((26,70),[(28,79,40,86,51,86),(56,85,61,83,65,79),
+        (61,85,56,90,43,89),(33,88,28,80,26,70)], tone(trim, navy, .25))
+    p.line([(32,43),(37,38),(47,36)], palette['paper'], 1.7)
+    for is_top, color in ((True, palette['red']), (False, palette['blue'])):
+        y = top+2 if is_top else lower+3
+        end = upper-1 if is_top else bottom-3
+        inner = cap - (14 if stage < 2 else 18)
+        p.poly([(61,y+3),(73,y),(inner+5,y+2),(inner+5,end-1),(76,end+1),
+                (72,end-5),(64,end-7)], color, 2.8)
+        p.poly([(68,(y+end)*.50),(79,(y+end)*.57),(inner+2,(y+end)*.48),
+                (inner+2,end-3),(77,end-2),(73,end-8)], tone(color, navy, .58))
+        p.poly([(72,y+3),(inner+2,y+4),(inner-3,y+7),(72,y+6)], tone(color, white, .72))
+        p.line([(77,y+9),(inner-11,y+9)], tone(color, white, .32), 1.35)
+        ym = (y+end)*.5
+        chamfer = 4 if family == 'cut' else 2
+        p.poly([(inner,y+1),(cap-5,y+2),(cap+1,y+7),(cap+1,end-chamfer),
+            (cap-4,end),(inner,end+1),(inner-3,end-5),(inner-3,y+5)], steel, 2.75)
+        p.poly([(inner-1,ym),(cap-3,ym+1),(cap,end-5),(cap-5,end-1),(inner-2,end-2)], frame_dark)
+        p.poly([(inner+1,y+4),(cap-7,y+4),(cap-4,y+6),(inner+1,y+8)], white)
+        if stage >= 2:
+            p.line([(inner+4,y+7),(inner+4,end-3)], frame_light, 1.7)
+        if stage >= 4:
+            p.line([(cap-5,y+8),(cap-6,end-3)], ink, 1.4)
     if stage >= 1:
-        p.poly([(28,86),(38,90),(36,102),(27,100),(22,93)], palette['orange'] if index == 0 else shine, 2.4)
-        p.line([(25,92),(29,97),(34,99)], white, 1.6)
-        bolt(p, 80, 98, 3.1, grey, white)
+        p.poly([(back+2,81),(31,85),(36,94),(31,bottom-1),(23,bottom-6),(back,88)], trim, 2.3)
+        p.line([(back+4,85),(29,90),(32,94)], highlight, 1.8)
+        bolt(p, 66, bottom-6, 3.5, steel, white)
     if stage >= 2:
-        p.poly([(24,35),(35,30),(32,22),(48,17),(58,19),(58,26),(43,31),(31,43)], shadow, 2.7)
-        p.line([(36,24),(45,21),(54,21)], shine, 1.7)
-        bolt(p, 65, 22, 3.7, grey, white)
+        p.poly([(back+1,43),(31,29),(46,top-3),(62,top+1),(56,top+8),(41,top+7),(27,41)],
+            steel, 2.5)
+        p.line([(32,30),(44,top+1),(53,top+1)], white, 2)
     if stage >= 3:
-        p.poly([(17,54),(28,55),(30,78),(39,88),(32,102),(20,90),(14,74)], grey, 3.1)
-        p.poly([(17,72),(27,74),(36,88),(32,97),(22,87)], tone(grey, navy, .46))
-        p.poly([(18,60),(23,58),(25,74),(21,75)], white)
-        for y in (67,77):
-            bolt(p, 22, y, 3.3, shine, white)
-        bolt(p, 87, 103, 3.7, grey, white)
+        p.poly([(back+2,42),(25,43),(24,66),(27,81),(24,92),(back+3,86),
+                (back-2,68),(back-1,53)], steel, 2.8)
+        p.poly([(back+1,54),(20,47),(20,70),(24,83),(21,85),(back+1,72)], frame_dark)
+        for y in (52, 69, 82):
+            bolt(p, 20 if y != 82 else 25, y, 2.45, highlight, white)
     if stage >= 4:
-        p.poly([(16,57),(18,42),(25,29),(39,23),(39,34),(31,44),(29,60)], trim, 3.5)
-        p.poly([(19,53),(25,42),(31,37),(29,43),(24,55)], shine)
-        p.poly([(43,96),(61,88),(75,91),(88,100),(83,108),(50,109)], shadow, 3)
-        p.line([(53,99),(63,95),(71,97)], shine, 1.8)
-        bolt(p, 61, 102, 3.4, grey, white)
+        p.poly([(42,92),(63,88),(74,95),(89,94),(94,bottom-2),(77,bottom+2),
+                (52,bottom+2),(43,bottom-1)], enamel, 2.8)
+        p.poly([(49,95),(62,92),(76,101),(87,98),(89,103),(55,106)], trim)
+        p.line([(53,97),(61,96),(68,99)], highlight, 1.6)
+        bolt(p, 79, bottom-4, 3.3, frame_light, white)
     if stage == 5:
-        p.poly([(13,62),(10,58),(13,45),(22,40),(26,46),(23,59),(18,65)], grey, 2.9)
-        p.poly([(27,29),(29,22),(42,17),(43,12),(60,12),(64,19),(75,21),(67,30),
-                (50,27),(35,33)], grey, 3.5)
-        p.poly([(34,24),(46,19),(57,17),(64,20),(59,22),(47,21),(36,27)], white)
-        p.poly([(85,24),(84,17),(89,13),(104,16),(112,24),(107,29),(95,24)], trim, 3.3)
-        p.poly([(85,104),(95,105),(106,99),(112,105),(103,114),(86,114),(79,110)], grey, 3)
-        p.line([(88,110),(99,110),(104,106)], white, 1.6)
-        p.line([(19,82),(28,86),(24,89),(31,94)], navy, 2)
-        bolt(p, 54, 21, 3.2, trim, white)
-        bolt(p, 93, 19, 3.1, shine, white)
+        p.poly([(back,55),(back-1,44),(23,28),(38,19),(56,top-4),(66,top+1),
+                (59,top+9),(41,28),(27,39),(20,56)], steel, 3.45)
+        p.poly([(14,48),(24,35),(40,23),(53,top),(57,top+3),(41,26),(28,39),(19,50)], white)
+        p.poly([(88,bottom-8),(cap-8,bottom-16),(cap+1,bottom-10),(cap-3,bottom+2),
+                (94,bottom+4),(82,bottom)], frame_dark, 3.15)
+        p.line([(92,bottom-1),(cap-7,bottom-4),(cap-4,bottom-9)], frame_light, 2)
+        for x, y in [(36,29),(56,top+2),(cap-11,bottom-4)]:
+            bolt(p,x,y,3.2,trim,white)
+
+    bolt(p, 59, 31, 3.15, steel if index else palette['yellow'], white)
+    if stage == 0:
+        bolt(p, 60, 91, 3.15, steel, white)
+    decal(p, PERSONALITIES[index][4], 40, 96, highlight, enamel)
+    if family == 'forged':
+        p.line([(79,top-1),(84,top+1),(89,top+1)], ink, 1.4)
+    elif family == 'cut':
+        p.line([(28,83),(31,84),(33,89)], enamel, 1.7)
+    else:
+        p.line([(31,33),(35,31),(44,28)], white, 1.5)
+    if index == 12 or stage >= 3:
+        p.line([(34,85),(38,83),(42,85)], enamel, 1.2)
     return p.finish(pixels)
 
 
@@ -198,19 +239,25 @@ EYE_POSES = {
 }
 
 
-def expression(index, mood, palette, pixels=CHARACTER_TILE):
+def expression(index, mood, palette, pixels=CHARACTER_TILE, blink=False):
     p = Pen(CHARACTER_TILE, palette)
     white, black = palette['white'], palette['ink']
     l, r, tilt, resting, _ = PERSONALITIES[index]
     left, right, emotion = EYE_POSES[mood]
     eyes = []
-    for side, x, ratio, pose in ((-1,36,l,left),(1,55,r,right)):
-        y = 52 + (.9 if side == -1 else -1.9) + (index % 3 - 1) * side * .6
-        wide = 8.1 if side == -1 else 7.7
-        tall = min(13.5, 9.2*ratio*pose)
+    for side, x, ratio, pose in ((-1,37,l,left),(1,56,r,right)):
+        x += side * (index % 4 - 1.5) * .48
+        y = 52 + (.9 if side == -1 else -1.9) + (index % 5 - 2) * side * .66
+        wide = (8.1 if side == -1 else 7.7) + (2 - ratio * 2) * 1.07
+        tall = min(13.4, 9.5*ratio*pose)
         if mood == 'hit':
             y -= 2
             wide += 1.2
+        if blink:
+            p.shape((x-wide,y-2),[(x-2,y+3,x+3,y+3,x+wide,y-2),
+                (x+wide-1,y+1),(x+2,y+7,x-4,y+6,x-wide,y-2)], black, .8)
+            eyes.append([round(x-64,2), round(y-64,2), .8, .8])
+            continue
         p.ellipse((x-wide,y-tall,x+wide,y+tall), white, 2.2)
         p.shape((x-wide+2,y+1),[(x-wide+4,y+tall-1,x+wide-4,y+tall-1,x+wide-1,y+2),
             (x+wide-2,y+tall,x-wide+3,y+tall+2,x-wide+2,y+1)], tone(palette['steel'], white, .55))
@@ -218,13 +265,13 @@ def expression(index, mood, palette, pixels=CHARACTER_TILE):
             p.poly([(x-wide,y-tall+2),(x+wide+1,y-tall+side*4),
                    (x+wide,y-tall-2),(x-wide-1,y-tall-3)], black)
         brow = y - tall - 4
-        slope = (tilt + emotion) * side * .68
+        slope = (tilt + emotion) * side * .75
         p.shape((x-wide-1,brow+slope),[(x-2,brow-3,x+3,brow-4,x+wide,brow-slope),
             (x+wide-1,brow-slope+3),(x+4,brow-1,x-4,brow+.3,x-wide-2,brow+slope+2)],
             palette['cyan'] if mood == 'cold' else black, 1 if mood == 'cold' else 0)
         eyes.append([round(x-64,2), round(y-64,2), round(wide-3.6,2), round(max(.8,tall-4.4),2)])
     mouth = {
-        'idle': resting, 'move':'smirk', 'collect':'grin', 'ready':'grin', 'attack':'teeth',
+        'idle': resting, 'move':'smirk' if resting != 'tooth' else 'tooth', 'collect':'grin', 'ready':'grin', 'attack':'teeth',
         'hit':'gasp', 'hurt':'tooth', 'hot':'gasp', 'cold':'teeth', 'rust':'tooth',
     }[mood]
     if mouth in ('grin','teeth'):
@@ -300,111 +347,6 @@ def stripe_plate(p, x, y, width, palette):
         p.poly([(x+n,y+1),(x+n+4,y+1),(x+n,y+8),(x+n-4,y+8)], palette['ink'])
 
 
-def machinery(kind, palette):
-    p = Pen(96,palette)
-    black, white, steel, navy = (palette[k] for k in ('ink','white','steel','navy'))
-    gray = tone(steel, navy, .56)
-    if kind == 'heat':
-        cloud(p, 67, 15, tone(steel,white,.48))
-        p.poly([(57,23),(58,11),(67,10),(70,24)], gray, 3)
-        p.poly([(10,36),(17,29),(73,28),(86,35),(88,77),(78,84),(18,84),(9,75)], palette['orange'], 4.2)
-        p.poly([(12,72),(25,68),(79,70),(84,63),(85,77),(76,81),(19,81)], palette['rust'])
-        p.rounded((18,36,73,68),5,navy,3)
-        p.shape((28,64),[(24,53,34,52,36,42),(41,47,43,51,43,55),(54,49,54,40,54,37),
-            (66,45,71,60,64,65),(28,64)],palette['red'],2.1)
-        p.poly([(37,64),(43,53),(49,59),(58,49),(61,56),(56,64)],palette['yellow'])
-        for y in (45,55,65):
-            p.line([(19,y),(70,y)],black,3)
-            p.line([(22,y+2),(68,y+2)],palette['pale'],1.1)
-        bolt(p, 79, 42, 3.2, steel, white)
-        stripe_plate(p, 20, 71, 46, palette)
-    elif kind == 'cold':
-        cloud(p, 60, 21, palette['white'])
-        p.poly([(16,30),(30,21),(65,24),(77,33),(77,72),(63,82),(25,80),(15,72)], palette['cyan'],4.2)
-        p.poly([(16,61),(42,66),(74,58),(73,72),(61,78),(26,77),(18,70)],palette['blue'])
-        p.rounded((28,33,64,64),7,navy,3)
-        p.poly(star(46,48,14,5,6),palette['cyan'],1.6)
-        p.ellipse((42,44,49,51),white)
-        for x,y,size in [(17,66,19),(74,68,18),(61,77,13),(82,51,13)]:
-            p.poly([(x-8,y+8),(x-4,y-4),(x+2,y-size),(x+8,y-2),(x+7,y+7)],palette['cyan'],2.4)
-            p.poly([(x-2,y-2),(x+2,y-size+3),(x+2,y+5),(x-5,y+6)],white)
-        bolt(p, 23, 34, 3, steel, white)
-    elif kind == 'flux':
-        p.poly(star(48,48,42,20,6),palette['purple'],4.6)
-        p.poly(star(48,48,32,16,6),tone(palette['purple'],navy,.50),1.7)
-        p.poly([(47,11),(54,33),(49,42),(45,24)],palette['cyan'])
-        p.ellipse((25,25,71,71),gray,3.5)
-        stripe_plate(p, 29, 50, 39, palette)
-        p.poly(star(47,43,19,10,4,0),palette['pale'],2.5)
-        p.poly([(45,30),(53,34),(47,43),(54,42),(42,54),(45,44),(39,44)],palette['purple'],1.7)
-        for x,y in [(29,42),(65,43),(48,67)]:
-            bolt(p, x, y, 2.8, steel, white)
-    elif kind in ('water','acid'):
-        acid = kind == 'acid'
-        liquid = palette['green'] if acid else palette['cyan']
-        deep = tone(liquid,navy,.47)
-        path = [(32,23),(41,32),(58,19),(68,31),(84,31),(89,47),(82,62),(70,69),
-                (58,66),(43,79),(27,71),(12,70),(5,54),(15,36)] if acid else None
-        if path:
-            p.poly(path,liquid,4)
-        else:
-            p.shape((11,45),[(7,38,16,30,30,31),(41,33,51,22,65,29),(74,36,87,31,89,47),
-                (94,57,80,67,70,66),(54,64,53,76,33,72),(16,73,2,65,11,45)],liquid,4)
-        p.shape((12,57),[(29,59,41,66,57,60),(69,57,80,56,86,49),(89,56,80,65,72,65),
-            (59,64,56,73,43,74),(28,70,15,73,12,57)],deep)
-        for x,y,r in [(24,45,5),(66,48,8),(78,40,4),(29,61,3)]:
-            p.ellipse((x-r,y-r,x+r,y+r),tone(liquid,white,.34),1.6)
-            p.line([(x-r*.48,y-r*.14),(x-r*.16,y-r*.57)],white,1.8)
-        p.line([(32,36),(40,35),(47,32),(56,34)],white,2.8)
-        if acid:
-            p.poly([(39,53),(47,40),(55,53)],palette['yellow'],2)
-            p.line([(47,44),(47,48)],black,1.8)
-            p.ellipse((46,50,48,52),black)
-        else:
-            p.line([(37,49),(43,46),(48,49),(54,44)],white,2.3)
-    else:
-        if kind == 'prop-pipe':
-            p.line([(18,76),(18,41),(32,26),(65,26),(78,39),(78,55)], black,19)
-            p.line([(18,76),(18,41),(32,26),(65,26),(78,39),(78,55)], gray,14)
-            p.line([(15,66),(15,40),(32,22),(63,22),(76,34)],steel,3)
-            p.rounded((7,67,29,84),3, palette['orange'],2.7)
-            p.rounded((67,49,89,65),3, steel,2.7)
-            bolt(p, 50, 26, 5, palette['yellow'], white)
-        elif kind in ('prop-drain','prop-grate','prop-vent'):
-            p.poly([(15,30),(73,24),(86,37),(80,67),(22,72),(10,56)], gray,3.4)
-            p.poly([(22,37),(75,32),(78,46),(73,58),(23,64),(17,52)],navy,2.2)
-            for x in range(24,74,10):
-                p.line([(x,57),(x+7,39)],steel,3)
-            for x,y in [(17,41),(77,60),(70,30),(26,66)]:
-                bolt(p,x,y,2.8,palette['paper'],white)
-            if kind == 'prop-drain':
-                p.ellipse((34,35,62,61),tone(steel,white,.2),2.7)
-                p.line([(35,53),(58,43)],white,1.6)
-            elif kind == 'prop-vent':
-                cloud(p,60,21,steel)
-        elif kind in ('prop-sign','prop-stacks'):
-            p.line([(34,74),(33,44),(62,44),(65,76)],black,9)
-            p.line([(34,74),(33,44),(62,44),(65,76)],steel,4)
-            p.poly([(14,28),(73,25),(82,40),(72,55),(17,56),(9,41)],palette['yellow'],3.9)
-            if kind == 'prop-sign':
-                p.poly([(24,36),(50,36),(50,29),(67,40),(50,52),(50,44),(24,44)],black)
-            else:
-                stripe_plate(p,20,36,52,palette)
-        else:
-            accent = palette['purple'] if kind == 'prop-press' else palette['orange']
-            p.poly([(9,40),(22,25),(72,25),(87,42),(84,74),(20,76),(8,63)],accent,4.2)
-            p.poly([(19,63),(80,59),(81,72),(23,73)],tone(accent,navy,.51))
-            p.rounded((24,37,70,61),4,navy,2.9)
-            p.poly([(29,42),(64,41),(65,49),(30,52)],steel)
-            if kind == 'prop-press':
-                p.poly([(39,30),(57,30),(56,53),(53,57),(42,55)],palette['cyan'],2.5)
-            else:
-                stripe_plate(p,25,43,46,palette)
-            bolt(p,15,55,3,steel,white)
-            bolt(p,77,53,3,steel,white)
-    return p.finish(192)
-
-
 def status_mark(kind, palette):
     p = Pen(96,palette)
     if kind == 'sweat':
@@ -422,36 +364,43 @@ def status_mark(kind, palette):
     return p.finish()
 
 
-def poster(dimensions, figures, palette, mood):
+def poster(dimensions, figures, palette, mood, plate=None, loose=()):
     w,h = dimensions
     ink = palette['ink']
-    middle = (w*.52,h*.57)
-    colors = {'hero': ('navy','purple','cyan'), 'victory': ('navy','orange','yellow'),
-              'defeat': ('navy','plum','red')}
+    middle = (w*.51,h*.56)
+    colors = {'hero': ('navy','cyan','yellow'), 'victory': ('navy','orange','yellow'),
+              'defeat': ('navy','plum','red'), 'endless': ('navy','cyan','cyan')}
     bg, ray, accent = (palette[key] for key in colors[mood])
-    image = Image.new('RGBA', dimensions, bg)
+    if plate is None:
+        image = Image.new('RGBA', dimensions, bg)
+    else:
+        image = ImageOps.fit(plate, dimensions, Image.Resampling.LANCZOS, centering=(.50,.60)).convert('RGBA')
+        image = Image.blend(image, Image.new('RGBA', dimensions, tone(bg, ray, .20)), .12)
     d = ImageDraw.Draw(image)
-    for i, angle in enumerate(-pi + step*pi/17 for step in range(34)):
-        if i%2:
-            continue
-        span = .044 + (i%5)*.01
-        d.polygon([middle,(middle[0]+w*2*cos(angle),middle[1]+w*2*sin(angle)),
-            (middle[0]+w*2*cos(angle+span),middle[1]+w*2*sin(angle+span))],fill=tone(bg,ray,.44))
-    for y in range(10,h,18):
-        for x in range(17+(y//18)%2*8,w,18):
-            if (x-middle[0])**2 + (y-middle[1])**2 > (h*.37)**2:
-                d.ellipse((x,y,x+2,y+2),fill=tone(bg,accent,.28))
-    points = star(*middle, h*.49, h*.37, 16)
-    d.polygon(points, fill=tone(ray,accent,.40), outline=ink, width=5)
-    for figure, x, y, size, angle in figures:
-        art = figure.resize((round(h*size),round(h*size)),Image.Resampling.LANCZOS)
+    for i in range(13):
+        angle = i * .46 + .16
+        distance = h * (.49 + (i % 3) * .05)
+        x = middle[0] + cos(angle)*distance*1.70
+        y = middle[1] + sin(angle)*distance*.92
+        d.polygon([(x,y),(x+cos(angle)*h*.32,y+sin(angle)*h*.25),(x-9*sin(angle),y+9*cos(angle))],
+            fill=tone(bg,ray,.45))
+    if mood != 'defeat':
+        points = star(*middle, h*.57, h*.41, 13, .08)
+        d.polygon(points, fill=tone(bg,ray,.62), outline=ink, width=5)
+        d.polygon(star(*middle,h*.48,h*.365,13,.08),fill=tone(ray,accent,.23),outline=ink,width=2)
+    else:
+        d.ellipse((w*.16,h*.78,w*.81,h*1.10),fill=tone(bg,ray,.61))
+        d.line([(w*.21,h*.82),(w*.34,h*.72),(w*.55,h*.82),(w*.83,h*.74)],fill=ink,width=6)
+    for figure, x, y, size, angle in [*loose[:5], *figures, *loose[5:]]:
+        dimension = round(h*size)
+        art = figure.resize((dimension,dimension),Image.Resampling.LANCZOS)
         art = art.rotate(angle, Image.Resampling.BICUBIC, expand=True)
         image.alpha_composite(art,(round(w*x-art.width/2),round(h*y-art.height/2)))
     d = ImageDraw.Draw(image)
-    for i,(x,y,scale) in enumerate([(0.14,.27,.07),(.22,.71,.09),(.33,.25,.06),(.70,.22,.082),(.78,.70,.055),(.88,.42,.095)]):
-        shape = star(w*x,h*y,h*scale,h*scale*.39,4 if i%2==0 else 5)
-        d.polygon(shape,fill=accent if i%2==0 else palette['pale'],outline=ink,width=4)
-    d.rectangle((0,h-12,w,h), fill=ink)
-    for x in range(-20,w,31):
-        d.polygon([(x,h-1),(x+13,h-1),(x+26,h-12),(x+13,h-12)],fill=palette['yellow'])
+    for i,(x,y,scale) in enumerate([(0.13,.23,.036),(.22,.70,.045),(.31,.20,.027),(.70,.17,.044),(.83,.70,.030),(.90,.49,.036)]):
+        shape = star(w*x,h*y,h*scale,h*scale*.29,4)
+        d.polygon(shape,fill=accent if i%2==0 else palette['pale'],outline=ink,width=2)
+    d.rectangle((0,h-7,w,h), fill=ink)
+    for x in range(-20,w,26):
+        d.polygon([(x,h-1),(x+10,h-1),(x+19,h-7),(x+9,h-7)],fill=accent)
     return image.convert('RGB')
