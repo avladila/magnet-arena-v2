@@ -281,7 +281,7 @@ test('a giant bot label stays at CSS size and chooses room clear of the player a
   view.render(5, 0.25, bounds, themes.light, [player, bot], names);
   assert.ok(label.visible && label.top + label.height / 0.25 < bot.position.y - bot.radius);
   assert.equal(label.scale * 0.25, 1);
-  assert.equal(sprite.frame.name, 'bot-1-3');
+  assert.equal(sprite.frame.name, 'bot-1-5');
   const [above] = names;
   view.render(5, 0.25, bounds, themes.dark, [player, bot], names);
   assert.ok(label.visible && label.top > bot.position.y + bot.radius);

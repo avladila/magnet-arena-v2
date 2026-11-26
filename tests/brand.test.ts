@@ -28,3 +28,12 @@ test('theme keys and scrap indices match and exclusive role colors differ', () =
   assert.ok(colors.every((color) => /^#[0-9A-F]{6}$/.test(color)));
   assert.equal(new Set(colors).size, colors.length);
 });
+
+test('asset manifest references valid palette roles and actual packed frames', () => {
+  const manifest = JSON.parse(readFileSync('brand/asset-manifest.json', 'utf8'));
+  assert.deepEqual(manifest.paletteRoles, Object.keys(brand.roles));
+  for (const [name, frames] of Object.entries(manifest.atlases)) {
+    const atlas = JSON.parse(readFileSync('public/' + name + '.json', 'utf8'));
+    assert.deepEqual(frames, Object.keys(atlas.frames));
+  }
+});

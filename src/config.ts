@@ -1,3 +1,4 @@
+import { brand } from './brand';
 export const arena = { width: 15360, height: 10000 };
 export const playerConfig = {
   initialMass: 20,
@@ -65,9 +66,9 @@ export const arenaArt = {
   cacheSpacing: 240,
 };
 export const growthFeedback = {
-  milestones: [50, 100, 200, 400],
+  milestones: brand.milestones,
   haloRate: 10,
-  pulseSeconds: 0.34,
+  pulseSeconds: brand.motion.milestone / 1000,
 };
 export const viewConfig = {
   followRate: 8,

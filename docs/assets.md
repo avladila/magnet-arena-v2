@@ -1,23 +1,21 @@
-# MAGNET asset inventory
+# MAGNET RC2 assets
 
 | Asset | Source | Runtime |
 | --- | --- | --- |
-| Title illustration | Original ImageGen illustration for this project in `art-source/title.webp`. Prompt specified an industrial salvage arena and a red and cobalt horseshoe electromagnet on a mint ceramic floor. | `src/assets/title.webp`, locally bundled by Vite |
-| Wordmark | MAGNET typeset and styled in `index.html` and `src/style.css` | HTML and CSS |
-| Player, Copper, Spark, Drift and Orbit | `scripts/generate-magnet-atlas.py`, hand-authored geometry and original palettes | `public/magnets.webp` and `public/magnets.json`, Phaser atlas with 20 frames |
-| Natural scrap, gold and energy | `src/particle-view.ts` | Phaser Graphics |
-| Salvage, hazard devices, district props and attack overlays | `src/competition-view.ts` and `src/districts.ts` | Phaser Graphics |
-| Arena tiles, field and growth rings | `src/art.ts` and `src/growth-feedback.ts` | Phaser Graphics |
-| Soundtrack | `scripts/generate-soundtrack.py`, original music and synthesized instruments | `public/soundtrack.ogg`, 16 bars at 105 BPM |
-| Effects | `src/audio.ts`, original Web Audio oscillator envelopes | Generated at playback |
+| Pole Pair, favicon, app icon, hero and social graphics | Original procedural artwork in `scripts/generate-brand-art.py` using `brand/tokens.json`. Hero and social art composite the real player atlas sprite. | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/social.webp` |
+| Five magnets and six shells each | Original mirrored plating, fasteners and enamel poles. Stages start at 20, 50, 100, 400, 1,500 and 4,352 mass. | `public/magnets.webp` and `public/magnets.json` |
+| Scrap, gold, energy, hazards, salvage and props | Original vector-to-raster shapes with ten theme-specific scrap silhouettes and low-detail frames. Salvage has three value tiers. | `public/workshop.webp` and `public/workshop.json` |
+| Hazard boundaries, floor markings and attack warnings | Presentation geometry aligned to model radii and bearings | Phaser Graphics |
+| Soundtrack | Original 16 bars at the token tempo | `public/soundtrack.ogg` |
+| Sound effects | Tuned Web Audio oscillator envelopes and the two-note Pole Pair interval | Generated in `src/audio.ts` from the token definitions |
+| RC1 source illustration | Original ImageGen illustration retained in `art-source/title.webp` for provenance | Archived |
 
-The atlas has one row per participant and four shell frames per row, ordered by mass thresholds of 20, 60, 200 and 650. Rendering scales each frame to the existing physical radius. Sprite dimensions, shadows and ease have no authority over interactions.
-
-Ship effects include eased movement heading and physical growth, pickup glints, milestone rings, an armed preview and warning cone, airborne salvage, per-magnet damage numerals, and cold and heat indicators. The runtime has no asset hotlinks. The browser uses system fonts.
-
-To regenerate the atlas, install Pillow for Python 3 and run `python scripts/generate-magnet-atlas.py` from the repository root. To regenerate the music, run the following from the repository root with Python 3 and FFmpeg.
+The runtime has no hotlinked assets. UI bundles Latin Open Sans Regular and ExtraBold (Apache-2.0). The license and source notice are in `public/fonts/`. The atlases and asset manifest are reproducible with Python and Pillow.
 
 ```sh
+python scripts/generate-brand-art.py
 python scripts/generate-soundtrack.py
 ffmpeg -y -i /tmp/magnet-soundtrack.wav -c:a libvorbis -q:a 3 public/soundtrack.ogg
 ```
+
+See the [brand bible](brand.md), [atlas contact sheet](evidence/rc2/atlas-contact.webp) and [RC2 report](rc2.md).

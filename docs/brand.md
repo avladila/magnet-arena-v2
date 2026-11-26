@@ -22,7 +22,7 @@ Use a single soft upper-left light and a short lower-right grounding shadow. Ena
 
 ## Type, sound, and motion
 
-Use locally licensed fonts when bundled. Keep the display heavy and use a legible sans for controls. Use tabular numbers and uppercase state labels. Write direct instructions such as “Hold to aim. Release to fire.”
+Use the bundled Open Sans Regular and ExtraBold faces. Their Apache-2.0 license and notice travel with the files. Keep the display heavy and use a legible sans for controls. Use tabular numbers and uppercase state labels. Write direct instructions such as “Hold to aim. Release to fire.”
 
 The Pole Pair sound is two consonant notes, low then high. Reuse it for confirmation, ready, milestones, and victory. Use metal clinks, enamel ticks, a soft rubber thud, and restrained gold chimes. Keep music below gameplay cues. Respect mute and gesture unlock.
 

@@ -1,10 +1,11 @@
+import { brand } from './brand';
 import type Phaser from 'phaser';
 import { playerConfig } from './config';
 import type { Participant } from './movement';
 
 export const magnetAtlas = 'magnet-shells';
-const shellStages = [60, 200, 650];
-const bodyPixels = 92;
+const shellStages = brand.shellStages.slice(1);
+const bodyPixels = 78;
 
 export function createMagnetSprite(scene: Phaser.Scene, id: string) {
   return scene.add.sprite(0, 0, magnetAtlas, id + '-0');
