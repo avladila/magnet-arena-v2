@@ -39,7 +39,7 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-See the [visual identity verification](docs/visual-identity.md) for the artwork and browser evidence. The [RC4 report](docs/rc4.md) covers combat and population.
+The release reports cover gameplay and balance, combat and population, and the cartoon artwork. [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md) · [Visual identity verification](docs/visual-identity.md)
 
 ## Growth and balance
 
