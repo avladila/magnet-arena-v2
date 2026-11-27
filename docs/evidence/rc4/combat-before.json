@@ -1,0 +1,611 @@
+{
+  "first": {
+    "loss": 1044,
+    "mass": 3308,
+    "radius": 314.65903518283733,
+    "chunks": 8,
+    "maxDistance": 145.00000000000023
+  },
+  "trace": [
+    {
+      "t": 0.06666666666666665,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.1333333333333333,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.19999999999999996,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.2666666666666668,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.33333333333333365,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.4000000000000005,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.4666666666666674,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.5333333333333343,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.6000000000000012,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.6666666666666681,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 0.7333333333333345,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 0.8000000000000009,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 0.8666666666666674,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 0.9333333333333338,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 1.0000000000000002,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 1.0666666666666667,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 1.133333333333333,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 1.1999999999999995,
+      "mass": 3308,
+      "radius": 314.65903518283733,
+      "guard": 0,
+      "victimSalvage": 0,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 8
+    },
+    {
+      "t": 1.266666666666666,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.3333333333333324,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.3999999999999988,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.4666666666666652,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.5333333333333317,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.599999999999998,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.6666666666666645,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.733333333333331,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.7999999999999974,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.8666666666666638,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.9333333333333302,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 1.9999999999999967,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.0666666666666633,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.1333333333333298,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.199999999999996,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.2666666666666626,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.333333333333329,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.3999999999999955,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.466666666666662,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.5333333333333283,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.5999999999999948,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.666666666666661,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.7333333333333276,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.799999999999994,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.8666666666666605,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.933333333333327,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 2.9999999999999933,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.0666666666666598,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.133333333333326,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.1999999999999926,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.266666666666659,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.3333333333333255,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.399999999999992,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.4666666666666583,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.5333333333333248,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.599999999999991,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.6666666666666576,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.7333333333333245,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.799999999999991,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.8666666666666574,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.933333333333324,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    },
+    {
+      "t": 3.9999999999999902,
+      "mass": 4352,
+      "radius": 360,
+      "guard": 0,
+      "victimSalvage": 1044,
+      "attackerSalvage": 0,
+      "thirdSalvage": 0,
+      "chunks": 0
+    }
+  ]
+}

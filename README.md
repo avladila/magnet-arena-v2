@@ -1,10 +1,10 @@
 # MAGNET
 
-MAGNET is a single-player salvage competition built with Phaser 3, TypeScript and Vite. Collect scrap and gold to grow, charge Magnetic Theft with red cells, and race Copper, Spark, Drift and Orbit for mass across a 15,360 × 10,000 arena.
+MAGNET is a single-player salvage competition built with Phaser 3, TypeScript and Vite. Collect scrap and gold to grow, charge Magnetic Theft with red cells, and race nineteen rivals for mass across a 15,360 × 10,000 arena.
 
-- **Arena** starts with a three-second countdown and runs for five minutes. Final rank uses current mass, highest mass and resource mass in that order.
-- **Endless** uses the same economy, rivals and hazards. End the session from Pause to see your stats and replay.
-- **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming and recovering stolen salvage.
+- **Arena** ends after five minutes or when a competitor reaches 12,000 mass and holds it through the three-second Critical Mass countdown. A detonator wins and rivals who escape earn 1,000 survival points for that match. At timeout, current mass, highest mass and resource mass decide final rank.
+- **Endless** uses the same economy, rivals and hazards and adds the cosmetic Ultimate Form at 8,000 mass. End the session from Pause to see your stats and replay.
+- **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming, recovering stolen salvage, and five live hazard encounters.
 
 ## Run locally
 
@@ -26,9 +26,10 @@ Light is the first-run theme. Use the moon or sun button beside the mass counter
 
 1. Try both themes in portrait and landscape. Check the title, control guidance and mass HUD around the safe areas. Tap the theme button at rest and during tap-to-move. Check that the existing destination still works.
 2. Drag through sparse and dense scrap in both themes. Look for distinct scrap colors, smooth pull, and comfortable collection pacing. While steering, tap the theme button with a second finger. Rotate the phone mid-drag, then start and release a fresh drag. Check for unintended movement or changes in thumb travel.
-3. Compare the magnet and its field with the floor brackets from mass 20 toward 50, 100, 200 and 400. Check that each milestone pulse is brief and the scrap remains readable. Enable the phone's reduced-motion preference and reload to check that the milestone pulses are suppressed.
+3. Compare the magnet and its field against the floor seams from mass 20 toward 50, 100, 200 and 400. Check that each milestone pulse is brief and the scrap remains readable. Enable the phone’s reduced-motion preference and reload to check that milestone pulses are suppressed.
 4. At higher mass, trace walls and corners. Check for stutters during sustained collection and record the device and browser with any observations.
 5. Start several fresh rounds and try eastward, westward, and center-crossing routes. Look for Copper and Spark crossing dense patches on committed routes, and Drift and Orbit exploring farther afield. Check that a Collector travels through a patch after a pickup and keeps moving when the patch runs out. Compare your mass gain and the bots' apparent growth over the first minute. Note any scarcity, wall turns, or frame hitches when several magnets are visible.
+6. Try an Arena countdown, a two-thumb escape, and a detonation with Low and reduced motion enabled. Check the live radius and offscreen arrow in both orientations. [Critical Mass phone checks](docs/rc7b-critical-mass.md#physical-device-playtest)
 
 ## Verify
 
@@ -39,22 +40,24 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-See the [release verification report](docs/release-verification.md) for the test evidence and remaining release gates.
+The release reports include the Arena finale, character acting, scrapyard art and effects, gameplay and balance, and combat and population. [RC7B Critical Mass and gameplay recordings](docs/rc7b-critical-mass.md) · [RC7A Living Faces](docs/rc7a-living-faces.md) · [RC6 Magnetic Chaos](docs/rc6-magnetic-chaos.md) · [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md)
 
 ## Growth and balance
 
 The simulation owns position, velocity, mass, size, and scrap. Each collected slot pays out once before it respawns, preferably outside the camera. Experimental growth uses `min(12, 1 + 0.8 × (sqrt(mass / 20) − 1))` for all magnets, with radius `30 × scale`. Pull reach follows the original curve through 4× scale and extends beyond the body at larger sizes. At 12×, reach is about 551 world units and even the farthest corner scrap is about 502 units from the nearest legal magnet center.
 
+Mass keeps accumulating past the physical cap. In Arena, that unlocks Ultimate Form at 8,000, increased instability at 10,000 and 11,000, and the Critical Mass claim at 12,000. To stop a claim, knock the anchored magnet below 12,000 with Magnetic Theft before the countdown ends. To survive the blast, steer your entire magnet past its 1,400-unit radius. [RC7B rules and balance](docs/rc7b-critical-mass.md)
+
 The camera applies the two-phase mass multiplier to its viewport baseline. It eases out further as needed to fit the magnetic field within 70% of the shorter viewport side, subject to the floor that keeps the view inside the world. Camera zoom and eased drawing scale are separate from authoritative collision geometry. The proposed tuning, measurements and acceptance checks are recorded in [giant growth](docs/giant-growth.md).
 
-`src/config.ts` holds the 720 active pieces in a 1,500-slot pool, pull speeds of 300–700 world units per second, and presentation timing. The 460 world-unit-per-second movement speed carries forward from Task 001. Competitive sessions use the same pool with a deterministic 94% ordinary scrap, 1% gold and 5% red energy site distribution. Gold pays ten mass and red cells charge Magnetic Theft.
+Arena and Endless target 2,880 active pieces in a 3,600-slot pool. The five-participant comparison uses 720 pieces in 1,500 slots. Natural sites use the same regional density and a deterministic 94% ordinary scrap, 1% gold and 5% red energy mix. Gold pays ten mass and red cells charge Magnetic Theft.
 
-The magnetic halo eases toward the actual field reach in world units. The 64-unit floor brackets are spaced 480 units apart. Milestones at 50, 100, 200 and 400 give a 340 ms visual pulse. If a collection batch crosses multiple thresholds, it shows one pulse for the highest. The palettes in `src/theme.ts` share the same ten ordinary scrap indices.
+The magnetic halo marks the actual field reach in world units, with eased inner effects. The arena uses 1,170 × 520 world-unit floor plates offset in alternating rows. Milestones at 50, 100, 200, 400, 800, 1,500, 2,500 and 4,352 give a 340 ms visual pulse. If a collection batch crosses multiple thresholds, it shows one pulse for the highest. The palettes in `src/theme.ts` share the same ten ordinary scrap indices.
 
 ## Shared scrap
 
-Copper and Spark are Collectors. They score 240-unit regions within 720 units using live scrap counts, travel distance, and heading. They commit to a line through a selected region until a scheduled decision at 2.3 seconds or earlier arrival on a shorter safe route. A route needs about 1.5 seconds of travel to qualify. Individual pickups leave the route in place. Drift and Orbit are Roamers. They sample seeded waypoints 600–1,500 units out with a fallback away from walls, replace a waypoint within 12 units of arrival, and reconsider after 2.6–4.2 seconds. These provisional values live in `src/config.ts`.
+The shared bot controller uses six archetypes. Collectors sweep dense scrap, Hunters favor valuable attack opportunities, Chargers seek red cells, and Scavengers seek eligible landed debris. Roamers explore districts, and Opportunists weigh nearby scrap, opponents and salvage. Bots follow committed routes around hazards, and a large bot may retreat from a smaller charged rival.
 
-The arena model updates bot decisions and then moves all five magnets. Each piece picks one winner by smallest signed surface gap, which puts contact before pull. Ties use ascending participant ID. A slot's current generation accepts one claim, and mass is applied in a batch after all pieces have been resolved. A shared region manager keeps the 720 active slots near all five magnets, with offscreen prefetch around the player's camera. The release rules add public Salvage Signals, tactical attacks and local hazard avoidance. See [world infrastructure and playtest results](docs/world-infrastructure.md).
+Each natural piece picks one winner by smallest signed surface gap, with ties resolved by participant ID. A slot generation accepts one claim, and the model batches natural payouts. The shared region manager supplies all districts, including offscreen bots. Magnetic Theft converts a target diameter to mass and throws detached fragments into contested space. The damaged magnet can reclaim its own fragments five seconds after landing.
 
 Run `npm exec -- tsx scripts/measure-competition.ts` to repeat five seeded 60-second runs at 30 Hz. Each solo and competitive pair begins with the same scrap layout and follows the same timed, center-relative world targets. The script prints pickups and physical scales at 10, 20, 40, and 60 seconds, plus bot motion, target assignments, and encounter times. The earlier Collector correction is documented in [Collector balance results](docs/collector-balance.md).

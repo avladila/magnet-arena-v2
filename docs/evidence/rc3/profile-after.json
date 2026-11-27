@@ -1,0 +1,125 @@
+{
+  "browser": "156.0.8078.79",
+  "rows": [
+    {
+      "width": 1366,
+      "height": 768,
+      "quality": "balanced",
+      "zoom": 0.4882606829775288,
+      "points": {
+        "ordinary": {
+          "x": 618,
+          "y": 192
+        },
+        "gold": {
+          "x": 683,
+          "y": 192
+        },
+        "energy": {
+          "x": 748,
+          "y": 192
+        }
+      },
+      "pickups": 271,
+      "frames": 419,
+      "cpu": {
+        "median": 1.2,
+        "p95": 2
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 17.6
+      }
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "quality": "balanced",
+      "zoom": 0.20344195124063702,
+      "points": {
+        "ordinary": {
+          "x": 95,
+          "y": 443
+        },
+        "gold": {
+          "x": 160,
+          "y": 443
+        },
+        "energy": {
+          "x": 225,
+          "y": 443
+        }
+      },
+      "pickups": 221,
+      "frames": 420,
+      "cpu": {
+        "median": 1,
+        "p95": 1.8
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 17.1
+      }
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "quality": "low",
+      "zoom": 0.20344195124063702,
+      "points": {
+        "ordinary": {
+          "x": 95,
+          "y": 443
+        },
+        "gold": {
+          "x": 160,
+          "y": 443
+        },
+        "energy": {
+          "x": 225,
+          "y": 443
+        }
+      },
+      "pickups": 221,
+      "frames": 420,
+      "cpu": {
+        "median": 1.1,
+        "p95": 1.5
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 17.5
+      }
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "quality": "high",
+      "zoom": 0.24794487807452636,
+      "points": {
+        "ordinary": {
+          "x": 130,
+          "y": 658
+        },
+        "gold": {
+          "x": 195,
+          "y": 658
+        },
+        "energy": {
+          "x": 260,
+          "y": 658
+        }
+      },
+      "pickups": 263,
+      "frames": 419,
+      "cpu": {
+        "median": 1.3,
+        "p95": 1.9
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 17.5
+      }
+    }
+  ]
+}

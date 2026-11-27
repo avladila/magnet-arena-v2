@@ -1,4 +1,5 @@
 import { arena, playerConfig, viewConfig } from './config';
+import { theftConfig } from './competition-config';
 import { attractionReach, physicalScaleForMass } from './growth';
 import { clamp, type Point } from './movement';
 import type { WorldBounds } from './particles';
@@ -19,9 +20,24 @@ export class Heading {
 
 export class MagnetScale {
   scale = 1;
+  private lost = 0;
+  private from = 1;
+  private elapsed = theftConfig.shrinkSeconds as number;
 
-  update(physicalScale: number, seconds: number): void {
-    this.scale += (physicalScale - this.scale) * smoothing(viewConfig.scaleRate, seconds);
+  update(physicalScale: number, seconds: number, lostToTheft = 0): void {
+    if (lostToTheft > this.lost && physicalScale < this.scale) {
+      this.from = this.scale;
+      this.elapsed = 0;
+    }
+    this.lost = lostToTheft;
+    if (this.elapsed < theftConfig.shrinkSeconds && physicalScale < this.from) {
+      this.elapsed = Math.min(theftConfig.shrinkSeconds, this.elapsed + seconds);
+      const remaining = 1 - this.elapsed / theftConfig.shrinkSeconds;
+      this.scale = physicalScale + (this.from - physicalScale) * remaining ** 3;
+    } else {
+      this.elapsed = theftConfig.shrinkSeconds;
+      this.scale += (physicalScale - this.scale) * smoothing(viewConfig.scaleRate, seconds);
+    }
   }
 }
 

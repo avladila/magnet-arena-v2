@@ -1,35 +1,33 @@
-import { botConfig } from './config';
+import roster from '../brand/roster.json';
+import { color } from './brand';
+import { BotNavigation } from './bot-navigation';
+import { botConfig, populationConfig } from './config';
 import { createParticipant, type Participant, type Point } from './movement';
 import { seedRandom } from './random';
 
 export type BotTarget = { kind: 'waypoint'; point: Point } |
   { kind: 'region'; point: Point; cell: number };
 
+export type BotStrategy = 'collector' | 'hunter' | 'charger' | 'scavenger' | 'roamer' | 'opportunist';
+
 export type Bot = Participant<'bot'> & {
-  readonly strategy: 'collector' | 'roamer';
-  readonly name: string;
+  readonly strategy: BotStrategy;
   readonly accent: number;
   readonly random: () => number;
   decisionIn: number;
-  thinkFor?: number;
+  readonly navigation: BotNavigation;
   target?: BotTarget;
 };
 
-// Jitter stays within distinct, legal regions. Copper starts nearest the center.
-const definitions = [
-  { id: 'bot-1', strategy: 'collector', name: 'Copper', accent: 0xb96736, x: 8340, y: 4920 },
-  { id: 'bot-2', strategy: 'collector', name: 'Spark', accent: 0x935db8, x: 6260, y: 5940 },
-  { id: 'bot-3', strategy: 'roamer', name: 'Drift', accent: 0x17838e, x: 9090, y: 4010 },
-  { id: 'bot-4', strategy: 'roamer', name: 'Orbit', accent: 0x5c842d, x: 6340, y: 4230 },
-] as const;
-
-export function createBots(seed: number): Bot[] {
-  return definitions.map(({ id, strategy, name, accent, x, y }, index) => {
+export function createBots(seed: number, count = populationConfig.legacy - 1): Bot[] {
+  return roster.slice(0, count).map(({ id, strategy, name, accent, x, y, near }, index) => {
     const random = seedRandom(seed ^ Math.imul(index + 1, 0x9e3779b9));
+    const [baseX, baseY] = count >= populationConfig.legacy && near ? near : [x, y];
     const position = {
-      x: x + (2 * random() - 1) * botConfig.spawnJitter,
-      y: y + (2 * random() - 1) * botConfig.spawnJitter,
+      x: baseX + (2 * random() - 1) * botConfig.spawnJitter,
+      y: baseY + (2 * random() - 1) * botConfig.spawnJitter,
     };
-    return { ...createParticipant(id, 'bot', position), name, strategy, accent, random, decisionIn: 0 };
+    return { ...createParticipant(id, 'bot', position, name), strategy: strategy as BotStrategy,
+      accent: color(accent), random, navigation: new BotNavigation(), decisionIn: 0 };
   });
 }

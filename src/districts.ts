@@ -1,12 +1,13 @@
+import { brand, color } from './brand';
 import { arena } from './config';
 
 export const districts = [
-  { name: 'Central Assembly Yard', x: 7680, y: 5000, accent: 0x326a61, mark: 'assembly' },
-  { name: 'Northern Foundry', x: 7700, y: 1940, accent: 0xaa5738, mark: 'foundry' },
-  { name: 'Eastern Recycling Depot', x: 12100, y: 5000, accent: 0x548458, mark: 'recycling' },
-  { name: 'Southern Cooling Plant', x: 7750, y: 8030, accent: 0x3c819d, mark: 'cooling' },
-  { name: 'Western Chemical Works', x: 3300, y: 5000, accent: 0x786141, mark: 'chemical' },
-  { name: 'Outer Salvage Fields', x: 12900, y: 8280, accent: 0x777381, mark: 'salvage' },
+  { name: 'Central Assembly Yard', x: 7680, y: 5000, accent: color(brand.legacy.districts.color1), mark: 'assembly' },
+  { name: 'Northern Foundry', x: 7700, y: 1940, accent: color(brand.legacy.districts.color2), mark: 'foundry' },
+  { name: 'Eastern Recycling Depot', x: 12100, y: 5000, accent: color(brand.legacy.districts.color3), mark: 'recycling' },
+  { name: 'Southern Cooling Plant', x: 7750, y: 8030, accent: color(brand.legacy.districts.color4), mark: 'cooling' },
+  { name: 'Western Chemical Works', x: 3300, y: 5000, accent: color(brand.legacy.districts.color5), mark: 'chemical' },
+  { name: 'Outer Salvage Fields', x: 12900, y: 8280, accent: color(brand.legacy.districts.color6), mark: 'salvage' },
 ] as const;
 
 export function districtAt(x: number, y: number) {

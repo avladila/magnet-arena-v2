@@ -1,0 +1,15 @@
+{
+  "browser": "156.0.8078.79",
+  "rows": {
+    "capacity": 1024,
+    "peakActive": 1024,
+    "peakPending": 104,
+    "atEnd": 24,
+    "pending": 0,
+    "painted": 1009,
+    "lost": 23107,
+    "p95Update": 12.7,
+    "before": 30727,
+    "after": 33162
+  }
+}

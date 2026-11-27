@@ -1,0 +1,372 @@
+[
+  {
+    "width": 320,
+    "height": 568,
+    "theme": "light",
+    "result": [
+      {
+        "page": "home",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 530,
+        "scrollHeight": 595
+      },
+      {
+        "page": "settings",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 434,
+        "scrollHeight": 434
+      },
+      {
+        "page": "results",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 530,
+        "scrollHeight": 1423
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "result": [
+      {
+        "page": "home",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 755,
+        "scrollHeight": 755
+      },
+      {
+        "page": "settings",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 390,
+        "scrollHeight": 390
+      },
+      {
+        "page": "results",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 806,
+        "scrollHeight": 1507
+      }
+    ]
+  },
+  {
+    "width": 844,
+    "height": 390,
+    "theme": "light",
+    "result": [
+      {
+        "page": "home",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 567
+      },
+      {
+        "page": "settings",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 454
+      },
+      {
+        "page": "results",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 1008
+      }
+    ]
+  },
+  {
+    "width": 1366,
+    "height": 768,
+    "theme": "light",
+    "result": [
+      {
+        "page": "home",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 954,
+        "scrollWidth": 954,
+        "contentHeight": 579,
+        "scrollHeight": 579
+      },
+      {
+        "page": "settings",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 470,
+        "scrollHeight": 470
+      },
+      {
+        "page": "results",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 730,
+        "scrollHeight": 1218
+      }
+    ]
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "theme": "light",
+    "result": [
+      {
+        "page": "home",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 954,
+        "scrollWidth": 954,
+        "contentHeight": 579,
+        "scrollHeight": 579
+      },
+      {
+        "page": "settings",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 470,
+        "scrollHeight": 470
+      },
+      {
+        "page": "results",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 1042,
+        "scrollHeight": 1267
+      }
+    ]
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "theme": "dark",
+    "result": [
+      {
+        "page": "home",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 530,
+        "scrollHeight": 595
+      },
+      {
+        "page": "settings",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 434,
+        "scrollHeight": 434
+      },
+      {
+        "page": "results",
+        "width": 320,
+        "docWidth": 320,
+        "visible": true,
+        "contentWidth": 276,
+        "scrollWidth": 276,
+        "contentHeight": 530,
+        "scrollHeight": 1423
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "result": [
+      {
+        "page": "home",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 755,
+        "scrollHeight": 755
+      },
+      {
+        "page": "settings",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 390,
+        "scrollHeight": 390
+      },
+      {
+        "page": "results",
+        "width": 390,
+        "docWidth": 390,
+        "visible": true,
+        "contentWidth": 346,
+        "scrollWidth": 346,
+        "contentHeight": 806,
+        "scrollHeight": 1507
+      }
+    ]
+  },
+  {
+    "width": 844,
+    "height": 390,
+    "theme": "dark",
+    "result": [
+      {
+        "page": "home",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 567
+      },
+      {
+        "page": "settings",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 454
+      },
+      {
+        "page": "results",
+        "width": 844,
+        "docWidth": 844,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 352,
+        "scrollHeight": 1008
+      }
+    ]
+  },
+  {
+    "width": 1366,
+    "height": 768,
+    "theme": "dark",
+    "result": [
+      {
+        "page": "home",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 954,
+        "scrollWidth": 954,
+        "contentHeight": 579,
+        "scrollHeight": 579
+      },
+      {
+        "page": "settings",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 470,
+        "scrollHeight": 470
+      },
+      {
+        "page": "results",
+        "width": 1366,
+        "docWidth": 1366,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 730,
+        "scrollHeight": 1218
+      }
+    ]
+  },
+  {
+    "width": 1920,
+    "height": 1080,
+    "theme": "dark",
+    "result": [
+      {
+        "page": "home",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 954,
+        "scrollWidth": 954,
+        "contentHeight": 579,
+        "scrollHeight": 579
+      },
+      {
+        "page": "settings",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 470,
+        "scrollHeight": 470
+      },
+      {
+        "page": "results",
+        "width": 1920,
+        "docWidth": 1920,
+        "visible": true,
+        "contentWidth": 714,
+        "scrollWidth": 714,
+        "contentHeight": 1042,
+        "scrollHeight": 1267
+      }
+    ]
+  }
+]

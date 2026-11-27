@@ -1,0 +1,85 @@
+unit-final-retest
+
+ℹ tests 154
+ℹ suites 0
+ℹ pass 154
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56208.753382
+
+types-final
+
+> magnet-arena-v2@0.1.0 typecheck
+> tsc --noEmit
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
+
+build-final
+
+> magnet-arena-v2@0.1.0 build
+> vite build
+
+vite v7.3.8 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           7.32 kB │ gzip:   2.23 kB
+dist/assets/index-BttgnRAg.css           18.23 kB │ gzip:   4.68 kB
+dist/assets/result-stats-B1QZT6oR.js      1.34 kB │ gzip:   0.70 kB
+dist/assets/index-DtT2YCTQ.js           149.99 kB │ gzip:  52.62 kB
+dist/assets/phaser-Jt__PiWe.js        1,208.08 kB │ gzip: 332.18 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 15.16s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice
+
+browser-final
+
+> magnet-arena-v2@0.1.0 test:e2e
+> playwright test --project=chromium --workers=1
+
+[WebServer] (node:53221) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:53283) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 14 tests using 1 worker
+
+(node:53339) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › e2e/game.spec.ts:13:1 › Arena starts, steers and pauses; Endless reaches results and replays (22.5s)
+  ✓   2 [chromium] › e2e/game.spec.ts:41:1 › settings persist and both themes fit the HUD at nine sizes (11.1s)
+  ✓   3 [chromium] › e2e/game.spec.ts:69:1 › training advances after real steering (5.0s)
+Retained JavaScript heap after 50 replays (bytes): 1359580
+  ✓   4 [chromium] › e2e/game.spec.ts:78:1 › fifty replays reuse the canvas and continue to handle controls (1.4m)
+  ✓   5 [chromium] › e2e/game.spec.ts:102:1 › two real Chromium touch pointers steer and resolve one overridden attack (7.3s)
+  ✓   6 [chromium] › e2e/game.spec.ts:137:1 › full Arena simulation reaches results and Play Again through the UI (34.2s)
+  ✓   7 [chromium] › e2e/game.spec.ts:159:1 › training teaches each hazard through in-arena encounters without recording a match (10.8s)
+  ✓   8 [chromium] › e2e/game.spec.ts:193:1 › presentation pool stays within each quality cap and clears under reduced motion (3.0s)
+  ✓   9 [chromium] › e2e/game.spec.ts:216:1 › master mute keeps the live music and effects buses silent after hide and resume (3.3s)
+  ✓  10 [chromium] › e2e/game.spec.ts:243:1 › giant mobile energy stays recognizable in Low and reduced motion, then charges without growth (2.2s)
+  ✓  11 [chromium] › e2e/game.spec.ts:290:1 › live ranks stay compact and reveal the full twenty-place standings on desktop and mobile (2.9s)
+  ✓  12 [chromium] › e2e/game.spec.ts:319:1 › live release shrinks a giant, launches salvage and reports a guarded follow-up (4.3s)
+  ✓  13 [chromium] › e2e/game.spec.ts:358:1 › arena signals use one direction cue and results show recorded progression on a phone-sized viewport (4.2s)
+  ✓  14 [chromium] › e2e/game.spec.ts:416:1 › cartoon expressions follow a real attack and both Arena outcomes display matching art (3.1s)
+
+  14 passed (3.4m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.3
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.3
+npm notice To update run: npm install -g npm@12.2.3
+npm notice

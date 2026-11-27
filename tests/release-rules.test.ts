@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { advanceAttraction } from '../src/attraction';
 import { ArenaModel } from '../src/arena-model';
-import { arm, cancelArm, release, resolveTheft, Salvage, shell, theftDamage } from '../src/combat';
+import { arm, cancelArm, legacyTheftDamage, release, resolveTheft, Salvage, shell, theftDamage } from '../src/combat';
+import { theftConfig } from '../src/competition-config';
 import { addMass } from '../src/growth';
 import { Hazards } from '../src/hazards';
 import { MatchClock, rankings } from '../src/match';
@@ -32,23 +33,23 @@ test('mixed resources pay exactly once and red cells never change mass', () => {
   assert.equal(advanceAttraction(pool, [magnet], 0).collections.length, 0);
 });
 
-test('theft detaches reference damage and preserves the lifetime protected core', () => {
+test('the legacy comparison rules preserve the RC3 reference damage', () => {
   const attacker = createParticipant('a', 'player', { x: 1000, y: 1000 });
   const victim = createParticipant('b', 'bot', { x: 1230, y: 1000 });
   addMass(attacker, 55);
   addMass(victim, 580);
   attacker.combat.energy = 100;
   const salvage = new Salvage();
-  assert.equal(theftDamage(75, 600, shell(victim)), 108);
+  assert.equal(legacyTheftDamage(75, 600, shell(victim)), 108);
   assert.equal(release(attacker, 0), false);
   assert.equal(arm(attacker), true);
   cancelArm(attacker);
   assert.equal(release(attacker, 0), false);
   assert.equal(arm(attacker), true);
   assert.equal(release(attacker, 0), true);
-  resolveTheft([attacker, victim], salvage, 0.17);
+  resolveTheft([attacker, victim], salvage, 0.17, 'legacy');
   assert.equal(victim.mass, 600);
-  resolveTheft([attacker, victim], salvage, 0.01);
+  resolveTheft([attacker, victim], salvage, 0.01, 'legacy');
   assert.equal(victim.mass, 492);
   assert.equal(victim.combat.highest, 600);
   assert.equal(attacker.mass, 75);
@@ -82,9 +83,10 @@ test('simultaneous theft uses pre-resolution mass and can hit both directions', 
     arm(attacker);
     release(attacker, aim);
   }
+  const expected = a.mass - theftDamage(b, a);
   resolveTheft([b, a], new Salvage(), 0.18);
-  assert.equal(a.mass, 200);
-  assert.equal(b.mass, 200);
+  assert.equal(a.mass, expected);
+  assert.equal(b.mass, expected);
 });
 
 test('Flux damages on entry, respects shell limits and cannot repeat while touching', () => {
@@ -139,18 +141,18 @@ test('countdown and deadline bound all Arena payouts and ranking shares exact ti
   clock.advance(1, step);
   assert.equal(simulated, 300);
   const model = new ArenaModel(11, 'normal');
-  assert.deepEqual(rankings(model.participants).map(({ place }) => place), [1, 1, 1, 1, 1]);
+  assert.deepEqual(rankings(model.participants).map(({ place }) => place), Array(20).fill(1));
 });
 
 test('a saturated debris pool keeps detached mass pending until explicit expiry', () => {
   const victim = createParticipant('b', 'bot', { x: 1000, y: 1000 });
   const salvage = new Salvage();
   addMass(victim, 6000);
-  for (let i = 0; i < 70; i++) assert.equal(salvage.detach(victim, 8), 8);
-  assert.equal(salvage.chunks.length, 512);
+  for (let i = 0; i < theftConfig.debrisCapacity / 8 + 6; i++) assert.equal(salvage.detach(victim, 8), 8);
+  assert.equal(salvage.chunks.length, theftConfig.debrisCapacity);
   assert.equal(salvage.pending.reduce((sum, event) => sum + event.value, 0), 48);
   salvage.step([], 10);
-  assert.equal(salvage.expiredMass, 560);
+  assert.equal(salvage.expiredMass, theftConfig.debrisCapacity + 48);
   assert.equal(salvage.pending.length + salvage.chunks.length, 0);
 });
 

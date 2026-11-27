@@ -1,0 +1,29 @@
+{
+  "navigation.jsonl": {
+    "identical": true,
+    "sha256": "1e59d9cadc6b04c7af5a86ecefd2c0b1e4b51538e51a2cd369210e543c3d003d"
+  },
+  "navigation-matrix.jsonl": {
+    "identical": true,
+    "sha256": "c510b733a50bacac4ee150174563036b3aec14f6538497d2b038c463df8bda54"
+  },
+  "competition.json": {
+    "identical": true,
+    "sha256": "5a7efecd572ff3e391159e4658a78c772d3c1d4ae5f7f4ce37dcfbd621d1ba2d"
+  },
+  "growth.json": {
+    "identical": true,
+    "runCount": 13,
+    "omitted": [
+      "simulationP95Ms",
+      "streamingP95Ms"
+    ],
+    "sha256": "a04e9564d5c20d686375dd8df6db0ec6817e48a1e2ab645e7c63531ceea03582"
+  },
+  "replays": {
+    "identical": true,
+    "inputs": 108000,
+    "checkpoints": 186,
+    "archive": "docs/evidence/rc6/baseline/input-replays.json.gz"
+  }
+}

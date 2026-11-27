@@ -1,0 +1,76 @@
+MAGNET RC7B verification
+Baseline: 4fcfdb312a9d0bd66204f36f57804b4cf489a749
+Host: Debian 13 Cloud environment, Node 24.22.1, Chromium 156.0.8078.79, two CPU quota
+
+Candidate commands
+$ npm ci --cache /tmp/magnet-npm --no-audit --no-fund
+added 23 packages in 3s
+$ npm test
+ℹ tests 190
+ℹ pass 190
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ duration_ms 105590.709992
+$ npm run typecheck
+TypeScript passed.
+$ npm run build
+vite v7.3.8 building client environment for production...
+✓ 61 modules transformed.
+dist/index.html                           8.25 kB │ gzip:   2.52 kB
+dist/assets/index-2p9pI-gT.css           21.40 kB │ gzip:   5.24 kB
+dist/assets/result-stats-CxUA-cE3.js      1.76 kB │ gzip:   0.94 kB
+dist/assets/index-B23cbrLk.js           198.85 kB │ gzip:  68.02 kB
+dist/assets/phaser-Jt__PiWe.js        1,208.08 kB │ gzip: 332.18 kB
+(!) Some chunks are larger than 500 kB after minification. Consider:
+✓ built in 19.18s
+$ PW_CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e -- --project=chromium --workers=1
+  ✓   1 [chromium] › e2e/critical.spec.ts:111:1 › Critical Mass follows real growth pickups, anchors the player, destroys rivals and records victory once (8.1s)
+  ✓   2 [chromium] › e2e/critical.spec.ts:174:1 › Critical Mass stops after a real opponent attack and after acid, then ordinary time expires (4.1s)
+  ✓   3 [chromium] › e2e/critical.spec.ts:223:1 › Critical Mass warns about an offscreen bot and a steering player survives and earns 1,000 points (6.6s)
+  ✓   4 [chromium] › e2e/critical.spec.ts:245:1 › Critical Mass wave destroys a stationary human and ranks them behind survivors (6.9s)
+  ✓   5 [chromium] › e2e/critical.spec.ts:261:3 › Critical Mass supports portrait touchscreen steering and a second thumb in Arena (6.9s)
+  ✓   6 [chromium] › e2e/critical.spec.ts:261:3 › Critical Mass supports landscape touchscreen steering and a second thumb in Arena (6.7s)
+  ✓   7 [chromium] › e2e/game.spec.ts:13:1 › Arena starts, steers and pauses; Endless reaches results and replays (7.6s)
+  ✓   8 [chromium] › e2e/game.spec.ts:41:1 › settings persist and both themes fit the HUD at nine sizes (2.6s)
+  ✓   9 [chromium] › e2e/game.spec.ts:69:1 › training advances after real steering (1.4s)
+Retained JavaScript heap after 50 replays (bytes): 1467372
+  ✓  10 [chromium] › e2e/game.spec.ts:78:1 › fifty replays reuse the canvas and continue to handle controls (9.3s)
+  ✓  11 [chromium] › e2e/game.spec.ts:102:1 › two real Chromium touch pointers steer and resolve one overridden attack (1.7s)
+  ✓  12 [chromium] › e2e/game.spec.ts:137:1 › full Arena simulation reaches results and Play Again through the UI (8.4s)
+  ✓  13 [chromium] › e2e/game.spec.ts:161:1 › training teaches each hazard through in-arena encounters without recording a match (8.1s)
+  ✓  14 [chromium] › e2e/game.spec.ts:204:1 › presentation pool stays within each quality cap and clears under reduced motion (1.3s)
+  ✓  15 [chromium] › e2e/game.spec.ts:227:1 › master mute keeps the live music and effects buses silent after hide and resume (1.5s)
+  ✓  16 [chromium] › e2e/game.spec.ts:254:1 › giant mobile energy stays recognizable in Low and reduced motion, then charges without growth (1.3s)
+  ✓  17 [chromium] › e2e/game.spec.ts:301:1 › live ranks stay compact and reveal the full twenty-place standings on desktop and mobile (1.7s)
+  ✓  18 [chromium] › e2e/game.spec.ts:330:1 › live release shrinks a giant, launches salvage and reports a guarded follow-up (2.5s)
+  ✓  19 [chromium] › e2e/game.spec.ts:369:1 › arena signals use one direction cue and results show recorded progression on a phone-sized viewport (1.9s)
+  ✓  20 [chromium] › e2e/game.spec.ts:427:1 › cartoon expressions follow a real attack and both Arena outcomes display matching art (1.5s)
+  ✓  21 [chromium] › e2e/game.spec.ts:460:1 › Low and reduced motion preserve live gaze, concern, danger, and replay reset (3.8s)
+  21 passed (1.7m)
+
+Additional candidate Chromium checks
+The six staged tests passed with video capture enabled.
+Mid-countdown pause, graphics and reduced-motion changes, dark theme, leave, difficulty change and fresh Arena: passed.
+Dense profile: 20 participants, 1024 salvage at peak, all three quality settings, reduced motion, onscreen and offscreen cases.
+Accelerated browser stress: 50 detonations, 50 stored wins, one canvas, 540204 bytes retained after garbage collection.
+
+RC7A baseline commands
+The same dependency, unit, typecheck, build, and Chromium commands passed with 167 unit tests and 15 browser tests.
+
+Baseline and candidate diagnostics
+$ npm exec -- tsx scripts/verify-presentation-parity.ts verify docs/evidence/rc6/baseline/input-replays.json.gz
+Six replays, 108000 inputs and 186 checkpoints matched.
+$ npm exec -- tsx scripts/measure-navigation.ts
+$ npm exec -- tsx scripts/measure-navigation.ts --matrix
+$ npm exec -- tsx scripts/measure-growth.ts --json
+$ npm exec -- tsx scripts/measure-competition.ts --json
+Matched 11 navigation fixtures, 45 navigation matrix cases, 13 growth runs except timing fields, and five competition pairs.
+
+Critical Mass-only diagnostics
+$ npm exec -- tsx scripts/measure-critical-mass.ts
+78 full matches across the matched principal and independent cohorts and the balanced variant sample.
+$ npm exec -- tsx scripts/measure-critical-escape.ts
+600 escape and eight interruption fixtures.
+$ PW_CHROMIUM_PATH=/usr/bin/chromium node scripts/measure-critical-browser.mjs http://127.0.0.1:4217 http://127.0.0.1:4218
+20 measured samples, including the repeated-session check.

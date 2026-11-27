@@ -1,0 +1,71 @@
+{
+  "browser": "156.0.8078.79",
+  "rows": [
+    {
+      "width": 1366,
+      "height": 768,
+      "quality": "balanced",
+      "cpu": {
+        "median": 1.1,
+        "p95": 2.2
+      },
+      "cadence": {
+        "median": 16.6,
+        "p95": 18
+      },
+      "frames": 489,
+      "participantCount": 5,
+      "naturalSlots": 1500,
+      "active": 720,
+      "visiblePeak": 46,
+      "pickupSprites": 720,
+      "shardSprites": 512,
+      "jsBefore": 10346932,
+      "jsAfter": 10345444
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "quality": "balanced",
+      "cpu": {
+        "median": 0.9,
+        "p95": 1.9
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 18
+      },
+      "frames": 491,
+      "participantCount": 5,
+      "naturalSlots": 1500,
+      "active": 720,
+      "visiblePeak": 45,
+      "pickupSprites": 720,
+      "shardSprites": 512,
+      "jsBefore": 10349832,
+      "jsAfter": 10310304
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "quality": "low",
+      "cpu": {
+        "median": 0.9,
+        "p95": 1.9
+      },
+      "cadence": {
+        "median": 16.7,
+        "p95": 17.7
+      },
+      "frames": 492,
+      "participantCount": 5,
+      "naturalSlots": 1500,
+      "active": 720,
+      "visiblePeak": 44,
+      "pickupSprites": 720,
+      "shardSprites": 512,
+      "jsBefore": 10309668,
+      "jsAfter": 10315628
+    }
+  ]
+}

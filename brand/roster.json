@@ -1,0 +1,21 @@
+[
+  {"id": "bot-1", "name": "Copper", "strategy": "collector", "accent": "#ED8D38", "x": 8340, "y": 4920, "near": [8210, 4915]},
+  {"id": "bot-2", "name": "Spark", "strategy": "collector", "accent": "#AA54E9", "x": 6260, "y": 5940, "near": [6540, 5700]},
+  {"id": "bot-3", "name": "Drift", "strategy": "roamer", "accent": "#38BCC3", "x": 9090, "y": 4010, "near": [8810, 4150]},
+  {"id": "bot-4", "name": "Orbit", "strategy": "roamer", "accent": "#8CC244", "x": 6340, "y": 4230, "near": [6520, 4220]},
+  {"id": "bot-5", "name": "Alloy", "strategy": "collector", "accent": "#83B7EF", "x": 7600, "y": 4515},
+  {"id": "bot-6", "name": "Bolt", "strategy": "hunter", "accent": "#F25F2D", "x": 8030, "y": 5900},
+  {"id": "bot-7", "name": "Flux", "strategy": "hunter", "accent": "#FC62AA", "x": 3700, "y": 1800},
+  {"id": "bot-8", "name": "Cobalt", "strategy": "opportunist", "accent": "#496EFF", "x": 11900, "y": 1840},
+  {"id": "bot-9", "name": "Nickel", "strategy": "collector", "accent": "#89D1B8", "x": 1200, "y": 3900},
+  {"id": "bot-10", "name": "Echo", "strategy": "charger", "accent": "#B67FFA", "x": 5710, "y": 1300},
+  {"id": "bot-11", "name": "Volt", "strategy": "charger", "accent": "#A8E947", "x": 9700, "y": 1510},
+  {"id": "bot-12", "name": "Rusty", "strategy": "scavenger", "accent": "#BD542D", "x": 3040, "y": 5600},
+  {"id": "bot-13", "name": "Nova", "strategy": "opportunist", "accent": "#FA85BA", "x": 13050, "y": 4570},
+  {"id": "bot-14", "name": "Coil", "strategy": "scavenger", "accent": "#24CBB2", "x": 10140, "y": 6870},
+  {"id": "bot-15", "name": "Static", "strategy": "hunter", "accent": "#E5B241", "x": 1450, "y": 7930},
+  {"id": "bot-16", "name": "Torque", "strategy": "hunter", "accent": "#D05D84", "x": 4790, "y": 8750},
+  {"id": "bot-17", "name": "Zinc", "strategy": "collector", "accent": "#9EC567", "x": 7580, "y": 8630},
+  {"id": "bot-18", "name": "Surge", "strategy": "charger", "accent": "#43CAED", "x": 12410, "y": 8260},
+  {"id": "bot-19", "name": "Chrome", "strategy": "scavenger", "accent": "#C3D3E4", "x": 14520, "y": 6520}
+]

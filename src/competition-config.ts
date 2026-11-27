@@ -1,7 +1,26 @@
 export const matchConfig = { duration: 300, countdown: 3, step: 1 / 60 } as const;
+export const criticalMassConfig = {
+  ultimate: 8_000, unstable: 10_000, severe: 11_000, threshold: 12_000,
+  countdown: 3, radius: 1_400, expansion: 0.8, survivalReward: 1_000, escapeMargin: 52,
+};
+export type CriticalRules = Readonly<typeof criticalMassConfig>;
+export type CriticalOverrides = Partial<Pick<CriticalRules, 'threshold' | 'countdown' | 'radius'>>;
+export type OverloadStage = 'standard' | 'ultimate' | 'unstable' | 'severe' | 'critical';
+export const overloadLabels: Record<OverloadStage, string> = {
+  standard: 'Standard', ultimate: 'Ultimate Form', unstable: 'Unstable Form', severe: 'Severe Instability', critical: 'Critical Mass',
+};
+
+export function overloadStage(mass: number, rules: CriticalRules = criticalMassConfig): OverloadStage {
+  if (mass >= rules.threshold) return 'critical';
+  if (mass >= rules.severe) return 'severe';
+  if (mass >= rules.unstable) return 'unstable';
+  return mass >= rules.ultimate ? 'ultimate' : 'standard';
+}
 export const theftConfig = {
   reach: 260, halfAngle: Math.PI / 3, warning: 0.18, cooldown: 0.8,
-  energy: 100, missCost: 35, debrisCapacity: 512, flight: 0.55, lifetime: 10,
+  energy: 100, missCost: 35, debrisCapacity: 1024, legacyDebrisCapacity: 512, flight: 0.55, lifetime: 10,
+  combatCoreCap: 250, guard: 1.5, victimSalvageLock: 5, shrinkSeconds: 0.28,
+  sizeLoss: [[1, 0.08], [2, 0.12], [4, 0.25], [8, 0.40], [12, 0.50]],
 } as const;
 
 export const hazardConfig = {
@@ -14,7 +33,45 @@ export const hazardConfig = {
 
 
 export const tacticsConfig = {
-  easy: { search: 440, decision: 4.0, pursuit: 100, arming: 0.65, reconsider: 1.6, safety: 0 },
-  normal: { search: 610, decision: 2.85, pursuit: 140, arming: 0.35, reconsider: 0.8, safety: 50 },
-  hard: { search: 720, decision: 2.15, pursuit: 120, arming: 0.17, reconsider: 0.4, safety: 95 },
+  easy: { search: 380, decision: 5.4, overrun: 1160, density: 0.10, gold: 1, charge: 7, energy: 1,
+    evaluate: 0.45, pursuit: 53, chase: 1.30, arming: 0.95, reconsider: 2.5, safety: 16,
+    aimGap: 182, lead: 0, reward: 52, threat: 0.34, salvageTravel: 0.76 },
+  normal: { search: 655, decision: 3.4, overrun: 760, density: 0.28, gold: 2.6, charge: 10, energy: 1.8,
+    evaluate: 0.25, pursuit: 170, chase: 2.4, arming: 0.35, reconsider: 0.9, safety: 50,
+    aimGap: 215, lead: 0.09, reward: 24, threat: 0.25, salvageTravel: 0.91 },
+  hard: { search: 910, decision: 2.55, overrun: 420, density: 0.34, gold: 8, charge: 14, energy: 2.4,
+    evaluate: 0.18, pursuit: 235, chase: 2.4, arming: 0.20, reconsider: 0.7, safety: 78,
+    aimGap: 236, lead: 0.18, reward: 48, threat: 0.19, salvageTravel: 1 },
+} as const;
+
+export const botTactics = {
+  collector: { pursuit: 0.45, salvage: 0.45, charge: 0, signal: 0.92 },
+  hunter: { pursuit: 1.45, salvage: 0.88, charge: 0.62, signal: 0.82 },
+  charger: { pursuit: 1.16, salvage: 0.60, charge: 1, signal: 0.90 },
+  scavenger: { pursuit: 0.72, salvage: 1.6, charge: 0, signal: 1.28 },
+  roamer: { pursuit: 0.60, salvage: 0.45, charge: 0, signal: 0.72 },
+  opportunist: { pursuit: 1.08, salvage: 1.15, charge: 0.43, signal: 1.21 },
+} as const;
+
+export const navigationConfig = {
+  lookAheadSeconds: 0.7,
+  clearance: 12,
+  exitClearance: 60,
+  commitmentSeconds: 0.8,
+  evaluationSeconds: 0.25,
+  waypointArrival: 22,
+  turnRate: 240 * Math.PI / 180,
+  turnLookAheadSeconds: 0.32,
+  hazardTurningSpeedScale: 0.55,
+  emergencyTurnRate: 360 * Math.PI / 180,
+  stuckSeconds: 1,
+  stuckProgress: 0.2,
+  targetAdvantage: 1.2,
+  pursuitExitGap: 150,
+} as const;
+
+export const activityConfig = {
+  count: 4, radius: 500, spacing: 2050, lifetime: 32, lifetimeJitter: 11, fade: 6, streamWeight: 0.32,
+  firstSignal: 23, signalJitter: 5, signalInterval: 38, signalDuration: 24, signalMinimum: 18, depleted: 9,
+  signalTravel: 2240, visiblePlayerTravel: 3500, hotspotTravel: 1350, signalFollowers: 6, hotspotFollowers: 4,
 } as const;

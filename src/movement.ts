@@ -5,6 +5,7 @@ export type Point = { x: number; y: number };
 export type Steering = { kind: 'idle' } | { kind: 'target' | 'joystick'; point: Point };
 export type Participant<Kind extends 'player' | 'bot' = 'player' | 'bot'> = {
   readonly id: string;
+  readonly name: string;
   readonly kind: Kind;
   position: Point;
   velocity: Point;
@@ -28,14 +29,15 @@ export function clampToArena({ x, y }: Point, radius: number): Point {
 }
 
 export function createPlayer(): Player {
-  return createParticipant('player', 'player', { x: arena.width / 2, y: arena.height / 2 });
+  return createParticipant('player', 'player', { x: arena.width / 2, y: arena.height / 2 }, 'You');
 }
 
 export function createParticipant<Kind extends Participant['kind']>(
-  id: string, kind: Kind, position: Point,
+  id: string, kind: Kind, position: Point, name = id,
 ): Participant<Kind> {
   return {
     id,
+    name,
     kind,
     position: { ...position },
     velocity: { x: 0, y: 0 },

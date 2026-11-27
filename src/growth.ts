@@ -12,6 +12,10 @@ export function physicalScaleForMass(mass: number): number {
   );
 }
 
+export function massForPhysicalScale(scale: number): number {
+  return Math.round(playerConfig.initialMass * (1 + (scale - 1) / growthConfig.scaleFactor) ** 2);
+}
+
 export function attractionReach(physicalScale: number): number {
   const scale = Math.min(physicalScale, growthConfig.maxScale);
   if (scale <= reachTransitionScale) return Math.min(normalReachCap, baseReach * Math.sqrt(scale));
@@ -20,7 +24,13 @@ export function attractionReach(physicalScale: number): number {
 
 export function addMass(participant: Participant, mass: number): void {
   participant.mass += mass;
-  participant.combat.highest = Math.max(participant.combat.highest, participant.mass);
+  const combat = participant.combat;
+  combat.highest = Math.max(combat.highest, participant.mass);
+  const impact = combat.impact;
+  if (mass > 0 && impact) {
+    const restored = impact.removed - Math.max(0, impact.mass - participant.mass);
+    combat.bestRecovery = Math.max(combat.bestRecovery, restored);
+  }
   participant.physicalScale = physicalScaleForMass(participant.mass);
   participant.radius = playerConfig.radius * participant.physicalScale;
   // Growth at a wall moves the center into bounds without changing steering velocity.

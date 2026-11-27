@@ -1,0 +1,71 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { ArenaModel } from '../src/arena-model';
+import { arm, release, resolveTheft, Salvage } from '../src/combat';
+import { theftConfig } from '../src/competition-config';
+import { addMass } from '../src/growth';
+import { placeOf, RankFeedback, rankings } from '../src/match';
+import { createParticipant } from '../src/movement';
+
+test('a real pulse records one larger giant, its diameter loss, and its bounded recovery', () => {
+  const attacker = createParticipant('player', 'player', { x: 900, y: 680 });
+  const giant = createParticipant('giant', 'bot', { x: 1310, y: 680 });
+  addMass(giant, 4332);
+  attacker.combat.energy = 100;
+  assert.ok(arm(attacker));
+  assert.ok(release(attacker, 0));
+  const salvage = new Salvage();
+  resolveTheft([attacker, giant], salvage, theftConfig.warning);
+  assert.equal(attacker.combat.giantsCracked, 1);
+  assert.equal(attacker.combat.massiveHits, 1);
+  assert.equal(attacker.combat.largestTheft, 3301);
+  assert.ok(Math.abs(attacker.combat.largestReduction - 0.5) < 0.001);
+  assert.deepEqual([...attacker.combat.largerVictims], ['giant']);
+  assert.equal(giant.mass, 1051);
+  assert.equal(salvage.chunks.length, 24);
+  assert.equal(giant.combat.bestRecovery, 0);
+  addMass(giant, 300);
+  assert.equal(giant.combat.bestRecovery, 300);
+  addMass(giant, 10000);
+  assert.equal(giant.combat.bestRecovery, 3301);
+});
+
+test('tracked placements use the existing tie-break rules and a replay starts without records', () => {
+  const model = new ArenaModel(19, 'normal');
+  assert.equal(placeOf(model.player, model.participants), undefined);
+  const [leading, second] = model.bots;
+  addMass(leading, 40);
+  addMass(second, 15);
+  addMass(model.player, 15);
+  assert.equal(placeOf(model.player, model.participants), 2);
+  second.combat.highest += 5;
+  assert.equal(placeOf(model.player, model.participants), rankings(model.participants)[2].place);
+  model.step({ kind: 'idle' }, 1 / 60);
+  assert.equal(model.bestPlace, 3);
+  addMass(model.player, 60);
+  model.step({ kind: 'idle' }, 1 / 60);
+  assert.equal(model.bestPlace, 1);
+  addMass(model.player, -75);
+  model.step({ kind: 'idle' }, 1 / 60);
+  assert.equal(model.bestPlace, 1);
+  const replay = new ArenaModel(19, 'normal');
+  assert.equal(replay.bestPlace, undefined);
+  assert.equal(replay.player.combat.bestRecovery, 0);
+  assert.equal(replay.player.combat.largerVictims.size, 0);
+});
+
+test('rank feedback settles short fluctuations and combines several climbs before the next notice', () => {
+  const rank = new RankFeedback();
+  const leader = createParticipant('rival', 'bot', { x: 700, y: 800 }, 'Scrapper');
+  const player = createParticipant('player', 'player', { x: 900, y: 800 });
+  assert.equal(rank.update(11, leader, 0), undefined);
+  assert.equal(rank.update(10, leader, 0.1), undefined);
+  assert.equal(rank.update(11, leader, 0.25), undefined);
+  assert.equal(rank.update(8, leader, 0.5), undefined);
+  assert.deepEqual(rank.update(8, leader, 1.4), { label: '3 RIVALS OVERTAKEN', climbing: true });
+  assert.equal(rank.update(3, leader, 1.6), undefined);
+  assert.equal(rank.update(3, leader, 3), undefined);
+  assert.deepEqual(rank.update(3, leader, 5.5), { label: '5 RIVALS OVERTAKEN', climbing: true });
+  assert.equal(rank.update(1, player, 8.8), undefined);
+  assert.deepEqual(rank.update(1, player, 9.7), { label: 'NEW LEADER', climbing: true });
+});

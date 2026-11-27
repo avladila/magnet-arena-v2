@@ -1,23 +1,22 @@
-# MAGNET asset inventory
+# MAGNET assets
 
 | Asset | Source | Runtime |
 | --- | --- | --- |
-| Title illustration | Original ImageGen illustration for this project in `art-source/title.webp`. Prompt specified an industrial salvage arena and a red and cobalt horseshoe electromagnet on a mint ceramic floor. | `src/assets/title.webp`, locally bundled by Vite |
-| Wordmark | MAGNET typeset and styled in `index.html` and `src/style.css` | HTML and CSS |
-| Player, Copper, Spark, Drift and Orbit | `scripts/generate-magnet-atlas.py`, hand-authored geometry and original palettes | `public/magnets.webp` and `public/magnets.json`, Phaser atlas with 20 frames |
-| Natural scrap, gold and energy | `src/particle-view.ts` | Phaser Graphics |
-| Salvage, hazard devices, district props and attack overlays | `src/competition-view.ts` and `src/districts.ts` | Phaser Graphics |
-| Arena tiles, field and growth rings | `src/art.ts` and `src/growth-feedback.ts` | Phaser Graphics |
-| Soundtrack | `scripts/generate-soundtrack.py`, original music and synthesized instruments | `public/soundtrack.ogg`, 16 bars at 105 BPM |
-| Effects | `src/audio.ts`, original Web Audio oscillator envelopes | Generated at playback |
+| App mark, title, social, and game results | Original cel art composited at illustration resolution with the game cast. Title art has wide and portrait compositions. Game results have ordinary victory, defeat, Endless, detonator, survivor, and destroyed variants. | `public/app-icon.png`, `public/favicon.png`, `public/hero.webp`, `public/hero-portrait.webp`, `public/social.webp`, `public/victory.webp`, `public/defeat.webp`, `public/endless.webp`, `public/detonation-win.webp`, `public/detonation-survive.webp`, `public/detonation-loss.webp` |
+| Twenty characters, seven shells each | 140 inked steel and enamel shells with roster-specific proportions, colors, decals, and stage-specific mechanical faceplates. Each character has six physical forms and one golden shell that covers the four overload stages. | `public/magnets.webp` and `public/magnets.json` |
+| Sixteen expressions and a blink per character | 960 matching eye, brow, and mouth cels plus 20 closed-lid cels. The face anchor data carries 140 shell sockets and 640 pupil apertures. | `public/faces.webp`, `public/faces.json`, and `brand/face-anchors.json` |
+| Hazards and scenery | 40 frames for five hazards, a discharged Flux state, four moving overlays per hazard, eight mechanical props, and six district floor stamps | `public/scenery.webp` and `public/scenery.json` |
+| Pickups, salvage, and character effects | 56 frames, including ten scrap colors, a faceted gold nugget, animated and static ringed charge cells, four claimable salvage tiers, three cosmetic fracture plates, pupils, and reactions | `public/workshop.webp` and `public/workshop.json` |
+| Floor, field, footprints, and shockwaves | World-anchored floor plates, danger area, wave rim, and mechanical bursts. Vector effects use the model radii and bearings. | `src/art.ts`, `src/growth-feedback.ts`, `src/competition-view.ts`, `src/critical-view.ts` |
+| Soundtrack and cues | Original 114 BPM, 16-bar loop with synthesized instruments and Web Audio cue envelopes | `public/soundtrack.ogg`, `src/audio.ts`, `brand/tokens.json` |
+| Illustration sources | Original ImageGen scrapyard backdrop used under the generated foreground characters. The earlier title source is retained for provenance. | `art-source/assembly-bay.webp`, `art-source/title.webp` |
 
-The atlas has one row per participant and four shell frames per row, ordered by mass thresholds of 20, 60, 200 and 650. Rendering scales each frame to the existing physical radius. Sprite dimensions, shadows and ease have no authority over interactions.
-
-Ship effects include eased movement heading and physical growth, pickup glints, milestone rings, an armed preview and warning cone, airborne salvage, per-magnet damage numerals, and cold and heat indicators. The runtime has no asset hotlinks. The browser uses system fonts.
-
-To regenerate the atlas, install Pillow for Python 3 and run `python scripts/generate-magnet-atlas.py` from the repository root. To regenerate the music, run the following from the repository root with Python 3 and FFmpeg.
+The current artwork ships with the game. `scripts/arcade_art.py` draws shells and mechanical faceplates, `scripts/living_faces.py` draws facial layers, `scripts/scrapyard_art.py` draws machinery and landscape details, and `scripts/generate-brand-art.py` packs the atlases and composes the illustrations. `brand/roster.json` and `brand/tokens.json` supply roster and palette data. The checked-in backdrop makes illustration generation local. Use Python 3 with Pillow and FFmpeg with `libvorbis`. The local Open Sans Regular and ExtraBold faces include their Apache-2.0 license in `public/fonts/`.
 
 ```sh
-python scripts/generate-soundtrack.py
+python -B scripts/generate-brand-art.py
+python -B scripts/generate-soundtrack.py
 ffmpeg -y -i /tmp/magnet-soundtrack.wav -c:a libvorbis -q:a 3 public/soundtrack.ogg
 ```
+
+[Asset manifest](../brand/asset-manifest.json) · [Visual identity](brand.md) · [Ultimate roster](evidence/rc7b/ultimate-roster.webp) · [Overload expressions](evidence/rc7b/overload-expressions.webp) · [120 growth-stage shells](evidence/rc7a/all-growth-stages.webp) · [240 expressions](evidence/rc7a/all-expressions.webp) · [Gaze and mouth previews](evidence/rc7a/gaze-and-mouths.webp) · [RC6 illustrations](evidence/rc6/artwork.webp)

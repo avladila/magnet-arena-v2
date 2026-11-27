@@ -1,3 +1,4 @@
+import { brand } from './brand';
 export const arena = { width: 15360, height: 10000 };
 export const playerConfig = {
   initialMass: 20,
@@ -23,6 +24,12 @@ export const scrapConfig = {
   massPerPickup: 1,
   radius: 5,
 };
+export const populationConfig = { competitive: 20, legacy: 5, tutorial: 2, tutorialSlots: 32 } as const;
+
+export function resourceBudget(participants: number) {
+  const activeCount = Math.floor(scrapConfig.activeCount * participants / populationConfig.legacy);
+  return { activeCount, capacity: Math.max(scrapConfig.capacity, Math.ceil(activeCount * 1.25)) };
+}
 export const regionConfig = {
   size: 960,
   sitesPerUnitArea: 720 / (4800 * 3200),
@@ -65,9 +72,9 @@ export const arenaArt = {
   cacheSpacing: 240,
 };
 export const growthFeedback = {
-  milestones: [50, 100, 200, 400],
+  milestones: brand.milestones,
   haloRate: 10,
-  pulseSeconds: 0.34,
+  pulseSeconds: brand.motion.milestone / 1000,
 };
 export const viewConfig = {
   followRate: 8,

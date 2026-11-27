@@ -5,7 +5,7 @@ import { ArenaFloor, drawArena, drawMagnet } from '../src/art';
 import { advanceAttraction } from '../src/attraction';
 import { BotView } from '../src/bot-view';
 import { createBots } from '../src/bots';
-import { arena, arenaArt, growthFeedback, scrapConfig } from '../src/config';
+import { arena, growthFeedback, scrapConfig } from '../src/config';
 import { addMass, attractionReach } from '../src/growth';
 import { GrowthFeedback, GrowthFeedbackView } from '../src/growth-feedback';
 import { createPlayer, type Point } from '../src/movement';
@@ -13,7 +13,6 @@ import { ParticleView } from '../src/particle-view';
 import { ParticlePool, type WorldBounds } from '../src/particles';
 import { themes } from '../src/theme';
 import { bindThemeToggle, ThemePreference } from '../src/theme-control';
-import { ArenaCamera } from '../src/view';
 
 class GraphicsRecorder {
   readonly paths: Point[] = [];
@@ -281,11 +280,13 @@ test('a giant bot label stays at CSS size and chooses room clear of the player a
   view.render(5, 0.25, bounds, themes.light, [player, bot], names);
   assert.ok(label.visible && label.top + label.height / 0.25 < bot.position.y - bot.radius);
   assert.equal(label.scale * 0.25, 1);
-  assert.equal(sprite.frame.name, 'bot-1-3');
+  assert.equal(sprite.frame.name, 'bot-1-5');
   const [above] = names;
   view.render(5, 0.25, bounds, themes.dark, [player, bot], names);
   assert.ok(label.visible && label.top > bot.position.y + bot.radius);
   assert.equal(names.length, 2);
+  view.render(5, 0.25, bounds, themes.dark, [player, bot], []);
+  assert.ok(label.visible && label.top > bot.position.y + bot.radius, 'the readable label stays on its current side');
 
   player.position = { x: bot.position.x, y: 2500 };
   const occupied = [above];
@@ -337,55 +338,44 @@ test('a batch uses one pulse for the highest crossing and reduced motion clears 
   assert.equal(art.circles[0].color, themes.light.field.edge);
 });
 
-test('floor references reuse the same world geometry and only shrink with camera zoom', () => {
+test('painted plates and the perimeter use the same world geometry in both palettes', () => {
   const art = new GraphicsRecorder();
   const graphics = art as unknown as Phaser.GameObjects.Graphics;
   const bounds = { left: 0, top: 0, right: 1200, bottom: 720 };
   drawArena(graphics, themes.light, bounds);
   const geometry = [...art.paths];
-  const points = geometry.slice(0, 12);
-  const left = Math.min(...points.map(({ x }) => x));
-  const right = Math.max(...points.map(({ x }) => x));
-  assert.equal(right - left, arenaArt.referenceSize);
-  const y = points[0].y;
-  const camera = new ArenaCamera({ x: left, y });
-  camera.resize(1280, 720);
-  const initial = camera.toScreen({ x: right, y }).x - camera.toScreen({ x: left, y }).x;
-  camera.follow({ x: left, y }, 10, 400);
+  const plates = [...art.rectangles];
+  assert.ok(geometry.length > 0 && plates.length < 100);
   drawArena(graphics, themes.dark, bounds);
   assert.deepEqual(art.paths, geometry);
-  const grown = camera.toScreen({ x: right, y }).x - camera.toScreen({ x: left, y }).x;
-  assert.ok(grown < initial);
-  assert.ok(Math.abs(grown / camera.zoom - arenaArt.referenceSize) < 1e-7);
+  assert.deepEqual(art.rectangles, plates);
 });
 
-test('the buffered floor reuses world-anchored geometry, recolors and draws no perimeter at the corner', () => {
+test('the buffered floor keeps stable plate locations and paints the true world perimeter', () => {
   const art = new GraphicsRecorder();
   const floor = new ArenaFloor(art as unknown as Phaser.GameObjects.Graphics);
   const bounds = { left: 1000, top: 800, right: 2040, bottom: 1540 };
   floor.render(bounds, themes.light);
-  const geometry = [...art.paths];
-  assert.ok(art.rectangles.length < 300);
+  const geometry = [...art.rectangles];
+  assert.ok(geometry.length < 200);
   floor.render({ ...bounds, left: 1050, right: 2090 }, themes.light);
   assert.equal(art.clears, 1);
-  floor.render({ ...bounds, left: 1240, right: 2280 }, themes.light);
+  floor.render({ ...bounds, left: 1450, right: 2490 }, themes.light);
   assert.equal(art.clears, 2);
-  const overlap = ({ x }: Point) => x >= 1240 && x <= 2040;
-  assert.ok(geometry.filter(overlap).length > 0);
-  assert.deepEqual(art.paths.filter(overlap), geometry.filter(overlap));
+  const insideOverlap = ({ x, width }: { x: number; width: number }) => x >= 1450 && x + width <= 2240;
+  assert.ok(geometry.filter(insideOverlap).length > 0);
+  assert.deepEqual(art.rectangles.filter(insideOverlap), geometry.filter(insideOverlap));
 
   const corner = { left: arena.width - 1040, top: arena.height - 740, right: arena.width, bottom: arena.height };
   floor.render(corner, themes.light);
-  const [background, ...dots] = art.rectangles;
+  const [background, ...details] = art.rectangles;
   assert.equal(background.x + background.width, arena.width);
   assert.equal(background.y + background.height, arena.height);
-  assert.ok(dots.length > 0 && dots.length < 300);
-  for (const { x, y } of dots) {
-    assert.equal((x + 1.5) % arenaArt.gridSpacing, 40);
-    assert.equal((y + 1.5) % arenaArt.gridSpacing, 40);
-  }
+  assert.ok(details.some(({ x, width }) => width === 24 && x + width === arena.width));
+  assert.ok(details.some(({ y, height }) => height === 24 && y + height === arena.height));
+  assert.ok(art.paths.some(({ x }) => x === arena.width));
+  assert.ok(art.paths.some(({ y }) => y === arena.height));
   floor.render(corner, themes.dark);
   assert.equal(art.clears, 4);
   assert.equal(art.fills[0], themes.dark.arena.background);
-  assert.equal(art.rectangularStrokes, 0);
 });
