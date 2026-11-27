@@ -21,6 +21,15 @@ export class Navigation {
     const { position } = model.player;
     const name = districtAt(position.x, position.y).name;
     if (this.district.textContent !== name) this.district.textContent = name;
+    const critical = model.critical;
+    const warning = critical?.warning;
+    const claimant = critical?.claim?.actor ?? critical?.blast?.winner;
+    if (this.canvas.dataset.claimant !== claimant?.id) {
+      if (claimant) this.canvas.dataset.claimant = claimant.id;
+      else delete this.canvas.dataset.claimant;
+      this.canvas.setAttribute('aria-label', claimant ? `Arena map with blast center and danger area for ${claimant.name}` :
+        'Arena map with your position, nearby opponents and public salvage signal');
+    }
     if (this.canvas.hidden) return;
     const context = this.canvas.getContext('2d');
     if (!context) return;
@@ -47,11 +56,30 @@ export class Navigation {
     context.globalAlpha = 1;
     for (const bot of model.bots) {
       const { x, y } = bot.position;
-      if (x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) {
+      if (bot !== claimant && !critical?.removed(bot) && x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom) {
         place(x, y, 2.8, '#' + bot.accent.toString(16).padStart(6, '0'));
       }
     }
-    if (model.signal) {
+    if (warning && critical) {
+      const x = screenX(warning.center.x);
+      const y = screenY(warning.center.y);
+      const radius = critical.rules.radius;
+      context.save();
+      context.beginPath();
+      context.rect(7, 7, width - 14, height - 14);
+      context.clip();
+      context.beginPath();
+      context.ellipse(x, y, radius * ((width - 14) / arena.width), radius * ((height - 14) / arena.height), 0, 0, Math.PI * 2);
+      context.fillStyle = brand.arcade.red;
+      context.globalAlpha = .28;
+      context.fill();
+      context.globalAlpha = 1;
+      context.strokeStyle = brand.arcade.orange;
+      context.lineWidth = 2;
+      context.stroke();
+      place(warning.center.x, warning.center.y, 4, brand.arcade.yellow);
+      context.restore();
+    } else if (model.signal) {
       const x = screenX(model.signal.x);
       const y = screenY(model.signal.y);
       context.strokeStyle = brand.arcade.yellow;
@@ -63,6 +91,7 @@ export class Navigation {
       context.closePath();
       context.stroke();
     }
+    if (critical?.removed(model.player)) return;
     context.save();
     context.translate(screenX(position.x), screenY(position.y));
     context.rotate(model.player.heading);

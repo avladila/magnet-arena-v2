@@ -141,15 +141,17 @@ test('full Arena simulation reaches results and Play Again through the UI', asyn
   await inspectScene(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Play Arena' }).click();
-  const elapsed = await page.evaluate(() => {
+  const { elapsed, cause } = await page.evaluate(() => {
     const scene = Reflect.get(window, 'trainingScene');
     const start = performance.now();
     for (let frame = 0; frame < 2200 && !scene.clock.ended; frame++) {
       scene.update(start + frame * 145, 145);
     }
-    return scene.clock.elapsed;
+    return { elapsed: scene.clock.elapsed, cause: scene.model.matchResult?.cause };
   });
-  expect(elapsed).toBeCloseTo(300, 6);
+  expect(['timeout', 'detonation']).toContain(cause);
+  if (cause === 'timeout') expect(elapsed).toBeCloseTo(300, 6);
+  else expect(elapsed).toBeLessThanOrEqual(300);
   await expect(page.locator('#result-ranking li')).toHaveCount(20);
   await page.getByRole('button', { name: 'Play Again' }).click();
   await expect(page.locator('#clock')).toHaveText('5:00');

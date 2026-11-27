@@ -65,7 +65,10 @@ export class GrowthFeedbackView {
     this.pickupLight = 0;
     this.disruption = 0;
     this.previousTheft = 0;
+    this.rings.setVisible(true);
   }
+
+  setVisible(visible: boolean): void { this.rings.setVisible(visible); }
 
   render(player: Player, seconds: number, palette: ThemePalette, reducedMotion: boolean, collecting = false,
       heading = player.heading, detailed = true, zoom = 1): number | undefined {

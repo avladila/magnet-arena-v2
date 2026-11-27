@@ -158,7 +158,7 @@ def seat(p, index, stage, trim, palette):
     p.line([moved((-17,-15)), moved((-13,-21)), moved((-5,-23))], palette['paper'], 1.5)
 
 
-def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
+def shell(index, stage, trim, palette, pixels=CHARACTER_TILE, ultimate=False):
     p = Pen(CHARACTER_TILE, palette)
     ink, white, navy, steel = (palette[k] for k in ('ink', 'white', 'navy', 'steel'))
     arch, nose, tilt, family = CHASSIS[index]
@@ -247,6 +247,26 @@ def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
         p.line([(31,33),(35,31),(44,28)], white, 1.5)
     if index == 12 or stage >= 3:
         p.line([(34,90),(38,88),(42,89)], enamel, 1.2)
+    if ultimate:
+        # Inlaid plates follow the existing shoulder, back and cap contours.
+        gold = palette['yellow']
+        amber = tone(gold, palette['rust'], .50)
+        p.poly([(back+1,49),(24,34),(42,23),(58,20),(61,24),(55,31),
+                (39,33),(26,43),(22,52),(back+3,60)], amber, 2)
+        p.poly([(back+3,47),(25,36),(42,26),(56,23),(54,28),(39,30),(26,39),(22,47)], gold)
+        p.line([(25,36),(42,26),(53,24)], palette['pale'], 1.8)
+        p.poly([(back,67),(21,64),(22,78),(30,89),(26,97),(20,91),(back+1,81)], gold, 2.15)
+        p.line([(back+3,70),(19,78),(25,87)], palette['pale'], 1.65)
+        p.poly([(48,bottom-12),(62,bottom-20),(74,bottom-12),(86,bottom-13),(91,bottom-5),
+                (77,bottom-3),(52,bottom-4)], amber, 2.2)
+        p.poly([(52,bottom-11),(63,bottom-17),(75,bottom-11),(85,bottom-12),(86,bottom-8),
+                (75,bottom-7),(61,bottom-11)], gold)
+        p.line([(54,bottom-11),(63,bottom-15),(71,bottom-11)], palette['white'], 1.45)
+        for y in (top+7, lower+6):
+            p.line([(cap-16,y),(cap-8,y+1),(cap-4,y+4)], gold, 2.3)
+            p.line([(cap-15,y-1),(cap-9,y)], palette['white'], 1.1)
+        bolt(p, 56, bottom-7, 2.5, trim, white)
+        bolt(p, 25, 37, 2.6, trim, white)
     return p.finish(pixels)
 
 

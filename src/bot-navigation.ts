@@ -35,7 +35,7 @@ function advancePoint(point: Point, angle: number, length: number): Point {
   return { x: point.x + length * Math.cos(angle), y: point.y + length * Math.sin(angle) };
 }
 
-function segmentDistanceSquared(a: Point, b: Point, p: Point): number {
+export function segmentDistanceSquared(a: Point, b: Point, p: Point): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const length = dx * dx + dy * dy;

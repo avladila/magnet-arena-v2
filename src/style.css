@@ -217,6 +217,39 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 #energy::-moz-progress-bar { background: var(--charge-paint); border-radius: .08rem; }
 #energy[data-full="true"] { filter: drop-shadow(0 0 4px var(--brand-energy)); }
 #status:empty, #salvage-reward:empty, #salvage-signal:empty, #rank-record:empty, #rank-event:empty { display: none; }
+#critical-progress { margin-top: .45rem; padding-top: .36rem; border-top: 1px solid var(--hud-border); }
+#critical-progress label { font-size: .68rem; gap: .5rem; }
+#critical-mass-amount { white-space: nowrap; font-variant-numeric: tabular-nums; }
+#critical-meter { display: block; width: 100%; height: .45rem; margin: .16rem 0; accent-color: var(--arcade-orange); }
+#critical-meter::-webkit-progress-value { background: linear-gradient(90deg, var(--arcade-yellow), var(--arcade-orange)); }
+#critical-meter[data-stage="severe"]::-webkit-progress-value,
+#critical-meter[data-stage="critical"]::-webkit-progress-value { background: var(--arcade-red); }
+#overload-stage { display: block; margin-top: .18rem; font-size: .65rem; font-weight: 950; letter-spacing: .07em; }
+#overload-stage:empty { display: none; }
+#critical-meter[data-stage="unstable"] + #overload-stage,
+#critical-meter[data-stage="severe"] + #overload-stage {
+  width: fit-content; padding: .1rem .25rem; color: var(--arcade-ink);
+  background: var(--arcade-yellow); border: 1px solid var(--arcade-ink); border-radius: .19rem;
+}
+#critical-meter[data-stage="severe"] + #overload-stage { background: var(--arcade-orange); }
+#critical-warning {
+  position: absolute; z-index: 5; top: 3.15rem; left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: min(30rem, calc(100vw - 2rem)); box-sizing: border-box; pointer-events: none;
+  background: var(--arcade-navy); color: var(--arcade-white); border: 2px solid var(--arcade-orange);
+  box-shadow: 4px 5px var(--arcade-ink); border-radius: .42rem; padding: .45rem .7rem;
+  font: 800 clamp(.68rem, 2.1vw, .85rem)/1.3 'Magnet Sans', sans-serif;
+}
+#critical-warning[data-phase="interrupted"] { border-color: var(--arcade-cyan); }
+.critical-alarm { display: flex; align-items: center; justify-content: space-between; gap: .68rem; color: var(--arcade-yellow); }
+#critical-count { color: var(--arcade-white); white-space: nowrap; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+#critical-threat, #critical-direction { margin-top: .16rem; }
+#critical-threat:empty, #critical-count:empty, #critical-direction:empty { display: none; }
+#critical-direction[data-offscreen]::before {
+  display: inline-block; content: '➜'; margin-inline-end: .35rem; transform: rotate(var(--critical-bearing)); color: var(--arcade-yellow);
+}
+@media (max-height: 470px) and (min-width: 601px) {
+  #critical-warning { top: 2.4rem; max-width: min(23rem, 51vw); }
+}
 #status, #salvage-reward, #salvage-signal { margin-top: .25rem; max-width: min(19rem, 42vw); overflow-wrap: anywhere; }
 #salvage-signal, #salvage-reward, #rank-event {
   padding: .18rem .32rem; font-weight: 900; border: 1px solid var(--arcade-ink); border-radius: .24rem;
@@ -316,6 +349,14 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
 .menu[data-page="results"][data-outcome="victory"] .menu-art::before { background-image: url('/victory.webp'); animation: none; }
 .menu[data-page="results"][data-outcome="defeat"] .menu-art::before { background-image: url('/defeat.webp'); animation: none; }
 .menu[data-page="results"][data-outcome="endless"] .menu-art::before { background-image: url('/endless.webp'); animation: none; }
+.menu[data-page="results"][data-outcome="detonator"] .menu-art::before { background-image: url('/detonation-win.webp'); animation: none; }
+.menu[data-page="results"][data-outcome="survivor"] .menu-art::before { background-image: url('/detonation-survive.webp'); animation: none; }
+.menu[data-page="results"][data-outcome="destroyed"] .menu-art::before { background-image: url('/detonation-loss.webp'); animation: none; }
+.menu[data-outcome="detonator"] #result-summary { background: var(--arcade-yellow); color: var(--arcade-ink); }
+.menu[data-outcome="survivor"] #result-summary { background: var(--arcade-cyan); color: var(--arcade-ink); }
+.menu[data-outcome="destroyed"] #result-summary { border-color: var(--arcade-orange); }
+#result-finale { margin: .55rem 0; font-weight: 800; font-size: .84rem; }
+.final-outcome { display: inline-block; margin-inline-start: .5rem; text-transform: uppercase; font-size: .60rem; font-weight: 800; }
 .menu-content {
   padding: clamp(1rem, 4vw, 2.25rem); min-width: 0;
   background: linear-gradient(125deg, var(--panel-sheen), var(--hud-surface) 24%);
@@ -393,6 +434,7 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px s
   .game-guide p.mouse-guide, .game-guide p.touch-guide { display: none; }
   .field-hud { grid-column: 1; box-sizing: border-box; max-width: 100%; }
   #rankings-panel { position: static; grid-column: 2; margin: .5rem 0 0; }
+  #critical-warning { position: static; grid-column: 1 / -1; justify-self: center; margin-top: .56rem; transform: none; }
 }
 @media (max-height: 470px) { .menu-art { height: 6rem; } }
 @media (max-width: 360px) {

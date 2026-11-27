@@ -14,18 +14,23 @@ const textures: Partial<Record<Cue, [number, number, number]>> = {
   arm: [1240, 0.22, 0.11], pulse: [1520, 0.37, 0.15], miss: [1110, 0.22, 0.13],
   guarded: [3680, 0.18, 0.09], core: [2860, 0.21, 0.13],
   hit: [2210, 0.26, 0.11], impact: [1210, 0.45, 0.19], fracture: [860, 0.53, 0.31],
+  'critical-explosion': [1280, .75, .32], 'critical-destroyed': [2260, .38, .16],
+  'critical-start': [1710, .22, .23], 'critical-interrupted': [1420, .24, .15],
   landing: [1200, 0.10, 0.075], splash: [1640, 0.22, 0.11],
   overheat: [540, 0.16, 0.23], corrosion: [1800, 0.22, 0.12], flux: [1850, 0.22, 0.16],
   'ambient-heat': [260, 0.18, 0.29], 'ambient-water': [1250, 0.17, 0.13],
   'ambient-acid': [645, 0.10, 0.12], 'ambient-cold': [355, 0.14, 0.27], 'ambient-flux': [1890, 0.14, 0.10],
 };
-const falling = new Set<Cue>(['pulse', 'hit', 'impact', 'fracture', 'miss', 'core', 'landing', 'splash']);
-const rising = new Set<Cue>(['energy', 'arm', 'ready']);
+const falling = new Set<Cue>(['pulse', 'hit', 'impact', 'fracture', 'miss', 'core', 'landing', 'splash',
+  'critical-explosion', 'critical-destroyed', 'critical-interrupted']);
+const rising = new Set<Cue>(['energy', 'arm', 'ready', 'critical-tick', 'critical-last']);
+const alarm = new Set<Cue>(['critical-start', 'critical-tick', 'critical-last']);
 const scrapPitch = [0, 3, 0, 5, -2, 2];
 
 export class GameAudio {
   private context?: AudioContext;
   private bus?: GainNode;
+  private alarmBus?: GainNode;
   private noise?: AudioBuffer;
   private effectsLevel = 0.45;
   private masterLevel = 0.8;
@@ -87,6 +92,11 @@ export class GameAudio {
 
   visibilityChanged(): void { this.sync(); }
 
+  stopCriticalAlarm(): void {
+    this.alarmBus?.disconnect();
+    this.alarmBus = undefined;
+  }
+
   environment(kind: HazardKind, distance: number): void {
     const context = this.context;
     if (!context || !this.playing || context.currentTime < this.nextAmbient || distance >= 330) return;
@@ -98,6 +108,14 @@ export class GameAudio {
     const ctx = this.context;
     const bus = this.bus;
     if (!ctx || !bus || ctx.state !== 'running' || bus.gain.value === 0 || document.hidden || this.active >= 10) return false;
+    let output = bus;
+    if (alarm.has(cue)) {
+      if (!this.alarmBus) {
+        this.alarmBus = ctx.createGain();
+        this.alarmBus.connect(bus);
+      }
+      output = this.alarmBus;
+    }
     const [root, milliseconds, timbre, pair] = brand.sound.cues[cue] as [number, number, OscillatorType, number];
     const duration = milliseconds / 1000;
     const now = ctx.currentTime;
@@ -112,7 +130,7 @@ export class GameAudio {
     else if (falling.has(cue)) oscillator.frequency.exponentialRampToValueAtTime(hz * 0.53, now + duration * 0.87);
     else if (pair) oscillator.frequency.setValueAtTime(hz * 2 ** (brand.sound.interval / 12), now + duration * 0.44);
     this.envelope(envelope, now, duration, level, cue === 'arm' ? 0.52 : 0.035);
-    oscillator.connect(envelope).connect(bus);
+    oscillator.connect(envelope).connect(output);
     oscillator.start(now);
     oscillator.stop(now + duration);
     this.active++;
@@ -134,20 +152,20 @@ export class GameAudio {
       filter.Q.value = 1.25;
       if (falling.has(cue)) filter.frequency.exponentialRampToValueAtTime(cut * 0.38, now + life);
       this.envelope(gain, now, life, volume * level, cue === 'arm' ? 0.47 : 0.041);
-      noise.connect(filter).connect(gain).connect(bus);
+      noise.connect(filter).connect(gain).connect(output);
       noise.start(now);
       noise.stop(now + life);
       noise.addEventListener('ended', () => { noise.disconnect(); filter.disconnect(); gain.disconnect(); }, { once: true });
     }
-    if (cue === 'gold' || cue === 'ready' || cue === 'fracture') {
+    if (cue === 'gold' || cue === 'ready' || cue === 'fracture' || cue === 'critical-explosion' || cue === 'critical-victory') {
       const metal = ctx.createOscillator();
       const ring = ctx.createGain();
       const start = now + duration * (cue === 'fracture' ? 0.16 : 0.25);
       const time = duration * 0.74;
       metal.type = cue === 'fracture' ? 'triangle' : 'sine';
-      metal.frequency.value = hz * (cue === 'fracture' ? 4.35 : 3.01);
+      metal.frequency.value = hz * (cue === 'critical-explosion' ? 11.2 : cue === 'fracture' ? 4.35 : 3.01);
       this.envelope(ring, start, time, level * 0.32, 0.055);
-      metal.connect(ring).connect(bus);
+      metal.connect(ring).connect(output);
       metal.start(start);
       metal.stop(start + time);
       metal.addEventListener('ended', () => { metal.disconnect(); ring.disconnect(); }, { once: true });

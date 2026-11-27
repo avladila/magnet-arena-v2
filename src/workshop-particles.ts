@@ -94,7 +94,7 @@ export class WorkshopParticles {
     this.scatter(point, frames[role], count, milliseconds, heading, fan);
   }
 
-  collect(item: Collection, magnet: Participant): void {
+  collect(item: Collection, magnet: Participant, reinforced = false): void {
     if (!this.enabled) return;
     if (item.kind === 'energy') {
       const f = this.emit(frames.energy, item.x, item.y, brand.motion.energy, 'streak');
@@ -106,7 +106,8 @@ export class WorkshopParticles {
     } else {
       const frame = scrapFrames[item.colorIndex];
       this.emit(frame, item.x, item.y, brand.motion.pickup, 'glint');
-      if (this.quality !== 'low') this.scatter(item, frame, 2, brand.motion.pickup);
+      if (reinforced) this.burst(item, 'gold', 3, brand.motion.pickup);
+      else if (this.quality !== 'low') this.scatter(item, frame, 2, brand.motion.pickup);
     }
   }
 

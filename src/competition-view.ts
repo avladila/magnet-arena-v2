@@ -93,7 +93,7 @@ export class CompetitionView {
     this.floor.clear();
     this.renderStructures(bounds, quality);
     this.effects.clear();
-    this.renderOpportunities(model, bounds, zoom, reducedMotion);
+    if (!model.critical?.committed) this.renderOpportunities(model, bounds, zoom, reducedMotion);
     let siteIndex = 0;
     let animated = 0;
     const motionLimit = reducedMotion ? 0 : quality === 'high' ? 16 : quality === 'balanced' ? 9 : 0;
@@ -134,7 +134,7 @@ export class CompetitionView {
     let shardIndex = 0;
     let gleams = quality === 'low' ? 7 : 14;
     let trails = quality === 'low' ? 12 : 48;
-    for (const chunk of model.salvage.chunks) {
+    for (const chunk of model.critical?.committed ? [] : model.salvage.chunks) {
       if (!visible(chunk, bounds, 55)) continue;
       const airborne = chunk.age < theftConfig.flight;
       const collectable = salvageEligible(chunk, model.player.id);
@@ -176,13 +176,17 @@ export class CompetitionView {
     this.visibleShards = shardIndex;
     let greatestImpact = 0;
     for (const [index, participant] of model.participants.entries()) {
+      if (model.critical?.committed) {
+        this.damageLabels[index].text.setVisible(false);
+        continue;
+      }
       greatestImpact = Math.max(greatestImpact, this.renderDamage(index, participant, seconds, zoom, bounds, reducedMotion, quality));
       this.renderAttackMark(index, participant, model.participants, bounds, seconds, zoom, reducedMotion);
       const attack = participant.combat.attack;
       if (!visible(participant.position, bounds, theftConfig.reach + participant.radius)) continue;
       if (attack.phase === 'armed') this.cone(participant, participant === model.player ? aim : participant.heading, zoom, reducedMotion);
       if (attack.phase === 'warning') this.cone(participant, attack.bearing, zoom, reducedMotion, attack.remaining);
-      if (participant.combat.energy === theftConfig.energy && attack.phase !== 'cooldown') {
+      if (!participant.combat.attackBlocked && participant.combat.energy === theftConfig.energy && attack.phase !== 'cooldown') {
         const { x, y } = participant.position;
         if (reducedMotion) this.effects.lineStyle(2, yellow, 0.86).strokeCircle(x, y, participant.radius + 8);
         else this.jaggedWave(x, y, participant.heading, 0.42, participant.radius + 8, 5, 2, 0.83, 6);
@@ -214,7 +218,7 @@ export class CompetitionView {
         }
       }
     }
-    const signal = model.signal;
+    const signal = model.critical?.warning ? undefined : model.signal;
     if (!signal || !visible(signal, bounds, 160)) return;
     const { x, y } = signal;
     this.floor.fillStyle(yellow, 0.12).fillCircle(x, y, 126);

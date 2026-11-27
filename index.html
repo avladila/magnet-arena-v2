@@ -30,6 +30,11 @@
           <label for="energy">Energy <span id="energy-readout">0%</span></label>
           <strong id="energy-ready" hidden>READY</strong>
           <progress id="energy" value="0" max="100"></progress>
+          <div id="critical-progress" hidden>
+            <label for="critical-meter">Critical Mass <span id="critical-mass-amount"></span></label>
+            <progress id="critical-meter" value="0"></progress>
+            <strong id="overload-stage"></strong>
+          </div>
           <div id="status"></div>
           <div id="salvage-reward"></div>
           <div id="salvage-signal"></div>
@@ -43,6 +48,11 @@
           <div id="rank-event" role="status"></div>
           <button id="rankings-toggle" type="button" aria-controls="ranking" aria-expanded="false">Full rankings</button>
         </div>
+        <aside id="critical-warning" hidden>
+          <div class="critical-alarm"><strong id="critical-title" role="status"></strong><b id="critical-count"></b></div>
+          <div id="critical-threat"></div>
+          <div id="critical-direction"></div>
+        </aside>
       </header>
       <div class="map-hud">
         <button id="map-toggle" type="button" aria-expanded="false" aria-controls="minimap" hidden>Map</button>
@@ -78,6 +88,8 @@
           <p>Scrap adds mass. Gold adds ten. Red energy charges Magnetic Theft. With a full charge, hold Space or Attack to aim and release to fire.</p>
           <p>Large magnets lose more of their diameter when hit. Anyone can contest the salvage after it lands. The damaged magnet has a brief theft guard and can reclaim its own salvage after five seconds.</p>
           <p>Keep clear of Flux Spikes as you grow. Heat weakens your field, water and acid corrode your shell, and cryogenic vents make you brittle.</p>
+          <p id="critical-help"></p>
+          <p>During the Arena countdown, use Magnetic Theft to take the claimant below Critical Mass, or steer beyond the blast boundary. The Detonator wins, and anyone who escapes the wave earns survival points. The five-minute mass ranking still decides a match without a detonation.</p>
           <div class="menu-actions"><button data-action="tutorial">Play Tutorial</button><button data-action="back">Back</button></div>
         </div>
         <div id="menu-settings" hidden>
@@ -104,6 +116,7 @@
         </div>
         <div id="menu-results" hidden>
           <p id="result-summary"></p>
+          <div id="result-finale" hidden></div>
           <h3 class="section-heading">Final rankings</h3>
           <ol id="result-ranking" aria-label="Final ranking" tabindex="0"></ol>
           <div id="result-stats"></div>

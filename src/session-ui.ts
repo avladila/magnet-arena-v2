@@ -1,11 +1,12 @@
 import { brand } from './brand';
 import type { ArenaModel } from './arena-model';
-import { matchConfig } from './competition-config';
+import { criticalMassConfig, matchConfig, overloadLabels, overloadStage } from './competition-config';
 import type { GameAudio } from './audio';
 import { RankFeedback, rankings, type Difficulty, type MatchClock, type Mode } from './match';
+import type { DetonationOutcome, MatchResult } from './match-result';
 import type { WorldBounds } from './particles';
 import { Navigation } from './navigation';
-import { clearProgress, loadProgress, saveProgress, type Quality } from './progress';
+import { clearProgress, loadProgress, recordMatch, saveProgress, type Quality } from './progress';
 
 export function element<T extends HTMLElement = HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
@@ -18,7 +19,11 @@ const formatTime = (seconds: number) => {
 const pages = ['home', 'help', 'settings', 'reset', 'pause', 'leave', 'results'] as const;
 type Page = typeof pages[number];
 const attackLabel = { unavailable: 'Attack', charging: 'Charging', ready: 'Ready', armed: 'Release',
-  release: 'Firing', firing: 'Firing', cooling: 'Cooling' } as const;
+  release: 'Firing', firing: 'Firing', cooling: 'Cooling', locked: 'Locked' } as const;
+const comma = new Intl.NumberFormat('en-US');
+const endTitles: Record<DetonationOutcome, string> = {
+  detonator: 'CRITICAL MASS VICTORY', survivor: 'YOU SURVIVED', destroyed: 'DESTROYED BY THE SHOCKWAVE',
+};
 
 export class SessionUI {
   private readonly dialog = element<HTMLDialogElement>('menu');
@@ -39,14 +44,20 @@ export class SessionUI {
   private salvageNotice?: { value: number; own: number; latest: number };
   private readonly navigation = new Navigation();
   private changeDifficulty = false;
+  private dangerSerial?: number;
+  private progressMass = -1;
 
   constructor(private readonly audio: GameAudio, actions: {
     start: (mode: Mode, difficulty: Difficulty) => void;
     resetInput: () => void;
     end: () => void;
     toggleTheme: () => void;
+    leave: () => void;
   }) {
     this.syncSettings();
+    element('critical-help').textContent = `Physical growth tops out at 12×. Keep collecting to reach Ultimate Form at ${comma.format(criticalMassConfig.ultimate)} mass. ` +
+      `In Arena, ${comma.format(criticalMassConfig.threshold)} current mass locks the leader in place for a ${criticalMassConfig.countdown}-second detonation countdown. ` +
+      `The blast reaches ${comma.format(criticalMassConfig.radius)} world units from its center. Endless keeps Ultimate Form and lets you keep collecting.`;
     this.dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
       if (this.page === 'pause') this.resume();
@@ -71,6 +82,8 @@ export class SessionUI {
         this.lastHud = -Infinity;
         this.ranks = new RankFeedback();
         this.rankNoticeUntil = 0;
+        this.dangerSerial = undefined;
+        this.progressMass = -1;
         element('rank-event').textContent = '';
         element('rank-record').textContent = '';
         this.resultDetails ??= import('./result-stats').catch(() => undefined);
@@ -80,6 +93,7 @@ export class SessionUI {
       else if (action === 'help' || action === 'settings' || action === 'reset' || action === 'leave') this.show(action);
       else if (action === 'back') this.back();
       else if (action === 'home' || action === 'change') {
+        actions.leave();
         this.duringSession = false;
         this.changeDifficulty = action === 'change';
         this.setGameVisible(false);
@@ -193,7 +207,9 @@ export class SessionUI {
       punctuation.textContent = '.';
       this.title.append(punctuation);
       element('tutorial-start').textContent = this.progress.tutorialDone ? 'Tutorial' : 'Learn to Play';
-      element('records').textContent = 'Best mass   Arena ' + this.progress.arenaMass + '   ·   Endless ' + this.progress.endlessMass;
+      element('records').textContent = 'Best mass   Arena ' + this.progress.arenaMass + '   ·   Endless ' + this.progress.endlessMass +
+        (this.progress.criticalVictories || this.progress.survivedDetonations
+          ? '   ·   Detonations ' + this.progress.criticalVictories + '   ·   Survived ' + this.progress.survivedDetonations : '');
     }
     if (page === 'settings') element<HTMLInputElement>('dark').checked = document.documentElement.dataset.theme === 'dark';
     element('skip-tutorial').hidden = this.mode !== 'tutorial';
@@ -210,6 +226,7 @@ export class SessionUI {
     element('countdown').hidden = true;
     element('map-toggle').hidden = !visible;
     if (!visible) {
+      element('critical-warning').hidden = true;
       element('minimap').hidden = true;
       element('map-toggle').setAttribute('aria-expanded', 'false');
     }
@@ -217,6 +234,7 @@ export class SessionUI {
 
   private pause(reset: () => void) {
     reset();
+    this.audio.stopCriticalAlarm();
     this.show('pause');
   }
 
@@ -254,10 +272,14 @@ export class SessionUI {
   hud(model: ArenaModel, clock: MatchClock, now: number, bounds: WorldBounds) {
     const { combat, mass, position } = model.player;
     this.writeText('mass', String(mass));
-    this.writeText('clock', clock.mode === 'arena' ? formatTime(matchConfig.duration - clock.elapsed) : clock.mode === 'tutorial' ? 'Training' : 'Endless');
+    const critical = model.critical;
+    const warning = critical?.warning;
+    const interruption = this.renderCritical(model, clock, bounds);
+    this.writeText('clock', critical?.committed ? 'Shockwave' : clock.mode === 'arena' ?
+      formatTime(matchConfig.duration - clock.elapsed) : clock.mode === 'tutorial' ? 'Training' : 'Endless');
     const countdown = element('countdown');
     const remaining = matchConfig.duration - clock.elapsed;
-    const message = clock.countdown > 0 ? String(Math.ceil(clock.countdown)) :
+    const message = warning ? '' : clock.countdown > 0 ? String(Math.ceil(clock.countdown)) :
       clock.mode === 'arena' && clock.elapsed < 0.85 ? 'GO' :
       clock.mode === 'arena' && remaining > 59 && remaining <= 60 ? 'FINAL MINUTE' :
       clock.mode === 'arena' && remaining <= 10 && remaining > 0 ? String(Math.ceil(remaining)) : '';
@@ -275,12 +297,13 @@ export class SessionUI {
       meter.value = combat.energy;
     }
     this.writeText('energy-readout', combat.energy + '%');
-    const attack = element('attack');
-    const ready = combat.energy === 100 && combat.attack.phase === 'idle';
-    const attackState = clock.countdown > 0 ? 'unavailable' : combat.attack.phase === 'armed' ? 'armed'
+    const attack = element<HTMLButtonElement>('attack');
+    const ready = !combat.attackBlocked && combat.energy === 100 && combat.attack.phase === 'idle';
+    const attackState = combat.attackBlocked ? 'locked' : clock.countdown > 0 ? 'unavailable' : combat.attack.phase === 'armed' ? 'armed'
       : combat.attack.phase === 'warning' ? (combat.attack.remaining > 0.125 ? 'release' : 'firing')
         : combat.attack.phase === 'cooldown' ? 'cooling' : ready ? 'ready' : 'charging';
     if (attack.dataset.state !== attackState) {
+      attack.disabled = attackState === 'locked';
       attack.dataset.ready = String(ready || combat.attack.phase === 'armed' || combat.attack.phase === 'warning');
       attack.dataset.state = attackState;
       this.writeText('attack', attackLabel[attackState]);
@@ -295,7 +318,7 @@ export class SessionUI {
       this.progress.tutorialDone = true;
       saveProgress(this.progress);
     }
-    const signal = model.signal;
+    const signal = warning ? undefined : model.signal;
     const signalHud = element('salvage-signal');
     const offscreen = signal && (signal.x < bounds.left || signal.x > bounds.right || signal.y < bounds.top || signal.y > bounds.bottom);
     let tip = '';
@@ -313,11 +336,16 @@ export class SessionUI {
     this.writeText('salvage-reward', reward && clock.elapsed - reward.latest < 1.25
       ? 'SALVAGE SECURED +' + reward.value + (reward.own > 0 && reward.own < reward.value ? ' · ' + reward.own + ' yours' : '') : '');
     this.writeText('status', [
+      warning && interruption ? `DETONATION INTERRUPTED${interruption.detail ? ' · ' + interruption.detail : ''}` : '',
       this.feedback && this.feedback.until > now ? this.feedback.label : '',
       combat.guardFor > 0 ? 'THEFT GUARD' : '',
       combat.heat >= 1 ? 'OVERHEATED' : combat.heat > 0 ? 'Heat ' + Math.round(combat.heat * 100) + '%' : '',
       combat.brittle ? 'BRITTLE' : '', combat.corrosion === 'acid' ? 'Acid corrosion' : combat.corrosion ? 'Water corrosion' : '',
     ].filter(Boolean).join(' · '));
+    if (warning?.serial !== this.dangerSerial) {
+      this.dangerSerial = warning?.serial;
+      this.lastHud = -Infinity;
+    }
     if (now - this.lastHud > 180) {
       this.lastHud = now;
       this.navigation.render(model, bounds);
@@ -350,12 +378,57 @@ export class SessionUI {
     }
   }
 
+  private renderCritical(model: ArenaModel, clock: MatchClock, bounds: WorldBounds) {
+    const { critical, player } = model;
+    element('critical-progress').hidden = !critical;
+    const banner = element('critical-warning');
+    if (!critical) { banner.hidden = true; return; }
+    const meter = element<HTMLProgressElement>('critical-meter');
+    if (this.progressMass !== player.mass || meter.max !== critical.rules.threshold) {
+      this.progressMass = player.mass;
+      meter.max = critical.rules.threshold;
+      meter.value = Math.min(player.mass, meter.max);
+      this.writeText('critical-mass-amount', `${comma.format(player.mass)} / ${comma.format(meter.max)}`);
+      const stage = overloadStage(player.mass, critical.rules);
+      meter.dataset.stage = stage;
+      this.writeText('overload-stage', stage === 'standard' ? '' : overloadLabels[stage].toUpperCase());
+    }
+    const { claim, blast, warning } = critical;
+    const last = critical.interruptions.at(-1);
+    const interrupted = last && clock.elapsed - last.at < 2.2 ? last : undefined;
+    const attacker = interrupted?.attackerId && model.participants.find(p => p.id === interrupted.attackerId);
+    const detail = attacker ? `Stopped by ${attacker.name}` : interrupted?.cause === 'hazard' ? 'Hazard damage' : '';
+    banner.hidden = !warning && !interrupted;
+    if (banner.hidden) return;
+    banner.dataset.phase = claim ? 'countdown' : blast ? 'shockwave' : 'interrupted';
+    const actor = claim?.actor ?? blast?.winner;
+    const inBlast = warning && Math.hypot(player.position.x - warning.center.x, player.position.y - warning.center.y) -
+      player.radius <= critical.rules.radius;
+    this.writeText('critical-title', claim ? 'CRITICAL MASS REACHED' : blast ? (critical.destroyed(player)
+      ? 'DESTROYED BY THE SHOCKWAVE' : 'SHOCKWAVE') : 'DETONATION INTERRUPTED');
+    this.writeText('critical-count', claim ? (Math.ceil(claim.remaining * 10 - 1e-8) / 10).toFixed(1) + ' s' : '');
+    this.writeText('critical-threat', actor ? (claim ? (actor === player ? 'YOU ARE ABOUT TO DETONATE' : `${actor.name} IS ABOUT TO DETONATE`)
+      : `${actor.name} DETONATED`) +
+      (actor !== player && inBlast && !critical.destroyed(player) ? ' · ESCAPE THE BLAST' : '')
+      : detail);
+    const direction = element('critical-direction');
+    const center = warning?.center;
+    const offscreen = center && (center.x < bounds.left || center.x > bounds.right || center.y < bounds.top || center.y > bounds.bottom);
+    direction.toggleAttribute('data-offscreen', Boolean(offscreen));
+    if (offscreen && center) {
+      const dx = center.x - player.position.x, dy = center.y - player.position.y;
+      direction.style.setProperty('--critical-bearing', Math.atan2(dy, dx) * 180 / Math.PI + 'deg');
+      this.writeText('critical-direction', `${comma.format(Math.round(Math.hypot(dx, dy)))} units to blast center`);
+    } else this.writeText('critical-direction', '');
+    return interrupted && { detail };
+  }
+
   private writeText(id: string, text: string): void {
     const target = element(id);
     if (target.textContent !== text) target.textContent = text;
   }
 
-  private list(id: string, rows: ReturnType<typeof rankings>) {
+  private list(id: string, rows: readonly { place: number; participant: { kind: string; name: string; mass: number; outcome?: DetonationOutcome } }[]) {
     element(id).replaceChildren(...rows.map(({ place, participant }) => {
       const row = document.createElement('li');
       const rank = document.createElement('span');
@@ -364,38 +437,43 @@ export class SessionUI {
       rank.textContent = String(place);
       name.textContent = participant.name;
       mass.textContent = String(participant.mass);
+      if (participant.outcome) {
+        const outcome = document.createElement('small');
+        outcome.className = 'final-outcome';
+        outcome.textContent = participant.outcome;
+        row.dataset.outcome = participant.outcome;
+        name.append(outcome);
+      }
       if (participant.kind === 'player') row.className = 'is-player';
       row.append(rank, name, mass);
       return row;
     }));
   }
 
-  results(model: ArenaModel, clock: MatchClock) {
-    const { player } = model;
-    const place = rankings(model.participants).find(({ participant }) => participant === player)!.place;
-    const record = clock.mode === 'arena' ? 'arenaMass' : 'endlessMass';
-    const best = player.combat.highest > this.progress[record];
-    this.progress[record] = Math.max(this.progress[record], player.combat.highest);
-    if (clock.mode === 'arena') {
-      this.progress.placement = Math.min(place, this.progress.placement || Infinity);
-      this.progress.completed++;
-      if (place === 1) this.progress.victories++;
-    }
-    this.progress.collected += player.combat.resourceMass + player.combat.salvage;
-    saveProgress(this.progress);
+  results(result: MatchResult) {
+    const player = result.standings.find(({ kind }) => kind === 'player')!;
+    const { place, outcome } = player;
+    const best = recordMatch(this.progress, result);
+    if (best === undefined) return;
     this.duringSession = false;
     this.setGameVisible(false);
     this.show('results');
-    this.dialog.dataset.outcome = clock.mode === 'endless' ? 'endless' : place === 1 ? 'victory' : 'defeat';
-    const summary = clock.mode === 'endless' ? 'Endless session' :
+    this.dialog.dataset.outcome = outcome ?? (result.mode === 'endless' ? 'endless' : place === 1 ? 'victory' : 'defeat');
+    const summary = outcome ? endTitles[outcome] : result.mode === 'endless' ? 'Endless session' :
       place === 1 ? 'Victory' : place === 2 ? 'Second place' : place === 3 ? 'Third place' : 'Place ' + place;
     element('result-summary').textContent = summary + ' · ' + player.mass + ' mass' + (best ? ' · Personal best' : '');
-    this.list('result-ranking', rankings(model.participants));
+    const finale = element('result-finale');
+    finale.hidden = result.cause !== 'detonation';
+    const winner = result.standings.find(({ id }) => id === result.winnerId);
+    finale.textContent = result.detonation ? `${winner?.name ?? ''} detonated · ${result.detonation.destroyed} destroyed · ${result.detonation.survived} survived` +
+      (player.survivalPoints ? ` · +${comma.format(player.survivalPoints)} SURVIVAL POINTS` : '') : '';
+    this.list('result-ranking', result.standings.map(participant => ({ place: participant.place, participant })));
     element('result-ranking').scrollTop = 0;
     const stats = element('result-stats');
     stats.replaceChildren();
     void this.resultDetails?.then((details) => {
-      if (details) details.renderResultStats(stats, player, model.bestPlace);
+      if (this.page !== 'results') return;
+      if (details) details.renderResultStats(stats, player, result);
       else {
         const list = document.createElement('dl');
         const label = document.createElement('dt');
@@ -406,7 +484,9 @@ export class SessionUI {
         stats.replaceChildren(list);
       }
     });
-    if (best) this.audio.play('best');
-    else this.audio.play(clock.mode === 'arena' ? (place === 1 ? 'victory' : 'defeat') : 'results');
+    if (outcome === 'detonator') this.audio.play('critical-victory');
+    else if (outcome === 'survivor') this.audio.play('critical-survive');
+    else if (best && !outcome) this.audio.play('best');
+    else this.audio.play(result.mode === 'arena' ? (place === 1 ? 'victory' : 'defeat') : 'results');
   }
 }

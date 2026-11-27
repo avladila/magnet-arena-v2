@@ -4,8 +4,9 @@ from PIL import Image
 from arcade_art import CHARACTER_TILE, PERSONALITIES, Pen, tone
 
 FACE_TILE = 56
-MOODS = ('relaxed', 'curious', 'excited', 'satisfied', 'worried', 'frightened',
-         'aggressive', 'shocked', 'injured', 'overheated', 'frozen', 'corroded')
+BASE_MOODS = ('relaxed', 'curious', 'excited', 'satisfied', 'worried', 'frightened',
+              'aggressive', 'shocked', 'injured', 'overheated', 'frozen', 'corroded')
+MOODS = BASE_MOODS + ('manic', 'nervous', 'strained', 'panic')
 
 # Eye opening, brow height, inner brow raise and pupil size. The mouth uses the same mood key.
 EYE_ACTING = {
@@ -15,6 +16,8 @@ EYE_ACTING = {
     'aggressive': (.73, -.35, -2.4, .94), 'shocked': (1.35, 1.0, 1.60, .58),
     'injured': (.69, -.15, 1.2, .96), 'overheated': (.83, .1, 1.1, .83),
     'frozen': (.91, .20, 1.6, .84), 'corroded': (.74, .2, -1.35, .95),
+    'manic': (1.06, 1.35, -1.05, .77), 'nervous': (1.18, .85, 1.65, .76),
+    'strained': (1.02, .45, 2.7, .70), 'panic': (1.37, 1.08, 2.5, .52),
 }
 
 
@@ -42,13 +45,15 @@ def mouth(p, index, mood, palette):
     elif mood == 'curious':
         spot((-5, 8, 4, 15), palette['ink'])
         spot((-2, 12, 2, 14), palette['rust'])
-    elif mood in ('excited', 'satisfied'):
-        bottom = 20 if mood == 'excited' else 16
+    elif mood in ('excited', 'satisfied', 'manic'):
+        bottom = 16 if mood == 'satisfied' else 20
         lip((-12, 8), [(-6,10,4,9,12,7), (13,14,7,bottom,1,bottom),
             (-6,bottom,-12,15,-12,8)])
         lip((-10, 9), [(-3,10,5,9,10,8), (8,12,1,13,-4,12), (-7,12,-9,11,-10,9)], palette['white'])
-        if mood == 'excited':
+        if mood != 'satisfied':
             spot((-3, 15, 7, 18), palette['red'])
+        if mood == 'manic':
+            p.line([moved((1, 9)), moved((1, 12))], palette['ink'], 1)
     elif mood in ('worried', 'injured', 'corroded'):
         skew = 2.7 if mood == 'corroded' else .0
         low = 17 if mood == 'injured' else 16
@@ -57,19 +62,22 @@ def mouth(p, index, mood, palette):
         if mood == 'injured':
             lip((-15, 4), [(-8,6),(-9,10),(-16,8),(-15,4)], palette['bandage'], 1.05)
             p.line([moved((-13,6)),moved((-11,7))], palette['paper'], 1.2)
-    elif mood in ('aggressive', 'frozen'):
-        skew = -2 if mood == 'aggressive' else 1
+    elif mood in ('aggressive', 'frozen', 'nervous', 'strained'):
+        skew = {'aggressive': -2, 'nervous': .5, 'strained': 2}.get(mood, 1)
         lip((-12, 10), [(-5,8,4,8,12,8+skew), (13,14+skew),
             (7,17,0,19,-8,17),(-12,16,-13,12,-12,10)])
-        center = palette['pale'] if mood == 'aggressive' else tone(palette['cyan'], palette['white'], .76)
+        center = tone(palette['cyan'], palette['white'], .76) if mood == 'frozen' else palette['pale']
         lip((-9, 11), [(-2,10,6,10,10,10+skew),(10,13+skew),
             (4,15,-3,17,-8,15),(-9,11)], center)
         for x in (-4, 2, 7):
             p.line([moved((x,10.5)),moved((x+.4,14.6))], width=1.0)
-    elif mood == 'shocked':
+    elif mood in ('shocked', 'panic'):
         spot((-8, 5, 9, 21), palette['ink'])
         spot((-4, 14, 6, 18.5), palette['red'])
         spot((-4, 7.6, 5, 10), palette['white'])
+        if mood == 'panic':
+            p.line([moved((-12, 12)), moved((-14, 14))], palette['ink'], 1.4)
+            p.line([moved((13, 9)), moved((15, 11))], palette['ink'], 1.4)
     else:
         low = 19 if mood == 'frightened' else 17
         lip((-9, 10), [(-7,5,5,5,9,10), (11,14,7,low,1,low),
@@ -89,7 +97,7 @@ def expression(index, mood, palette, pixels=FACE_TILE):
         # Personality influences proportions without changing the two-eye arrangement.
         x = side * (9.05 + (index % 4 - 1.5) * .27) - .5
         y = -7.25 + side * ((index % 5 - 2) * .31 - .45)
-        rx = 7.05 + .32 * (1 - ratio) + (.35 if mood in ('shocked', 'frightened') else 0)
+        rx = 7.05 + .32 * (1 - ratio) + (.35 if mood in ('shocked', 'frightened', 'panic') else 0)
         ry = min(11.35, (8.5 + (ratio - 1) * 3.15) * opening + side * (.72 if mood in ('curious', 'overheated') else .27))
         cx, cy = x + mid, y + mid
         white = tone(palette['white'], palette['cyan'], .15) if mood == 'frozen' else palette['white']

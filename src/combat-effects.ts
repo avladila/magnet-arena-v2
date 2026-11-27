@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { TheftImpact } from './combat-state';
+import type { Point } from './movement';
 import type { WorldBounds } from './particles';
 import type { Quality } from './progress';
 
@@ -47,6 +48,15 @@ export class FracturePlates {
   emit(impact: TheftImpact, quality: Quality): void {
     const count = Math.min(impactStyle(impact.reduction).plates,
       quality === 'low' ? 3 : quality === 'balanced' ? 10 : 14);
+    this.spray(impact.origin, impact.radius, impact.bearing, 2.2, count, 1);
+  }
+
+  explode(origin: Point, radius: number, bearing: number, quality: Quality, center: boolean): void {
+    const count = quality === 'low' ? 3 : quality === 'balanced' ? 7 : 10;
+    this.spray(origin, radius, bearing, 2 * Math.PI, center ? count * 3 : count, center ? 1.72 : 1.22);
+  }
+
+  private spray(origin: Point, radius: number, bearing: number, arc: number, count: number, scale: number): void {
     for (let i = 0; i < count; i++) {
       const frame = plateFrame[i % plateFrame.length];
       const plate = this.pool[this.next] ??= {
@@ -54,18 +64,18 @@ export class FracturePlates {
         x: 0, y: 0, vx: 0, vy: 0, roll: 0, size: 0, age: 0, life: 0,
       };
       this.next = (this.next + 1) % limit;
-      const angle = impact.bearing + ((i + 0.5) / count - 0.5) * 2.2;
+      const angle = bearing + ((i + 0.5) / count - 0.5) * arc;
       const c = Math.cos(angle);
       const s = Math.sin(angle);
-      const velocity = 96 + (i * 37 % 147) + impact.radius * 0.31;
-      plate.x = impact.origin.x + c * impact.radius * 0.70;
-      plate.y = impact.origin.y + s * impact.radius * 0.70;
+      const velocity = (96 + (i * 37 % 147) + radius * 0.31) * scale;
+      plate.x = origin.x + c * radius * 0.70;
+      plate.y = origin.y + s * radius * 0.70;
       plate.vx = c * velocity;
       plate.vy = s * velocity;
-      plate.size = 13 + (i * 9 % 20) + impact.radius * 0.086;
+      plate.size = 13 + (i * 9 % 20) + radius * 0.086;
       plate.roll = (i % 2 ? 1 : -1) * (2.1 + i * 0.14);
       plate.age = 0;
-      plate.life = 0.36 + (i % 4) * 0.055;
+      plate.life = (0.36 + (i % 4) * 0.055) * scale;
       plate.sprite.setFrame(frame);
     }
   }

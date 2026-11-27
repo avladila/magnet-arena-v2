@@ -8,6 +8,7 @@ import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 import { Heading, MagnetScale } from './view';
 import type { CharacterIntent } from './character-pose';
+import type { CriticalMass } from './critical-mass';
 import type { AttentionWorld } from './character-attention';
 
 export class BotView {
@@ -55,6 +56,8 @@ export class BotView {
     attention?: AttentionWorld,
     intent?: CharacterIntent,
     detail = true,
+    critical?: CriticalMass,
+    endless = false,
   ): void {
     const bot = this.bot;
     if (!bot) return;
@@ -63,9 +66,9 @@ export class BotView {
 
     const { x, y } = bot.position;
     const bodyRadius = playerConfig.radius * this.scale.scale;
-    const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
+    const visible = !critical?.removed(bot) && x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
-    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, attention, intent, detail);
+    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, attention, intent, detail, critical, endless);
     else {
       this.body.setVisible(visible);
       if (visible) renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);
@@ -88,7 +91,7 @@ export class BotView {
       if (box.right > view.right || top < view.top || box.bottom > view.bottom) continue;
       if (names.some((other) => box.left < other.right && box.right > other.left &&
           box.top < other.bottom && box.bottom > other.top)) continue;
-      if (participants.some((other) => other !== bot && this.bodyCovers(other, box))) continue;
+      if (participants.some((other) => other !== bot && !critical?.removed(other) && this.bodyCovers(other, box))) continue;
       this.labelSide = side;
       names.push(box);
       this.label.setPosition(labelX, top).setScale(1 / zoom).setVisible(true);

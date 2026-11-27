@@ -21,7 +21,7 @@ type Resource = { kind: ResourceKind; scrap: Scrap; generation: number } | { kin
 export type AttentionTarget = Rival | Resource;
 export type Observation = { target: AttentionTarget; point: Point; danger: boolean };
 type Choice = { target: AttentionTarget; tier: number; score: number; danger: boolean; aimed?: boolean };
-type ArenaRead = Pick<ArenaModel, 'participants' | 'particles' | 'salvage'>;
+type ArenaRead = Pick<ArenaModel, 'participants' | 'particles' | 'salvage' | 'critical'>;
 
 function pointOf(target: AttentionTarget): Point {
   if (target.kind === 'opponent') return target.actor.position;
@@ -78,13 +78,17 @@ export class AttentionWorld {
     this.visibleRivals.clear();
     this.prepared.length = 0;
     for (const actor of model.participants) {
-      if (!inside(actor.position, bounds)) continue;
+      if (!inside(actor.position, bounds) || model.critical?.removed(actor)) continue;
       const rival = this.rivals.get(actor) ?? { kind: 'opponent', actor };
       this.rivals.set(actor, rival);
       this.visibleRivals.add(actor);
       if (actor.combat.attack.phase === 'warning' || actor.combat.attack.phase === 'armed') this.prepared.push(rival);
     }
     this.liveSalvage.clear();
+    if (model.critical?.committed) {
+      this.bins.clear();
+      return;
+    }
     for (const chunk of model.salvage.chunks) this.liveSalvage.add(chunk);
     this.refresh -= seconds;
     if (this.refresh > 0) return;
@@ -116,6 +120,10 @@ export class AttentionWorld {
   }
 
   imminent(observer: Participant): Choice | undefined {
+    const claimant = this.model?.critical?.claim?.actor;
+    if (claimant && claimant !== observer && this.visibleRivals.has(claimant) && this.inDetonationArea(observer, claimant)) {
+      return this.opponent(observer, this.rivals.get(claimant)!, gapBetween(observer, claimant));
+    }
     let best: Choice | undefined;
     for (const target of this.prepared) {
       if (observer === target.actor || observer.combat.guardFor > 1e-9) continue;
@@ -135,7 +143,7 @@ export class AttentionWorld {
       if (observer === actor) continue;
       const target = this.rivals.get(actor)!;
       const gap = gapBetween(observer, actor);
-      if (gap > awareness) continue;
+      if (gap > awareness && !this.inDetonationArea(observer, actor)) continue;
       const candidate = this.opponent(observer, target, gap);
       if (better(candidate, best)) best = candidate;
       if ((ownAttack === 'armed' || ownAttack === 'warning') && actor.combat.guardFor <= 1e-9 && this.inCone(observer, actor, gap)) {
@@ -169,9 +177,12 @@ export class AttentionWorld {
     if (target.kind === 'opponent') {
       if (!this.visibleRivals.has(target.actor)) return;
       const gap = gapBetween(observer, target.actor);
-      if (gap <= (retained ? exitAwareness : awareness)) return this.opponent(observer, target, gap);
+      if (gap <= (retained ? exitAwareness : awareness) || this.inDetonationArea(observer, target.actor)) {
+        return this.opponent(observer, target, gap);
+      }
       return;
     }
+    if (this.model?.critical?.committed) return;
     const gap = Math.max(0, Math.hypot(point.x - observer.position.x, point.y - observer.position.y) - observer.radius);
     if (gap > resourceReach + (retained ? 70 : 0)) return;
     if (target.kind === 'salvage') {
@@ -185,6 +196,8 @@ export class AttentionWorld {
 
   private opponent(observer: Participant, target: Rival, gap: number): Choice {
     const rival = target.actor;
+    if (this.inDetonationArea(observer, rival)) return { target, tier: 10, score: 1, danger: true };
+    const rules = this.model?.critical?.rules;
     const phase = rival.combat.attack.phase;
     const preparing = phase === 'warning' || phase === 'armed';
     const charged = rival.combat.energy >= theftConfig.energy;
@@ -192,8 +205,18 @@ export class AttentionWorld {
     const incoming = preparing && loss > 0 && this.inCone(rival, observer, gap);
     const threat = loss > 0 && (incoming || charged && phase !== 'cooldown' &&
       (gap <= theftConfig.reach || gap <= concern && loss >= Math.max(12, observer.mass * 0.06) && this.closingIn(rival, observer)));
-    const tier = incoming ? (phase === 'warning' ? 9 : 8) : threat ? 7 : preparing ? 6 : charged ? 5 : 4;
-    return { target, tier, score: (1 + Math.min(0.2, loss / observer.mass)) / (200 + gap), danger: threat };
+    const unstable = rules && rival.mass >= rules.severe && gap <= concern;
+    const tier = incoming ? (phase === 'warning' ? 9 : 8) : threat || unstable ? 7 : preparing ? 6 : charged ? 5 : 4;
+    return { target, tier, score: (1 + Math.min(0.2, loss / observer.mass)) / (200 + gap), danger: threat || Boolean(unstable) };
+  }
+
+  private inDetonationArea(observer: Participant, rival: Participant): boolean {
+    const critical = this.model?.critical;
+    const claim = critical?.claim;
+    if (!critical || claim?.actor !== rival) return false;
+    const dx = observer.position.x - claim.center.x;
+    const dy = observer.position.y - claim.center.y;
+    return dx * dx + dy * dy <= (critical.rules.radius + observer.radius) ** 2;
   }
 
   private closingIn(rival: Participant, observer: Participant): boolean {

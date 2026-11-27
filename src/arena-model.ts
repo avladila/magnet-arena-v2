@@ -1,14 +1,17 @@
 import { angleBetween, arm, bearingTo, cancelArm, forecastTheft, gapBetween, release, resolveTheft,
   Salvage, salvageEligible, shell, type CombatRules, type Debris } from './combat';
-import { activityConfig, botTactics, navigationConfig, tacticsConfig, theftConfig } from './competition-config';
+import { activityConfig, botTactics, navigationConfig, tacticsConfig, theftConfig, type CriticalOverrides } from './competition-config';
 import { ArenaActivity, type Hotspot, type SalvageSignal } from './arena-activity';
+import { CriticalMass } from './critical-mass';
+import { CriticalTactics } from './critical-tactics';
 import { playerConfig, populationConfig, resourceBudget } from './config';
 import { attractionReach, physicalScaleForMass } from './growth';
-import { Hazards } from './hazards';
+import { Hazards, type Hazard } from './hazards';
 import { pullMultiplier, type Attack } from './combat-state';
 import { debrisPullSpeed, debrisRadius } from './salvage';
 import { Tutorial } from './tutorial';
-import { placeOf, rankings, type Difficulty } from './match';
+import { placeOf, rankings, type Difficulty, type Mode } from './match';
+import { ordinaryResult, type MatchResult } from './match-result';
 import type { Point } from './movement';
 import { advanceAttraction, AttractionGrid, type AttractionResult } from './attraction';
 import { BotAI } from './bot-ai';
@@ -36,6 +39,7 @@ type BotTactics = {
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const noHotspots: readonly Hotspot[] = [];
+const noHazards: readonly Hazard[] = [];
 
 export class ArenaModel {
   readonly player = createPlayer();
@@ -49,6 +53,10 @@ export class ArenaModel {
   readonly hazards?: Hazards;
   readonly combatRules: CombatRules;
   readonly tutorial?: Tutorial;
+  readonly mode?: Mode;
+  readonly critical?: CriticalMass;
+  private readonly criticalTactics?: CriticalTactics;
+  private matchResult?: MatchResult;
   bestPlace?: number;
   private readonly activity?: ArenaActivity;
   private elapsed = 0;
@@ -60,7 +68,13 @@ export class ArenaModel {
   private readonly kindOf = (scrap: Scrap) => this.particles.kind(scrap);
 
   constructor(seed: number, private readonly difficulty?: Difficulty, tutorial = false,
-      options: { participantCount?: number; combat?: CombatRules } = {}) {
+      options: { participantCount?: number; combat?: CombatRules; mode?: Mode; critical?: false | CriticalOverrides } = {}) {
+    tutorial ||= options.mode === 'tutorial';
+    this.mode = tutorial ? 'tutorial' : options.mode;
+    if (this.mode === 'arena' && options.critical !== false) {
+      this.critical = new CriticalMass(options.critical);
+      this.criticalTactics = new CriticalTactics();
+    }
     const count = tutorial ? populationConfig.tutorial
       : options.participantCount ?? (difficulty ? populationConfig.competitive : populationConfig.legacy);
     this.bots = createBots(seed, Math.max(0, count - 1));
@@ -82,6 +96,8 @@ export class ArenaModel {
   get hotspots() { return this.activity?.hotspots ?? noHotspots; }
 
   botIntent(bot: Bot): 'escape' | 'pursuit' | undefined {
+    const endgame = this.critical && this.criticalTactics?.intent(bot, this.critical);
+    if (endgame) return endgame;
     const state = this.tactics.get(bot);
     if (state?.retreat || state?.dodge) return 'escape';
     if (state?.pursuing) return 'pursuit';
@@ -89,12 +105,23 @@ export class ArenaModel {
 
   step(steering: Steering, seconds: number): AttractionResult | undefined {
     if (!(seconds > 0) || !Number.isFinite(seconds)) return;
+    const critical = this.critical;
+    if (this.matchResult || critical?.finished) return;
+    if (critical?.committed) {
+      critical.advanceWave(this.participants, seconds, (actor, dt) => {
+        advance(actor, actor.kind === 'player' ? steering : this.endgameSteering(actor as Bot, dt) ?? { kind: 'idle' }, dt);
+      });
+      return;
+    }
+    const claimant = critical?.claim?.actor;
+    const hazardLoss = claimant?.combat.lostToHazards;
+    let attackerId: string | undefined;
     if (!this.tutorial) this.elapsedSinceReplenish += seconds;
     if (!this.tutorial) {
       this.botAI.update(this.bots, this.particles.slots, seconds, this.difficulty, this.populated ? this.kindOf : undefined,
         this.difficulty && this.populated ? this.participants : undefined);
     }
-    advance(this.player, steering, seconds);
+    if (claimant !== this.player) advance(this.player, steering, seconds);
     this.elapsed += seconds;
     if (!this.tutorial) {
       if (this.difficulty) {
@@ -104,11 +131,20 @@ export class ArenaModel {
           this.nextRanking = this.elapsed + navigationConfig.evaluationSeconds;
         }
       }
-      for (const bot of this.bots) advance(bot, this.botSteering(bot, seconds), seconds);
+      for (const bot of this.bots) if (bot !== claimant) {
+        advance(bot, this.endgameSteering(bot, seconds) ?? this.botSteering(bot, seconds), seconds);
+      }
     }
     if (this.hazards) {
       this.salvage.step(this.tutorial ? [this.player] : this.participants, seconds);
-      resolveTheft(this.participants, this.salvage, seconds, this.combatRules);
+      resolveTheft(this.participants, this.salvage, seconds, this.combatRules, claimant && critical ? (victim, before, credits) => {
+        if (victim !== claimant || before < critical.rules.threshold || victim.mass >= critical.rules.threshold) return;
+        let largest = 0;
+        for (const credit of credits) if (credit.value > largest) {
+          attackerId = credit.id;
+          largest = credit.value;
+        }
+      } : undefined);
       this.hazards.step(this.participants, this.salvage, seconds);
     }
     this.tutorial?.step();
@@ -116,6 +152,27 @@ export class ArenaModel {
     if (this.difficulty && !this.tutorial && this.player.mass > playerConfig.initialMass && this.bestPlace !== 1) {
       const place = placeOf(this.player, this.participants);
       if (place !== undefined && (this.bestPlace === undefined || place < this.bestPlace)) this.bestPlace = place;
+    }
+    critical?.afterStep(this.participants, seconds, this.elapsed, this.bestPlace,
+      claimant ? { attackerId, hazard: claimant.combat.lostToHazards !== hazardLoss } : undefined);
+    return result;
+  }
+
+  finish(mode: Mode, elapsed: number): MatchResult | undefined {
+    if (this.matchResult) return this.matchResult;
+    this.matchResult = this.critical ? this.critical.finishTimeout(this.participants, elapsed, this.bestPlace)
+      : ordinaryResult(mode, this.participants, elapsed, this.bestPlace);
+    return this.matchResult;
+  }
+
+  private endgameSteering(bot: Bot, seconds: number): Steering | undefined {
+    if (!this.critical?.warning) return;
+    const result = this.criticalTactics?.steer(bot, this.critical, this.hazards?.sites ?? noHazards,
+      this.difficulty ?? 'normal', this.combatRules, seconds);
+    if (result) {
+      const state = this.tactics.get(bot)!;
+      state.fireAt = undefined;
+      state.armedFor = undefined;
     }
     return result;
   }
@@ -400,7 +457,7 @@ export class ArenaModel {
   }
 
   replenish(view: WorldBounds): void {
-    if (this.tutorial) return;
+    if (this.tutorial || this.matchResult || this.critical?.committed || this.critical?.finished) return;
     this.particles.replenish(this.participants, view, this.elapsedSinceReplenish, this.hotspots);
     this.elapsedSinceReplenish = 0;
   }

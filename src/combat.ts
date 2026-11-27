@@ -48,7 +48,7 @@ export function legacyTheftDamage(attacker: number, defender: number, available:
 }
 
 export function ready(participant: Participant): boolean {
-  return participant.combat.attack.phase === 'idle' && participant.combat.energy === theftConfig.energy;
+  return !participant.combat.attackBlocked && participant.combat.attack.phase === 'idle' && participant.combat.energy === theftConfig.energy;
 }
 
 export function arm(participant: Participant): boolean {
@@ -62,7 +62,7 @@ export function cancelArm(participant: Participant): void {
 }
 
 export function release(participant: Participant, bearing: number): boolean {
-  if (participant.combat.attack.phase !== 'armed' || !Number.isFinite(bearing)) return false;
+  if (participant.combat.attackBlocked || participant.combat.attack.phase !== 'armed' || !Number.isFinite(bearing)) return false;
   participant.combat.attack = { phase: 'warning', bearing, remaining: theftConfig.warning };
   return true;
 }
@@ -81,9 +81,10 @@ export function angleBetween(a: number, b: number): number {
 }
 
 type Request = { attacker: Participant; value: number; bearing: number; scale: number };
+type TheftObserver = (victim: Participant, before: number, credits: readonly { id: string; value: number }[]) => void;
 
 export function resolveTheft(participants: readonly Participant[], salvage: Salvage, seconds: number,
-    rules: CombatRules = 'impact'): void {
+    rules: CombatRules = 'impact', observe?: TheftObserver): void {
   const legacy = rules === 'legacy';
   for (const participant of participants) {
     if (participant.combat.guardFor > 0) participant.combat.guardFor = Math.max(0, participant.combat.guardFor - seconds);
@@ -130,10 +131,10 @@ export function resolveTheft(participants: readonly Participant[], salvage: Salv
   if (!damage) return;
   // Resolve in stable victim order in the impact rules. All requests used pre-hit geometry.
   const victims = legacy ? damage : [...damage].sort(([a], [b]) => a.id.localeCompare(b.id));
-  for (const [victim, requests] of victims) detachDamage(victim, requests, salvage, legacy);
+  for (const [victim, requests] of victims) detachDamage(victim, requests, salvage, legacy, observe);
 }
 
-function detachDamage(victim: Participant, requests: Request[], salvage: Salvage, legacy: boolean): void {
+function detachDamage(victim: Participant, requests: Request[], salvage: Salvage, legacy: boolean, observe?: TheftObserver): void {
   requests.sort((a, b) => a.attacker.id.localeCompare(b.attacker.id));
   let strongest = requests[0];
   if (!legacy) for (const request of requests) if (request.value > strongest.value) strongest = request;
@@ -178,5 +179,6 @@ function detachDamage(victim: Participant, requests: Request[], salvage: Salvage
   if (actual > 0) {
     victim.combat.impact = impact;
     if (!legacy) victim.combat.guardFor = theftConfig.guard;
+    observe?.(victim, impact.mass, credits);
   }
 }

@@ -1,12 +1,14 @@
 import type { Attack } from './combat-state';
 import type { Observation } from './character-attention';
+import type { OverloadStage } from './competition-config';
 import { playerConfig } from './config';
 import type { Participant } from './movement';
 
 export const expressions = ['relaxed', 'curious', 'excited', 'satisfied', 'worried', 'frightened',
-  'aggressive', 'shocked', 'injured', 'overheated', 'frozen', 'corroded'] as const;
+  'aggressive', 'shocked', 'injured', 'overheated', 'frozen', 'corroded', 'manic', 'nervous', 'strained', 'panic'] as const;
 export type Expression = typeof expressions[number];
 export type CharacterIntent = 'pursuit' | 'escape';
+const overloadMood = { ultimate: 'manic', unstable: 'nervous', severe: 'strained', critical: 'strained' } as const;
 
 const reactionSeconds = 0.4;
 const recoilSeconds = 0.22;
@@ -42,7 +44,8 @@ export class CharacterPose {
   private transition = transitionSeconds;
   private injury?: { until: number; mass: number };
 
-  update(magnet: Participant, seconds: number, reducedMotion: boolean, intent?: CharacterIntent, attention?: Observation): void {
+  update(magnet: Participant, seconds: number, reducedMotion: boolean, intent?: CharacterIntent, attention?: Observation,
+      stage: OverloadStage = 'standard', countdown?: number, escapingBlast = false): void {
     const state = magnet.combat;
     this.clock += seconds;
     const loss = state.lostToTheft + state.lostToHazards;
@@ -81,11 +84,13 @@ export class CharacterPose {
     this.moving = moving;
     let mood: Expression = 'relaxed';
     if (this.hitFor > 0) mood = 'shocked';
+    else if (countdown !== undefined) mood = 'panic';
     else if (phase === 'armed' || phase === 'warning' || this.recoilFor > 0) mood = 'aggressive';
-    else if (attention?.danger) mood = 'frightened';
+    else if (attention?.danger || escapingBlast) mood = 'frightened';
     else if (state.heat >= 0.24) mood = 'overheated';
     else if (state.brittle || state.cold >= 0.45) mood = 'frozen';
     else if (state.corrosion) mood = 'corroded';
+    else if (stage !== 'standard') mood = overloadMood[stage];
     else if (this.concernFor > 0) mood = 'worried';
     else if (this.injury) mood = 'injured';
     else if (this.pleasedFor > 0) mood = 'satisfied';
@@ -118,6 +123,10 @@ export class CharacterPose {
     } else if (phase === 'armed') {
       this.stretchX -= 0.085;
       this.stretchY += 0.052;
+    } else if (countdown !== undefined) {
+      const compression = Math.max(0, 1 - countdown / .44) * .13;
+      this.stretchX -= compression;
+      this.stretchY += compression * .55;
     } else if (this.collectFor > 0 && this.expression === 'satisfied') {
       const bounce = Math.sin(Math.PI * this.collectFor / collectingSeconds) * 0.07;
       this.stretchX += bounce;
@@ -134,7 +143,7 @@ export class CharacterPose {
 
   private transitionTo(mood: Expression, seconds: number, reducedMotion: boolean): void {
     this.faceSqueeze = 1;
-    if (mood === 'shocked' || mood === 'aggressive' || mood === 'frightened') {
+    if (mood === 'shocked' || mood === 'aggressive' || mood === 'frightened' || mood === 'panic') {
       this.transition = transitionSeconds;
       this.expression = this.nextExpression = mood;
       return;

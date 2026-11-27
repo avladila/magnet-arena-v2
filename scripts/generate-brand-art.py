@@ -4,7 +4,7 @@ from math import cos, exp, hypot, pi, sin
 from pathlib import Path
 from PIL import Image, ImageColor, ImageDraw
 from arcade_art import CHARACTER_TILE, Pen, face_mount, poster, pupil, shell, star, status_mark
-from living_faces import FACE_TILE, MOODS, blink, composed, expression
+from living_faces import BASE_MOODS, FACE_TILE, MOODS, blink, composed, expression
 from scrapyard_art import DISTRICTS, HAZARDS, HAZARD_CELS, PROPS, device, district_pad, hazard_cel
 
 tokens = json.loads(Path('brand/tokens.json').read_text())
@@ -83,6 +83,8 @@ for index, person in enumerate(people):
             faces[f'{key}-{name_of_part}'] = art
     faces[f'{name}-blink-eyes'] = blink(index, arcade)
 person_by_id = {person['id']: (index, person) for index, person in enumerate(people)}
+for index, person in enumerate(people):
+    magnets[person['id'] + '-overload'] = shell(index, 5, person['accent'], arcade, ultimate=True)
 pack('magnets', magnets, CHARACTER_TILE)
 pack('faces', faces, FACE_TILE, columns=24, trim=True)
 Path('brand/face-anchors.json').write_text(json.dumps(anchors, separators=(',', ':')) + '\n')
@@ -275,13 +277,14 @@ for index, tone in enumerate(pickups['palette']):
 pack('workshop', frames)
 
 
-def figure(id, stage, mood, pixels=CHARACTER_TILE, gaze=(.55, -.17)):
+def figure(id, stage, mood, pixels=CHARACTER_TILE, gaze=(.55, -.17), ultimate=False):
     key = f'{id}-{mood}'
     index, person = person_by_id[id]
     mount = face_mount(index, stage)
     if pixels == CHARACTER_TILE:
-        return composed(magnets[f'{id}-{stage}'], poses[key], anchors['eyes'][key], mount, arcade, gaze)
-    body = shell(index, stage, person['accent'], arcade, pixels)
+        body = magnets[id + '-overload' if ultimate else f'{id}-{stage}']
+        return composed(body, poses[key], anchors['eyes'][key], mount, arcade, gaze)
+    body = shell(index, stage, person['accent'], arcade, pixels, ultimate=ultimate)
     layers, eyes = expression(index, mood, arcade, round(FACE_TILE * pixels / CHARACTER_TILE))
     return composed(body, layers, eyes, mount, arcade, gaze)
 
@@ -313,10 +316,20 @@ with Image.open(plate_file) as plate:
                     (figure('bot-14',1,'relaxed',384), .72,.65,.73,21)],
     }.items():
         poster((960,360), figures, arcade, mood, plate, loose).save(P/(mood+'.webp'),quality=89)
+    detonation = {
+        'detonation-win': ('victory', [(figure('player',5,'manic',384,ultimate=True),.47,.53,1.19,-9),
+                                     (figure('bot-7',2,'panic',384),.78,.64,.75,27)]),
+        'detonation-survive': ('endless', [(figure('player',3,'satisfied',384),.57,.59,1.0,-20),
+                                          (figure('bot-2',5,'panic',384,ultimate=True),.22,.52,.75,21)]),
+        'detonation-loss': ('defeat', [(figure('player',2,'shocked',384),.54,.70,1.06,-32),
+                                      (figure('bot-16',5,'strained',384,ultimate=True),.78,.39,.64,27)]),
+    }
+    for name, (mood, figures) in detonation.items():
+        poster((960,360), figures, arcade, mood, plate, loose).save(P/(name+'.webp'),quality=89)
 
 E.mkdir(parents=True, exist_ok=True)
 
-def contact_sheet(name, columns, width, height, frames_list, backdrop):
+def contact_sheet(name, columns, width, height, frames_list, backdrop, directory=E):
     rows = (len(frames_list)+columns-1)//columns
     sheet = Image.new('RGB', (columns*width, 38+rows*height), backdrop)
     d = ImageDraw.Draw(sheet)
@@ -327,16 +340,16 @@ def contact_sheet(name, columns, width, height, frames_list, backdrop):
         image = art.resize((size,size),Image.Resampling.LANCZOS)
         sheet.paste(image,(x+(width-size)//2,y),image)
         d.text((x+4,y+height-16),title,fill=arcade['paper'],font_size=12)
-    sheet.save(E/(name+'.webp'),quality=92)
+    sheet.save(directory/(name+'.webp'),quality=92)
 
 
 contact_sheet('roster',5,146,128,
-    [(person['name'],figure(person['id'],2,MOODS[i % len(MOODS)])) for i, person in enumerate(people)], arcade['navy'])
+    [(person['name'],figure(person['id'],2,BASE_MOODS[i % len(BASE_MOODS)])) for i, person in enumerate(people)], arcade['navy'])
 contact_sheet('all-growth-stages',6,126,109,
     [(person['name']+' / '+str(tokens['shellStages'][stage]),figure(person['id'],stage,'relaxed')) for person in people for stage in range(6)],
     arcade['navy'])
 contact_sheet('all-expressions',12,118,104,
-    [(person['name']+' / '+mood,figure(person['id'],2,mood)) for person in people for mood in MOODS], arcade['navy'])
+    [(person['name']+' / '+mood,figure(person['id'],2,mood)) for person in people for mood in BASE_MOODS], arcade['navy'])
 
 sheet = Image.new('RGB', (1200, 575), arcade['navy'])
 d = ImageDraw.Draw(sheet)
@@ -346,7 +359,7 @@ for index, (label, gaze) in enumerate([('West',(-1,0)),('North',(0,-1)),('Centre
     art = figure('player', 2, 'worried', 180, gaze)
     sheet.paste(art,(x+10,38),art)
     d.text((x+23,208),label,fill=arcade['paper'],font_size=16)
-for index, mood in enumerate(MOODS):
+for index, mood in enumerate(BASE_MOODS):
     x = 200*(index%6)
     y = 250 + 154*(index//6)
     art = figure('bot-1', 2, mood, 160)
@@ -358,9 +371,18 @@ for index, mood in enumerate(MOODS):
     d.text((x+22,y+120),mood.title(),fill=arcade['paper'],font_size=16)
 sheet.save(E/'gaze-and-mouths.webp',quality=93)
 
+critical_evidence = E.parent / 'rc7b'
+critical_evidence.mkdir(parents=True, exist_ok=True)
+contact_sheet('ultimate-roster', 5, 176, 142,
+    [(person['name'],figure(person['id'],5,'manic',ultimate=True)) for person in people], arcade['navy'], critical_evidence)
+contact_sheet('overload-expressions', 4, 166, 146,
+    [(person['name']+' / '+mood,figure(person['id'],5,mood,ultimate=True)) for person in people for mood in MOODS[len(BASE_MOODS):]],
+    arcade['navy'], critical_evidence)
+
 manifest = {'paletteRoles': list(roles), 'atlases': {'magnets': list(magnets), 'faces': list(faces),
     'workshop': list(frames), 'scenery': list(scenery)},
-    'illustrations': ['app-icon.png','favicon.png','hero.webp','hero-portrait.webp','social.webp','victory.webp','defeat.webp','endless.webp'],
+    'illustrations': ['app-icon.png','favicon.png','hero.webp','hero-portrait.webp','social.webp','victory.webp','defeat.webp','endless.webp',
+                      'detonation-win.webp','detonation-survive.webp','detonation-loss.webp'],
     'audio': ['soundtrack.ogg'],
     'sourceArtwork': [str(plate_file)],
     'generators': ['scripts/generate-brand-art.py','scripts/generate-soundtrack.py']}

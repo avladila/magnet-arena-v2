@@ -1,4 +1,21 @@
 export const matchConfig = { duration: 300, countdown: 3, step: 1 / 60 } as const;
+export const criticalMassConfig = {
+  ultimate: 8_000, unstable: 10_000, severe: 11_000, threshold: 12_000,
+  countdown: 3, radius: 1_400, expansion: 0.8, survivalReward: 1_000, escapeMargin: 52,
+};
+export type CriticalRules = Readonly<typeof criticalMassConfig>;
+export type CriticalOverrides = Partial<Pick<CriticalRules, 'threshold' | 'countdown' | 'radius'>>;
+export type OverloadStage = 'standard' | 'ultimate' | 'unstable' | 'severe' | 'critical';
+export const overloadLabels: Record<OverloadStage, string> = {
+  standard: 'Standard', ultimate: 'Ultimate Form', unstable: 'Unstable Form', severe: 'Severe Instability', critical: 'Critical Mass',
+};
+
+export function overloadStage(mass: number, rules: CriticalRules = criticalMassConfig): OverloadStage {
+  if (mass >= rules.threshold) return 'critical';
+  if (mass >= rules.severe) return 'severe';
+  if (mass >= rules.unstable) return 'unstable';
+  return mass >= rules.ultimate ? 'ultimate' : 'standard';
+}
 export const theftConfig = {
   reach: 260, halfAngle: Math.PI / 3, warning: 0.18, cooldown: 0.8,
   energy: 100, missCost: 35, debrisCapacity: 1024, legacyDebrisCapacity: 512, flight: 0.55, lifetime: 10,
