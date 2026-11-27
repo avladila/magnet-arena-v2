@@ -1,24 +1,22 @@
-import faceAnchors from '../brand/face-anchors.json';
-import { brand } from './brand';
-import { CharacterPose, type CharacterIntent } from './character-pose';
 import type Phaser from 'phaser';
+import { brand } from './brand';
+import { CharacterAttention, type AttentionWorld } from './character-attention';
+import { CharacterFace } from './character-face';
+import { CharacterPose, type CharacterIntent } from './character-pose';
 import { theftConfig } from './competition-config';
 import { playerConfig } from './config';
-import type { Participant, Point } from './movement';
+import type { Participant } from './movement';
 
+export { faceAtlas } from './character-face';
 export const magnetAtlas = 'magnet-shells';
-export const faceAtlas = 'magnet-faces';
 const shellStages = brand.shellStages.slice(1);
 const bodyPixels = 108;
-const anchors: Readonly<Record<string, number[][]>> = faceAnchors;
 const assemblySeconds = 0.26;
+
+type Mark = 'impact' | 'sweat' | 'frost' | 'rust';
 
 function shellStage(mass: number): number {
   return shellStages.reduce((count, threshold) => count + Number(mass >= threshold), 0);
-}
-
-function shellFrame(magnet: Participant): string {
-  return magnet.id + '-' + shellStage(magnet.mass);
 }
 
 export function createMagnetSprite(scene: Phaser.Scene, id: string) {
@@ -26,71 +24,52 @@ export function createMagnetSprite(scene: Phaser.Scene, id: string) {
 }
 
 export function renderMagnet(sprite: Phaser.GameObjects.Sprite, magnet: Participant, heading: number, size: number) {
-  const frame = shellFrame(magnet);
+  const frame = magnet.id + '-' + shellStage(magnet.mass);
   if (sprite.frame.name !== frame) sprite.setFrame(frame);
   sprite.setPosition(magnet.position.x, magnet.position.y).setRotation(heading)
     .setScale(2 * playerConfig.radius * size / bodyPixels);
 }
 
-/** The shell, painted face and moving pupils share the same local pose. */
 export class MagnetCharacter {
   readonly body: Phaser.GameObjects.Sprite;
-  readonly face: Phaser.GameObjects.Image;
-  private readonly pupils: Phaser.GameObjects.Image[];
-  private readonly status: Phaser.GameObjects.Image;
+  readonly face: CharacterFace;
+  private readonly root: Phaser.GameObjects.Container;
   private readonly poles: Phaser.GameObjects.Image[];
   private readonly plate: Phaser.GameObjects.Image;
   private readonly rivet: Phaser.GameObjects.Image;
+  private readonly marks = new Map<Mark, Phaser.GameObjects.Image>();
+  private readonly attention = new CharacterAttention();
   private pose = new CharacterPose();
   private cells = 0;
   private flash = 0;
-  private gazeX = 0;
-  private gazeY = 0;
-  private attention?: Point;
-  private attentionFor = 0;
   private lastStage?: number;
   private assembly = 0;
 
-  constructor(scene: Phaser.Scene, id: string, depth: number) {
-    this.body = createMagnetSprite(scene, id).setDepth(depth);
-    this.face = scene.add.image(0, 0, faceAtlas, id + '-idle').setDepth(depth + 0.03);
-    this.pupils = Array.from({ length: 2 }, () =>
-      scene.add.image(0, 0, 'workshop', 'eye-pupil').setDepth(depth + 0.04));
-    this.status = scene.add.image(0, 0, 'workshop', 'face-impact').setDepth(depth + 0.09);
-    this.poles = Array.from({ length: 2 }, () =>
-      scene.add.image(0, 0, 'workshop', 'pole-charge').setDepth(depth + 0.08));
-    this.plate = scene.add.image(0, 0, 'workshop', 'fracture-shard-1').setDepth(depth + 0.02);
-    this.rivet = scene.add.image(0, 0, 'workshop', 'fleck-steel').setDepth(depth + 0.07);
-    this.hide();
+  constructor(private readonly scene: Phaser.Scene, id: string, depth: number) {
+    this.body = createMagnetSprite(scene, id);
+    this.plate = scene.add.image(0, 0, 'workshop', 'fracture-shard-1').setVisible(false);
+    this.root = scene.add.container(0, 0, [this.body, this.plate]).setDepth(depth).setVisible(false);
+    this.face = new CharacterFace(scene, this.root, id);
+    this.rivet = scene.add.image(0, 0, 'workshop', 'fleck-steel').setVisible(false);
+    this.poles = Array.from({ length: 2 }, () => scene.add.image(0, 0, 'workshop', 'pole-charge'));
+    this.root.add([this.rivet, ...this.poles]);
   }
 
   reset(): void {
     this.pose = new CharacterPose();
+    this.attention.reset();
+    this.face.reset();
     this.cells = 0;
     this.flash = 0;
-    this.gazeX = 0;
-    this.gazeY = 0;
-    this.attention = undefined;
-    this.attentionFor = 0;
     this.lastStage = undefined;
     this.assembly = 0;
-    this.hide();
-  }
-
-  private hide(): void {
-    if (!this.body.visible && !this.face.visible) return;
-    this.body.setVisible(false);
-    this.face.setVisible(false);
-    this.status.setVisible(false);
-    for (const pupil of this.pupils) pupil.setVisible(false);
-    for (const pole of this.poles) pole.setVisible(false);
-    this.plate.setVisible(false);
-    this.rivet.setVisible(false);
+    this.root.setVisible(false);
   }
 
   render(magnet: Participant, heading: number, size: number, seconds: number, visible: boolean, reducedMotion: boolean,
-      pickup?: Point, intent?: CharacterIntent, detail = true): void {
-    this.pose.update(magnet, seconds, reducedMotion || !visible, intent);
+      world?: AttentionWorld, intent?: CharacterIntent, detail = true): void {
+    const focus = visible && world ? this.attention.update(magnet, world, seconds) : undefined;
+    this.pose.update(magnet, seconds, reducedMotion || !visible, intent, focus);
     const stage = shellStage(magnet.mass);
     if (reducedMotion || !visible || this.lastStage !== undefined && stage < this.lastStage) this.assembly = 0;
     else if (this.lastStage !== undefined && stage > this.lastStage) this.assembly = assemblySeconds;
@@ -99,12 +78,12 @@ export class MagnetCharacter {
     const flashTime = brand.motion.energy / 1000;
     this.flash = magnet.combat.cells > this.cells ? flashTime : Math.max(0, this.flash - seconds);
     this.cells = magnet.combat.cells;
-    if (pickup) {
-      this.attention = pickup;
-      this.attentionFor = 0.29;
-    } else this.attentionFor = Math.max(0, this.attentionFor - seconds);
     if (!visible) {
-      this.hide();
+      if (this.root.visible) {
+        this.attention.reset();
+        this.face.reset();
+        this.root.setVisible(false);
+      }
       return;
     }
 
@@ -114,78 +93,54 @@ export class MagnetCharacter {
     const click = Math.sin(Math.PI * assemblyProgress) * 0.042;
     const sx = body * (stretchX + click);
     const sy = body * (stretchY + click);
-    const cosine = Math.cos(heading);
-    const sine = Math.sin(heading);
     const lean = recoil * Math.min(1.6, body);
-    const x = magnet.position.x - lean * cosine;
-    const y = magnet.position.y - lean * sine;
+    const x = magnet.position.x - lean * Math.cos(heading);
+    const y = magnet.position.y - lean * Math.sin(heading);
+    // Shell, sockets, and local accents form one layer in the arena display list.
+    this.root.setPosition(x, y).setRotation(heading).setScale(sx, sy).setVisible(true);
     const shell = magnet.id + '-' + stage;
     if (this.body.frame.name !== shell) this.body.setFrame(shell);
-    this.body.setPosition(x, y).setRotation(heading).setScale(sx, sy).setVisible(true);
+    this.body.setVisible(true);
+    this.face.render(magnet, stage, this.pose, heading, seconds, focus?.point, sx, sy, detail);
 
-    const blink = detail && this.pose.blink;
-    const face = magnet.id + '-' + (blink ? 'blink' : expression);
-    if (this.face.frame.name !== face) this.face.setFrame(face);
-    this.place(this.face, x, y, -14 * sx, -8 * sy, cosine, sine).setRotation(heading).setScale(sx, sy).setVisible(true);
-    const look = this.attentionFor > 0 && this.attention;
-    const dx = look ? look.x - magnet.position.x : magnet.velocity.x;
-    const dy = look ? look.y - magnet.position.y : magnet.velocity.y;
-    const distance = Math.hypot(dx, dy);
-    const desiredX = distance > 1 ? (dx * cosine + dy * sine) / distance * 0.66 : 0.3;
-    const desiredY = distance > 1 ? (dy * cosine - dx * sine) / distance * 0.56 : -0.15;
-    const smooth = reducedMotion ? 1 : 1 - Math.exp(-18 * seconds);
-    this.gazeX += (desiredX - this.gazeX) * smooth;
-    this.gazeY += (desiredY - this.gazeY) * smooth;
-    const eyes = anchors[face];
-    for (let i = 0; i < eyes.length; i++) {
-      const [eyeX, eyeY, roomX, roomY] = eyes[i];
-      const pupil = this.pupils[i];
-      pupil.setVisible(!blink);
-      if (!blink) {
-        const anxious = intent === 'escape' && expression === 'move';
-        this.place(pupil, x, y, (eyeX + roomX * this.gazeX) * sx, (eyeY + roomY * this.gazeY) * sy, cosine, sine)
-          .setDisplaySize((anxious ? 11 : 10) * sx, (roomY < 2 ? 7 : 10) * sy).setRotation(heading);
-      }
-    }
-
-    const mark = expression === 'hit' ? 'impact' : expression === 'hot' ? 'sweat'
-      : expression === 'cold' ? 'frost' : expression === 'rust' ? 'rust'
-        : detail && !reducedMotion && intent === 'escape' ? 'sweat' : undefined;
-    this.status.setVisible(mark !== undefined);
-    if (mark) {
-      const frame = 'face-' + mark;
-      if (this.status.frame.name !== frame) this.status.setFrame(frame);
-      const bob = reducedMotion ? 0 : expression === 'hit' ? -18 * markProgress : 4 * Math.sin(markProgress * 7);
-      const markSize = (expression === 'hit' ? 24 : 16) * body;
-      this.place(this.status, x, y, -30 * sx, (-46 + bob) * sy, cosine, sine)
-        .setDisplaySize(markSize, markSize).setRotation(heading + 0.4).setVisible(true);
-    }
+    const exhausted = magnet.combat.heat >= .24;
+    const frozen = magnet.combat.brittle || magnet.combat.cold >= .45;
+    const bob = reducedMotion ? 0 : 2.6 * Math.sin(markProgress * 7);
+    this.mark('impact', expression === 'shocked', -25, -46 - (reducedMotion ? 0 : 14 * markProgress), 24);
+    this.mark('sweat', exhausted || detail && !reducedMotion && expression === 'frightened', -35, -30 + bob, 15);
+    this.mark('frost', frozen, -3, -46 + bob, 17);
+    this.mark('rust', Boolean(magnet.combat.corrosion), -34, 33 - bob, 17);
 
     const ready = magnet.combat.energy === theftConfig.energy && magnet.combat.attack.phase !== 'cooldown';
     const winding = magnet.combat.attack.phase === 'armed' || magnet.combat.attack.phase === 'warning';
-    const charge = Math.max(winding ? 1 : ready ? 0.74 : 0, reducedMotion ? 0 : this.flash / flashTime);
+    const charge = Math.max(winding ? 1 : ready ? .74 : 0, reducedMotion ? 0 : this.flash / flashTime);
     for (let i = 0; i < this.poles.length; i++) {
-      const pole = this.poles[i];
-      pole.setVisible(charge > 0);
-      if (charge > 0) {
-        this.place(pole, x, y, 42 * sx, (i === 0 ? -27 : 26) * sy, cosine, sine)
-          .setDisplaySize(34 * body, 34 * body).setAlpha(charge);
-      }
+      const pole = this.poles[i].setVisible(charge > 0);
+      if (charge > 0) pole.setPosition(42, i === 0 ? -27 : 26).setDisplaySize(34, 34).setAlpha(charge);
     }
-    this.plate.setVisible(detail && this.assembly > 0 && assemblyProgress < 0.72);
-    this.rivet.setVisible(this.assembly > 0 && assemblyProgress > 0.42);
+    this.plate.setVisible(detail && this.assembly > 0 && assemblyProgress < .72);
+    this.rivet.setVisible(this.assembly > 0 && assemblyProgress > .42);
     if (this.plate.visible) {
-      const remaining = (1 - assemblyProgress / 0.72) ** 2;
-      this.place(this.plate, x, y, (-39 - 28 * remaining) * sx, (25 + 21 * remaining) * sy, cosine, sine)
-        .setDisplaySize(29 * body, 23 * body).setRotation(heading - remaining * 0.78).setAlpha(0.9);
+      const remaining = (1 - assemblyProgress / .72) ** 2;
+      this.plate.setPosition(-39 - 28 * remaining, 25 + 21 * remaining)
+        .setDisplaySize(29, 23).setRotation(-remaining * .78).setAlpha(.9);
     }
     if (this.rivet.visible) {
-      this.place(this.rivet, x, y, -30 * sx, 29 * sy, cosine, sine)
-        .setDisplaySize(22 * body, 22 * body).setAlpha(0.87 * (1 - assemblyProgress));
+      this.rivet.setPosition(-30, 29).setDisplaySize(22, 22).setAlpha(.87 * (1 - assemblyProgress));
     }
   }
 
-  private place(image: Phaser.GameObjects.Image, x: number, y: number, dx: number, dy: number, cosine: number, sine: number) {
-    return image.setPosition(x + dx * cosine - dy * sine, y + dx * sine + dy * cosine);
+  private mark(kind: Mark, shown: boolean, x: number, y: number, size: number): void {
+    let sprite = this.marks.get(kind);
+    if (!shown) {
+      sprite?.setVisible(false);
+      return;
+    }
+    if (!sprite) {
+      sprite = this.scene.add.image(0, 0, 'workshop', 'face-' + kind).setRotation(.34);
+      this.marks.set(kind, sprite);
+      this.root.add(sprite);
+    }
+    sprite.setPosition(x, y).setDisplaySize(size, size).setVisible(true);
   }
 }

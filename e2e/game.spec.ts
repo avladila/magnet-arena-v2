@@ -424,10 +424,10 @@ test('cartoon expressions follow a real attack and both Arena outcomes display m
     scene.clock.countdown = 0;
     scene.model.player.combat.energy = 100;
   });
-  const mood = () => page.evaluate(() => Reflect.get(window, 'trainingScene').magnet.face.frame.name);
-  await expect.poll(mood).toBe('player-ready');
+  const mood = () => page.evaluate(() => Reflect.get(window, 'trainingScene').magnet.face.mouth.frame.name);
+  await expect(page.locator('#energy-ready')).toBeVisible();
   await page.keyboard.down('Space');
-  await expect.poll(mood).toBe('player-attack');
+  await expect.poll(mood).toBe('player-aggressive-mouth');
   await page.keyboard.up('Space');
   await expect(page.locator('#attack')).toHaveText('Cooling');
   for (const [outcome, victory] of [['victory', true], ['defeat', false]] as const) {
@@ -444,4 +444,70 @@ test('cartoon expressions follow a real attack and both Arena outcomes display m
     if (victory) await page.getByRole('button', { name: 'Play Again' }).click();
   }
   expect(errors).toEqual([]);
+});
+
+test('Low and reduced motion preserve live gaze, concern, danger, and replay reset', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await inspectScene(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.locator('#quality').selectOption('low');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Endless', exact: true }).click();
+  await page.evaluate(async () => {
+    const scene = Reflect.get(window, 'trainingScene');
+    const growthSource = '/src/growth.ts';
+    const { addMass } = await import(growthSource);
+    const { model } = scene;
+    model.botSteering = () => ({ kind: 'idle' });
+    model.replenish = () => {};
+    model.hazards.sites.length = 0;
+    for (const bot of model.bots) bot.position = { x: 800, y: 800 };
+    for (const slot of model.particles.slots) slot.state = 'inactive';
+    const player = model.player;
+    addMass(player, 380);
+    scene.framing.follow(player.position, 10, player.mass);
+    scene.magnetScale.scale = player.physicalScale;
+    let resourceId = 0;
+    while (model.particles.kind({ resourceId }) !== 'energy') resourceId++;
+    Object.assign(model.particles.slots[0], { resourceId, state: 'active', x: player.position.x + 258, y: player.position.y - 135 });
+  });
+
+  const state = () => page.evaluate(() => {
+    const { magnet, model } = Reflect.get(window, 'trainingScene');
+    const target = magnet.attention.focus;
+    return { kind: target?.kind, actor: target?.actor?.id, moving: model.player.velocity.x < -40,
+      mouth: magnet.face.mouth.frame.name, eyes: magnet.face.eyes.frame.name, brows: magnet.face.brows.frame.name,
+      sweat: magnet.marks.get('sweat')?.visible ?? false };
+  });
+  await expect.poll(state).toMatchObject({ kind: 'energy', moving: false, mouth: 'player-excited-mouth' });
+  await page.evaluate(() => {
+    const { model } = Reflect.get(window, 'trainingScene');
+    const player = model.player;
+    model.bots[0].position = { x: player.position.x + player.radius + 130, y: player.position.y + 25 };
+  });
+  await expect.poll(state).toMatchObject({ actor: 'bot-1', mouth: 'player-worried-mouth', eyes: 'player-worried-eyes', brows: 'player-worried-brows' });
+  await page.locator('#arena').focus();
+  await page.keyboard.down('KeyA');
+  await expect.poll(state).toMatchObject({ actor: 'bot-1', moving: true });
+  await page.keyboard.up('KeyA');
+  await page.evaluate(() => {
+    const { model } = Reflect.get(window, 'trainingScene');
+    const player = model.player;
+    const bot = model.bots[0];
+    bot.position = { x: player.position.x + player.radius + 100, y: player.position.y + 20 };
+    bot.combat.energy = 100;
+    player.combat.heat = .8;
+  });
+  await expect.poll(state).toMatchObject({ actor: 'bot-1', mouth: 'player-frightened-mouth', sweat: true });
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await page.getByRole('button', { name: 'End Session' }).click();
+  await page.getByRole('button', { name: 'Play Again' }).click();
+  await page.evaluate(() => {
+    const { model } = Reflect.get(window, 'trainingScene');
+    model.replenish = () => {};
+    for (const bot of model.bots) bot.position = { x: 900, y: 900 };
+    for (const slot of model.particles.slots) slot.state = 'inactive';
+  });
+  await expect.poll(state).toMatchObject({ kind: undefined, actor: undefined, mouth: 'player-relaxed-mouth', sweat: false });
 });

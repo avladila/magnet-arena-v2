@@ -62,12 +62,14 @@ test('Balanced trails follow world displacement and reject camera shifts, unload
   }
 
   render(1 / 60);
+  assert.deepEqual(view.resourcesInView, [slot]);
   render(1 / 60, { ...bounds, left: 5, right: 995 }, 0.42);
   assert.equal(calls.length, 0, 'camera movement is not scrap movement');
   slot.x += 4;
   render(1 / 60);
   assert.deepEqual(calls, [[slot.x, slot.y, 0, slot.colorIndex]]);
   render(1 / 60, { ...bounds, left: 900, right: 1700 });
+  assert.deepEqual(view.resourcesInView, []);
   slot.x += 4;
   render(1 / 60);
   assert.equal(calls.length, 1, 're-entry has no previous visible sample');
@@ -82,6 +84,7 @@ test('Balanced trails follow world displacement and reject camera shifts, unload
   render(1 / 60);
   assert.equal(calls.length, 2);
   view.reset();
+  assert.deepEqual(view.resourcesInView, []);
   slot.x += 3;
   render(1 / 60);
   assert.equal(calls.length, 2, 'a fresh session has no movement history');

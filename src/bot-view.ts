@@ -3,11 +3,12 @@ import { brand } from './brand';
 import { createMagnetSprite, MagnetCharacter, renderMagnet } from './magnet-art';
 import type { Bot } from './bots';
 import { playerConfig, viewConfig } from './config';
-import { clamp, type Participant, type Point } from './movement';
+import { clamp, type Participant } from './movement';
 import type { WorldBounds } from './particles';
 import type { ThemePalette } from './theme';
 import { Heading, MagnetScale } from './view';
 import type { CharacterIntent } from './character-pose';
+import type { AttentionWorld } from './character-attention';
 
 export class BotView {
   private readonly body: Phaser.GameObjects.Sprite;
@@ -51,7 +52,7 @@ export class BotView {
     participants: readonly Participant[],
     names: WorldBounds[],
     reducedMotion = false,
-    pickup?: Point,
+    attention?: AttentionWorld,
     intent?: CharacterIntent,
     detail = true,
   ): void {
@@ -64,7 +65,7 @@ export class BotView {
     const bodyRadius = playerConfig.radius * this.scale.scale;
     const visible = x + bodyRadius >= view.left && x - bodyRadius <= view.right &&
       y + bodyRadius >= view.top && y - bodyRadius <= view.bottom;
-    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, pickup, intent, detail);
+    if (this.character) this.character.render(bot, this.heading.angle, this.scale.scale, seconds, visible, reducedMotion, attention, intent, detail);
     else {
       this.body.setVisible(visible);
       if (visible) renderMagnet(this.body, bot, this.heading.angle, this.scale.scale);

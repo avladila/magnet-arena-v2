@@ -11,6 +11,7 @@ import { ArenaFloor } from './art';
 import { faceAtlas, magnetAtlas, MagnetCharacter } from './magnet-art';
 import { bindInput } from './browser-input';
 import { BotView } from './bot-view';
+import { AttentionWorld } from './character-attention';
 import { touch, viewConfig } from './config';
 import { GrowthFeedbackView } from './growth-feedback';
 import type { Point } from './movement';
@@ -57,7 +58,7 @@ class ArenaScene extends Phaser.Scene {
   private readonly botNames: WorldBounds[] = [];
   private field!: GrowthFeedbackView;
   private magnet!: MagnetCharacter;
-  private readonly recentPickups = new Map<string, Point>();
+  private readonly attentionWorld = new AttentionWorld();
   private readonly kindOf = (scrap: Scrap) => this.model.particles.kind(scrap);
   private controls!: ReturnType<typeof bindInput>;
   private pixelRatio = 1;
@@ -135,7 +136,7 @@ class ArenaScene extends Phaser.Scene {
     this.pickupFeedback.reset();
     this.particleView.reset();
     this.magnet.reset();
-    this.recentPickups.clear();
+    this.attentionWorld.reset();
     this.lastLanding = 0;
     this.nextEnvironment = 0;
     this.positionCamera();
@@ -209,9 +210,7 @@ class ArenaScene extends Phaser.Scene {
     let ownGold: Collection | undefined;
     let ownEnergy: Collection | undefined;
     let ordinarySparks = this.menu.quality === 'high' ? 10 : 5;
-    this.recentPickups.clear();
     for (const item of collections) {
-      this.recentPickups.set(item.ownerId, item);
       if (item.ownerId === player.id) {
         if (item.kind === 'gold') ownGold = item;
         else if (item.kind === 'energy') ownEnergy = item;
@@ -241,8 +240,10 @@ class ArenaScene extends Phaser.Scene {
         }
       }
     }
+    const aim = this.playInput.aim();
+    this.attentionWorld.update(this.model, bounds, advanced, aim, this.particleView.resourcesInView);
     this.renderBots(advanced, bounds, lessMotion);
-    const impact = this.competition.render(this.model, bounds, this.playInput.aim(), this.playInput.tracked(),
+    const impact = this.competition.render(this.model, bounds, aim, this.playInput.tracked(),
       this.menu.quality, advanced, this.framing.zoom, lessMotion);
     if (releaseFrame && advanced > 0 && player.combat.attack.phase === 'warning') {
       this.effects.burst(player.position, 'energy', 6, brand.motion.pickup, player.combat.attack.bearing, Math.PI / 2);
@@ -377,7 +378,7 @@ class ArenaScene extends Phaser.Scene {
   private renderPlayer(seconds = 0, lessMotion = false): void {
     const player = this.model.player;
     this.magnet.render(player, this.heading.angle, this.magnetScale.scale, seconds, true, lessMotion,
-      this.recentPickups.get(player.id), undefined, this.menu.quality !== 'low');
+      this.attentionWorld, undefined, this.menu.quality !== 'low');
   }
 
   private renderBots(seconds: number, bounds: WorldBounds, lessMotion = false): void {
@@ -385,7 +386,7 @@ class ArenaScene extends Phaser.Scene {
     for (let i = 0; i < this.botViews.length; i++) {
       const bot = this.model.bots[i];
       this.botViews[i].render(seconds, this.framing.zoom, bounds, theme.palette, this.model.participants, this.botNames, lessMotion,
-        bot && this.recentPickups.get(bot.id), bot && this.model.botIntent(bot), this.menu.quality !== 'low');
+        this.attentionWorld, bot && this.model.botIntent(bot), this.menu.quality !== 'low');
     }
   }
 

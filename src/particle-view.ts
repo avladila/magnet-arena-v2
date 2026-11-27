@@ -47,6 +47,7 @@ export class ParticleView {
   private nextEffect = 0;
   private readonly sprites?: Phaser.GameObjects.Image[];
   private readonly orbits: Phaser.GameObjects.Image[] = [];
+  private readonly visibleSlots: Scrap[] = [];
   private visibleCount = 0;
   private orbitCount = 0;
   private readonly previousX = new Float32Array(capacity);
@@ -67,11 +68,14 @@ export class ParticleView {
   }
 
   reset(): void {
+    this.visibleSlots.length = 0;
     this.samples.fill(0);
     this.emitAt.fill(0);
     this.sample = 0;
     this.elapsed = 0;
   }
+
+  get resourcesInView(): readonly Scrap[] { return this.visibleSlots; }
 
   render(
     slots: readonly Scrap[], view: WorldBounds, collections: readonly Collection[], seconds: number, palette: ThemePalette,
@@ -104,6 +108,7 @@ export class ParticleView {
       if (!inView(x, y, size / 2, view)) continue;
 
       const image = sprites[visible] ??= this.scene.add.image(0, 0, 'workshop', 'gold').setDepth(0.4);
+      this.visibleSlots[visible] = scrap;
       visible++;
       const animatedOrbit = kind === 'energy' && animate && orbits < settings.energyOrbitPool;
       const frame = kind === 'ordinary' ? ordinaryFrames[mode][colorIndex] : kind === 'energy' && !animatedOrbit ? 'energy-static' : kind;
@@ -143,6 +148,7 @@ export class ParticleView {
     }
     for (let i = visible; i < this.visibleCount; i++) sprites[i].setVisible(false);
     for (let i = orbits; i < this.orbitCount; i++) this.orbits[i].setVisible(false);
+    this.visibleSlots.length = visible;
     this.visibleCount = visible;
     this.orbitCount = orbits;
   }
