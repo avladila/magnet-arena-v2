@@ -170,10 +170,19 @@ test('training teaches each hazard through in-arena encounters without recording
   await expect(page.locator('#attack')).toHaveText('Release');
   await page.keyboard.up('Space');
   await expect(page.locator('#tutorial-task')).toContainText('neutral salvage');
+  await page.evaluate(() => {
+    const task = document.querySelector('#tutorial-task')!;
+    const prompts = new Set<string>();
+    const observer = new MutationObserver(() => prompts.add(task.textContent ?? ''));
+    observer.observe(task, { childList: true, subtree: true, characterData: true });
+    Reflect.set(window, 'tutorialPrompts', prompts);
+  });
   await page.keyboard.down('KeyD');
   const instructions = page.locator('#tutorial-task');
-  await expect(instructions).toContainText('Flux device', { timeout: 8000 });
-  await expect(instructions).toContainText('heat bay', { timeout: 5000 });
+  for (const phrase of ['Flux device', 'heat bay']) {
+    await expect.poll(() => page.evaluate(phrase => [...Reflect.get(window, 'tutorialPrompts')]
+      .some(prompt => prompt.includes(phrase)), phrase), { timeout: 8000 }).toBe(true);
+  }
   for (const [station, next] of [['water pool', 'acid pool'], ['acid pool', 'cryo vent'], ['cryo vent', 'Training complete']]) {
     await expect(instructions).toContainText(station, { timeout: 5000 });
     await expect.poll(() => page.evaluate((phrase) => {

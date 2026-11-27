@@ -2,8 +2,8 @@
 
 MAGNET is a single-player salvage competition built with Phaser 3, TypeScript and Vite. Collect scrap and gold to grow, charge Magnetic Theft with red cells, and race nineteen rivals for mass across a 15,360 × 10,000 arena.
 
-- **Arena** starts with a three-second countdown and runs for five minutes. Final rank uses current mass, highest mass and resource mass in that order.
-- **Endless** uses the same economy, rivals and hazards. End the session from Pause to see your stats and replay.
+- **Arena** ends after five minutes or when a competitor reaches 12,000 mass and holds it through the three-second Critical Mass countdown. A detonator wins and rivals who escape earn 1,000 survival points for that match. At timeout, current mass, highest mass and resource mass decide final rank.
+- **Endless** uses the same economy, rivals and hazards and adds the cosmetic Ultimate Form at 8,000 mass. End the session from Pause to see your stats and replay.
 - **Learn to Play** runs a separate interactive training session. It covers steering, collection, charging, aiming, recovering stolen salvage, and five live hazard encounters.
 
 ## Run locally
@@ -29,6 +29,7 @@ Light is the first-run theme. Use the moon or sun button beside the mass counter
 3. Compare the magnet and its field against the floor seams from mass 20 toward 50, 100, 200 and 400. Check that each milestone pulse is brief and the scrap remains readable. Enable the phone’s reduced-motion preference and reload to check that milestone pulses are suppressed.
 4. At higher mass, trace walls and corners. Check for stutters during sustained collection and record the device and browser with any observations.
 5. Start several fresh rounds and try eastward, westward, and center-crossing routes. Look for Copper and Spark crossing dense patches on committed routes, and Drift and Orbit exploring farther afield. Check that a Collector travels through a patch after a pickup and keeps moving when the patch runs out. Compare your mass gain and the bots' apparent growth over the first minute. Note any scarcity, wall turns, or frame hitches when several magnets are visible.
+6. Try an Arena countdown, a two-thumb escape, and a detonation with Low and reduced motion enabled. Check the live radius and offscreen arrow in both orientations. [Critical Mass phone checks](docs/rc7b-critical-mass.md#physical-device-playtest)
 
 ## Verify
 
@@ -39,11 +40,13 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-The release reports cover character acting, the scrapyard art and effects, gameplay and balance, and combat and population. [RC7A Living Faces](docs/rc7a-living-faces.md) · [RC6 Magnetic Chaos](docs/rc6-magnetic-chaos.md) · [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md)
+The release reports include the Arena finale, character acting, scrapyard art and effects, gameplay and balance, and combat and population. [RC7B Critical Mass and gameplay recordings](docs/rc7b-critical-mass.md) · [RC7A Living Faces](docs/rc7a-living-faces.md) · [RC6 Magnetic Chaos](docs/rc6-magnetic-chaos.md) · [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md)
 
 ## Growth and balance
 
 The simulation owns position, velocity, mass, size, and scrap. Each collected slot pays out once before it respawns, preferably outside the camera. Experimental growth uses `min(12, 1 + 0.8 × (sqrt(mass / 20) − 1))` for all magnets, with radius `30 × scale`. Pull reach follows the original curve through 4× scale and extends beyond the body at larger sizes. At 12×, reach is about 551 world units and even the farthest corner scrap is about 502 units from the nearest legal magnet center.
+
+Mass keeps accumulating past the physical cap. In Arena, that unlocks Ultimate Form at 8,000, increased instability at 10,000 and 11,000, and the Critical Mass claim at 12,000. To stop a claim, knock the anchored magnet below 12,000 with Magnetic Theft before the countdown ends. To survive the blast, steer your entire magnet past its 1,400-unit radius. [RC7B rules and balance](docs/rc7b-critical-mass.md)
 
 The camera applies the two-phase mass multiplier to its viewport baseline. It eases out further as needed to fit the magnetic field within 70% of the shorter viewport side, subject to the floor that keeps the view inside the world. Camera zoom and eased drawing scale are separate from authoritative collision geometry. The proposed tuning, measurements and acceptance checks are recorded in [giant growth](docs/giant-growth.md).
 
