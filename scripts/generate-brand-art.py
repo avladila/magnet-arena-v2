@@ -3,7 +3,8 @@ import json
 from math import cos, exp, hypot, pi, sin
 from pathlib import Path
 from PIL import Image, ImageColor, ImageDraw
-from arcade_art import (CHARACTER_TILE, FACE_BOX, MOODS, Pen, composed, expression, poster, pupil, shell, star, status_mark)
+from arcade_art import CHARACTER_TILE, Pen, face_mount, poster, pupil, shell, star, status_mark
+from living_faces import FACE_TILE, MOODS, blink, composed, expression
 from scrapyard_art import DISTRICTS, HAZARDS, HAZARD_CELS, PROPS, device, district_pad, hazard_cel
 
 tokens = json.loads(Path('brand/tokens.json').read_text())
@@ -15,7 +16,7 @@ ink = arcade['ink']
 pickups = tokens['pickups']
 energy = pickups['energyMaterial']
 P = Path('public')
-E = Path('docs/evidence/rc6')
+E = Path('docs/evidence/rc7a')
 N = 96
 
 
@@ -31,14 +32,23 @@ def tile():
 frames = {}
 
 
-def pack(name, items, tile_size=N):
-    width = min(10, len(items))
-    sheet = Image.new('RGBA', (width * tile_size, ((len(items) + width - 1) // width) * tile_size))
+def pack(name, items, tile_size=N, columns=10, trim=False):
+    width = min(columns, len(items))
+    rectangles = {key: art.getbbox() if trim else (0, 0, tile_size, tile_size) for key, art in items.items()}
+    padding = int(trim)
+    cell_width = max(right - left for left, _, right, _ in rectangles.values()) + 2 * padding
+    cell_height = max(bottom - top for _, top, _, bottom in rectangles.values()) + 2 * padding
+    sheet = Image.new('RGBA', (width * cell_width, ((len(items) + width - 1) // width) * cell_height))
     mapping = {}
     for i, (key, tile_image) in enumerate(items.items()):
-        x, y = i % width * tile_size, i // width * tile_size
-        sheet.paste(tile_image, (x, y))
-        mapping[key] = {'frame': {'x': x, 'y': y, 'w': tile_size, 'h': tile_size}}
+        left, top, right, bottom = rectangles[key]
+        x, y = i % width * cell_width + padding, i // width * cell_height + padding
+        w, h = right - left, bottom - top
+        sheet.paste(tile_image.crop(rectangles[key]) if trim else tile_image, (x, y))
+        mapping[key] = {'frame': {'x': x, 'y': y, 'w': w, 'h': h}}
+        if trim:
+            mapping[key].update(trimmed=True, sourceSize={'w': tile_size, 'h': tile_size},
+                                spriteSourceSize={'x': left, 'y': top, 'w': w, 'h': h})
     sheet.save(P / (name + '.webp'), lossless=True)
     (P / (name + '.json')).write_text(json.dumps({'frames': mapping}, indent=2) + '\n')
     return sheet
@@ -55,19 +65,26 @@ def rgb(value):
 people = [{'id': 'player', 'name': 'You', 'accent': arcade['yellow']}, *roster]
 magnets = {}
 faces = {}
-anchors = {}
+poses = {}
+anchors = {'mounts': {}, 'eyes': {}}
 assert len(people) == 20
 for index, person in enumerate(people):
     name = person['id']
+    anchors['mounts'][name] = []
     for stage in range(len(tokens['shellStages'])):
         magnets[f'{name}-{stage}'] = shell(index, stage, person['accent'], arcade)
+        x, y, size = face_mount(index, stage)
+        anchors['mounts'][name].append([round(x-64, 2), round(y-64, 2), size])
     for mood in MOODS:
         key = f'{name}-{mood}'
-        faces[key], anchors[key] = expression(index, mood, arcade)
-    faces[f'{name}-blink'], anchors[f'{name}-blink'] = expression(index, 'idle', arcade, blink=True)
+        layers, anchors['eyes'][key] = expression(index, mood, arcade)
+        poses[key] = layers
+        for name_of_part, art in layers.items():
+            faces[f'{key}-{name_of_part}'] = art
+    faces[f'{name}-blink-eyes'] = blink(index, arcade)
 person_by_id = {person['id']: (index, person) for index, person in enumerate(people)}
 pack('magnets', magnets, CHARACTER_TILE)
-pack('faces', faces, FACE_BOX[2] - FACE_BOX[0])
+pack('faces', faces, FACE_TILE, columns=24, trim=True)
 Path('brand/face-anchors.json').write_text(json.dumps(anchors, separators=(',', ':')) + '\n')
 
 
@@ -258,73 +275,46 @@ for index, tone in enumerate(pickups['palette']):
 pack('workshop', frames)
 
 
-def figure(id, stage, mood, pixels=CHARACTER_TILE):
+def figure(id, stage, mood, pixels=CHARACTER_TILE, gaze=(.55, -.17)):
     key = f'{id}-{mood}'
-    if pixels == CHARACTER_TILE:
-        return composed(magnets[f'{id}-{stage}'], faces[key], anchors[key], arcade)
     index, person = person_by_id[id]
+    mount = face_mount(index, stage)
+    if pixels == CHARACTER_TILE:
+        return composed(magnets[f'{id}-{stage}'], poses[key], anchors['eyes'][key], mount, arcade, gaze)
     body = shell(index, stage, person['accent'], arcade, pixels)
-    face, eyes = expression(index, mood, arcade, pixels)
-    return composed(body, face, eyes, arcade)
+    layers, eyes = expression(index, mood, arcade, round(FACE_TILE * pixels / CHARACTER_TILE))
+    return composed(body, layers, eyes, mount, arcade, gaze)
 
 
-icon = figure('player', 0, 'ready')
+icon = figure('player', 0, 'excited')
 icon.resize((192,192),Image.Resampling.LANCZOS).save(P/'app-icon.png')
 icon.resize((32,32),Image.Resampling.LANCZOS).save(P/'favicon.png')
 plate_file = Path('art-source/assembly-bay.webp')
 with Image.open(plate_file) as plate:
-    hero = [(figure('bot-2', 2, 'attack', 384), .27, .57, .74, -28),
-            (figure('bot-6', 3, 'hit', 384), .76, .50, .82, 31),
-            (figure('player', 4, 'ready', 384), .51, .56, 1.14, -17)]
+    hero = [(figure('bot-2', 2, 'aggressive', 384), .27, .57, .74, -28),
+            (figure('bot-6', 3, 'shocked', 384), .76, .50, .82, 31),
+            (figure('player', 4, 'excited', 384), .51, .56, 1.14, -17)]
     loose = [(frames[key],x,y,size,angle) for key,x,y,size,angle in (
         ('fracture-shard-1',.17,.43,.15,-25), ('dark-scrap-3',.31,.24,.11,0),
         ('gold',.71,.74,.16,34), ('fracture-shard-2',.83,.32,.19,29),
         ('energy',.89,.65,.17,0), ('dark-scrap-0',.48,.87,.11,0), ('fracture-shard-0',.36,.73,.15,-17))]
     for name, dimensions in [('hero',(1152,432)), ('social',(1200,630))]:
         poster(dimensions, hero, arcade, 'hero', plate, loose).save(P/(name+'.webp'),quality=90)
-    portrait = [(figure('bot-2', 2, 'attack', 384), .25, .30, .49, -22),
-                (figure('bot-6', 3, 'hit', 384), .78, .68, .51, 29),
-                (figure('player', 4, 'ready', 384), .48, .49, .69, -16)]
+    portrait = [(figure('bot-2', 2, 'aggressive', 384), .25, .30, .49, -22),
+                (figure('bot-6', 3, 'shocked', 384), .78, .68, .51, 29),
+                (figure('player', 4, 'excited', 384), .48, .49, .69, -16)]
     poster((760, 840), portrait, arcade, 'hero', plate, loose).save(P/'hero-portrait.webp',quality=88)
     for mood, figures in {
-        'victory': [(figure('bot-1',2,'hit',384), .24, .70, .67, -19),
-                    (figure('player',5,'ready',384), .53, .55, 1.15, 8)],
-        'defeat': [(figure('bot-2',3,'ready',384), .71, .46, .78, 17),
-                   (figure('player',1,'hurt',384), .43, .64, .94, -29)],
-        'endless': [(figure('player',2,'collect',384), .46,.55,1.04,-11),
-                    (figure('bot-14',1,'idle',384), .72,.65,.73,21)],
+        'victory': [(figure('bot-1',2,'shocked',384), .24, .70, .67, -19),
+                    (figure('player',5,'excited',384), .53, .55, 1.15, 8)],
+        'defeat': [(figure('bot-2',3,'excited',384), .71, .46, .78, 17),
+                   (figure('player',1,'injured',384), .43, .64, .94, -29)],
+        'endless': [(figure('player',2,'satisfied',384), .46,.55,1.04,-11),
+                    (figure('bot-14',1,'relaxed',384), .72,.65,.73,21)],
     }.items():
         poster((960,360), figures, arcade, mood, plate, loose).save(P/(mood+'.webp'),quality=89)
 
-E.mkdir(parents=True,exist_ok=True)
-sheet = Image.new('RGB', (1120, 50 + 132 * 4), tokens['themes']['dark']['background'])
-d = ImageDraw.Draw(sheet)
-d.text((16, 15), 'MAGNET / Arena roster', fill=arcade['white'], font_size=24)
-for i, person in enumerate(people):
-    x, y = 8 + i % 5 * 224, 48 + i // 5 * 132
-    mood = MOODS[i % 5]
-    art = figure(person['id'], 1 + i % 5, mood).resize((103,103), Image.Resampling.LANCZOS)
-    sheet.paste(art,(x+55,y+4),art)
-    d.text((x+12, y+104), person['name'], fill=arcade['paper'], font_size=17)
-sheet.save(E/'roster.webp', quality=93)
-
-sheet = Image.new('RGB', (1070, 470), tokens['themes']['light']['background'])
-d = ImageDraw.Draw(sheet)
-for title,y in [('Growth',20),('Expressions',166),('Hazards and salvage',318)]:
-    d.text((16,y),title,fill=ink,font_size=22)
-for i in range(6):
-    art = figure('player', i, 'idle' if i<2 else 'move').resize((106,106),Image.Resampling.LANCZOS)
-    sheet.paste(art,(i*164+36,48),art)
-for i,mood in enumerate(MOODS):
-    art = figure('player', 2, mood).resize((94,94),Image.Resampling.LANCZOS)
-    x = i*106+3
-    sheet.paste(art,(x,196),art)
-    d.text((x+12,290),mood.title(),fill=ink,font_size=15)
-environment = {**scenery, **frames}
-for i,key in enumerate(('heat','cold','acid','water','flux','debris-3','gold','energy','light-scrap-0','light-scrap-6')):
-    art = environment[key].resize((96,96),Image.Resampling.LANCZOS)
-    sheet.paste(art,(i*106+8,349),art)
-sheet.save(E/'artwork.webp',quality=93)
+E.mkdir(parents=True, exist_ok=True)
 
 def contact_sheet(name, columns, width, height, frames_list, backdrop):
     rows = (len(frames_list)+columns-1)//columns
@@ -340,14 +330,33 @@ def contact_sheet(name, columns, width, height, frames_list, backdrop):
     sheet.save(E/(name+'.webp'),quality=92)
 
 
-contact_sheet('all-growth-stages',6,120,101,
-    [(person['name']+' / '+str(tokens['shellStages'][stage]),figure(person['id'],stage,'idle')) for person in people for stage in range(6)],
+contact_sheet('roster',5,146,128,
+    [(person['name'],figure(person['id'],2,MOODS[i % len(MOODS)])) for i, person in enumerate(people)], arcade['navy'])
+contact_sheet('all-growth-stages',6,126,109,
+    [(person['name']+' / '+str(tokens['shellStages'][stage]),figure(person['id'],stage,'relaxed')) for person in people for stage in range(6)],
     arcade['navy'])
-contact_sheet('all-expressions',10,106,91,
-    [(person['name']+' / '+mood,figure(person['id'],2,mood)) for person in people for mood in MOODS],
-    arcade['navy'])
-contact_sheet('scenery',8,117,99,[(key,value) for key,value in scenery.items() if '-motion-' not in key],
-    arcade['navy'])
+contact_sheet('all-expressions',12,118,104,
+    [(person['name']+' / '+mood,figure(person['id'],2,mood)) for person in people for mood in MOODS], arcade['navy'])
+
+sheet = Image.new('RGB', (1200, 575), arcade['navy'])
+d = ImageDraw.Draw(sheet)
+d.text((18,14),'Eye direction and mouth shape',fill=arcade['paper'],font_size=24)
+for index, (label, gaze) in enumerate([('West',(-1,0)),('North',(0,-1)),('Centre',(0,0)),('East',(1,0)),('South',(0,1)),('North East',(.707,-.707))]):
+    x = 200 * index
+    art = figure('player', 2, 'worried', 180, gaze)
+    sheet.paste(art,(x+10,38),art)
+    d.text((x+23,208),label,fill=arcade['paper'],font_size=16)
+for index, mood in enumerate(MOODS):
+    x = 200*(index%6)
+    y = 250 + 154*(index//6)
+    art = figure('bot-1', 2, mood, 160)
+    close = art.crop((27,42,88,114)).resize((100,118), Image.Resampling.LANCZOS)
+    sheet.paste(close,(x+14,y),close)
+    # A second swatch keeps the shell at a representative gameplay pixel size.
+    preview = art.resize((53,53), Image.Resampling.LANCZOS)
+    sheet.paste(preview,(x+120,y+33),preview)
+    d.text((x+22,y+120),mood.title(),fill=arcade['paper'],font_size=16)
+sheet.save(E/'gaze-and-mouths.webp',quality=93)
 
 manifest = {'paletteRoles': list(roles), 'atlases': {'magnets': list(magnets), 'faces': list(faces),
     'workshop': list(frames), 'scenery': list(scenery)},

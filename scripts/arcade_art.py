@@ -3,8 +3,6 @@ from math import cos, pi, sin
 from PIL import Image, ImageColor, ImageDraw, ImageOps
 
 CHARACTER_TILE = 128
-FACE_BOX = (14, 20, 86, 92)
-MOODS = ('idle', 'move', 'collect', 'ready', 'attack', 'hit', 'hurt', 'hot', 'cold', 'rust')
 
 # Eye height, eyebrow slope, idle mouth, and shell decal by roster order.
 PERSONALITIES = (
@@ -133,6 +131,33 @@ CHASSIS = (
 )
 
 
+def face_mount(index, stage):
+    arch, _, tilt, _ = CHASSIS[index]
+    return (round(45.8 + arch * .24 - stage * .22, 2),
+            round(63.2 + tilt * .31 + max(0, stage - 2) * .18, 2),
+            (.89, .92, .94, .96, .98, 1)[stage])
+
+
+def seat(p, index, stage, trim, palette):
+    x, y, size = face_mount(index, stage)
+
+    def moved(points):
+        return tuple((x if i % 2 == 0 else y) + size * n for i, n in enumerate(points))
+
+    def panel(start, segments, fill, stroke=0):
+        p.shape(moved(start), [moved(segment) for segment in segments], fill, stroke)
+
+    panel((-15, -26), [(4,-30,16,-27,21,-19), (25,-10,23,12,19,22),
+        (10,30,-8,30,-18,23), (-24,18,-24,5,-23,-6), (-23,-15,-20,-21,-15,-26)],
+        tone(trim, palette['navy'], .46), 2.65)
+    panel((-13, -23), [(0,-26,15,-25,18,-17), (22,-7,20,11,16,20),
+        (7,25,-8,25,-15,20), (-21,17,-21,4,-20,-6), (-20,-15,-17,-20,-13,-23)],
+        tone(trim, palette['paper'], .72), 1.75)
+    panel((-18, 11), [(-15,18,-7,22,2,22), (8,22,14,19,17,15),
+        (15,21,8,24,0,24), (-10,24,-17,19,-18,11)], tone(trim, palette['rust'], .27))
+    p.line([moved((-17,-15)), moved((-13,-21)), moved((-5,-23))], palette['paper'], 1.5)
+
+
 def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
     p = Pen(CHARACTER_TILE, palette)
     ink, white, navy, steel = (palette[k] for k in ('ink', 'white', 'navy', 'steel'))
@@ -159,14 +184,7 @@ def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
         (41,22,61,top,78,top+3),(72,30),(54,33),(29,43),(back+2,71)], frame_light)
     p.shape((back+1,76),[(back+6,90,40,bottom-7,61,bottom-8),(78,bottom-5),
         (76,bottom-1),(52,bottom-1,back+5,99,back+1,76)], tone(trim, navy, .30))
-    p.shape((34,34), [(41,30,57,29,65,35),(70,42,72,58,69,74),
-        (68,88,57,97,43,94),(29,94,23,81,23,66),(21,52,26,40,34,34)], trim, 2.9)
-    p.shape((33,38),[(44,32,60,33,64,39),(68,50,69,62,66,74),
-        (65,85,55,89,44,89),(32,89,26,81,26,67),(25,52,28,42,33,38)],
-        tone(trim, palette['paper'], .60), 1.8)
-    p.shape((26,70),[(28,79,40,86,51,86),(56,85,61,83,65,79),
-        (61,85,56,90,43,89),(33,88,28,80,26,70)], tone(trim, navy, .25))
-    p.line([(32,43),(37,38),(47,36)], palette['paper'], 1.7)
+    seat(p, index, stage, trim, palette)
     for is_top, color in ((True, palette['red']), (False, palette['blue'])):
         y = top+2 if is_top else lower+3
         end = upper-1 if is_top else bottom-3
@@ -228,105 +246,9 @@ def shell(index, stage, trim, palette, pixels=CHARACTER_TILE):
     else:
         p.line([(31,33),(35,31),(44,28)], white, 1.5)
     if index == 12 or stage >= 3:
-        p.line([(34,85),(38,83),(42,85)], enamel, 1.2)
+        p.line([(34,90),(38,88),(42,89)], enamel, 1.2)
     return p.finish(pixels)
 
-
-EYE_POSES = {
-    'idle': (1, 1, 0), 'move': (.73, .86, 2), 'collect': (1.20, 1.22, -1),
-    'ready': (1.35, 1.2, -3), 'attack': (.62, .67, 3), 'hit': (1.47, 1.38, -4),
-    'hurt': (.7, .86, 1), 'hot': (.74, 1.13, -1), 'cold': (.88, .67, 1), 'rust': (.86, .72, -1),
-}
-
-
-def expression(index, mood, palette, pixels=CHARACTER_TILE, blink=False):
-    p = Pen(CHARACTER_TILE, palette)
-    white, black = palette['white'], palette['ink']
-    l, r, tilt, resting, _ = PERSONALITIES[index]
-    left, right, emotion = EYE_POSES[mood]
-    eyes = []
-    for side, x, ratio, pose in ((-1,37,l,left),(1,56,r,right)):
-        x += side * (index % 4 - 1.5) * .48
-        y = 52 + (.9 if side == -1 else -1.9) + (index % 5 - 2) * side * .66
-        wide = (8.1 if side == -1 else 7.7) + (2 - ratio * 2) * 1.07
-        tall = min(13.4, 9.5*ratio*pose)
-        if mood == 'hit':
-            y -= 2
-            wide += 1.2
-        if blink:
-            p.shape((x-wide,y-2),[(x-2,y+3,x+3,y+3,x+wide,y-2),
-                (x+wide-1,y+1),(x+2,y+7,x-4,y+6,x-wide,y-2)], black, .8)
-            eyes.append([round(x-64,2), round(y-64,2), .8, .8])
-            continue
-        p.ellipse((x-wide,y-tall,x+wide,y+tall), white, 2.2)
-        p.shape((x-wide+2,y+1),[(x-wide+4,y+tall-1,x+wide-4,y+tall-1,x+wide-1,y+2),
-            (x+wide-2,y+tall,x-wide+3,y+tall+2,x-wide+2,y+1)], tone(palette['steel'], white, .55))
-        if mood in ('move','attack'):
-            p.poly([(x-wide,y-tall+2),(x+wide+1,y-tall+side*4),
-                   (x+wide,y-tall-2),(x-wide-1,y-tall-3)], black)
-        brow = y - tall - 4
-        slope = (tilt + emotion) * side * .75
-        p.shape((x-wide-1,brow+slope),[(x-2,brow-3,x+3,brow-4,x+wide,brow-slope),
-            (x+wide-1,brow-slope+3),(x+4,brow-1,x-4,brow+.3,x-wide-2,brow+slope+2)],
-            palette['cyan'] if mood == 'cold' else black, 1 if mood == 'cold' else 0)
-        eyes.append([round(x-64,2), round(y-64,2), round(wide-3.6,2), round(max(.8,tall-4.4),2)])
-    mouth = {
-        'idle': resting, 'move':'smirk' if resting != 'tooth' else 'tooth', 'collect':'grin', 'ready':'grin', 'attack':'teeth',
-        'hit':'gasp', 'hurt':'tooth', 'hot':'gasp', 'cold':'teeth', 'rust':'tooth',
-    }[mood]
-    if mouth in ('grin','teeth'):
-        top = 67 if mood != 'ready' else 65
-        p.shape((29,top+2),[(38,top+3,55,top+2,65,top-1),(66,76,59,82,49,83),
-            (38,83,30,78,29,top+2)], black, 1.8)
-        p.shape((32,top+3),[(41,top+4,54,top+1,62,top+1),(61,top+8),
-            (53,top+10,42,top+10,33,top+8),(32,top+3)], white)
-        for x in (40,48,56):
-            p.line([(x,top+4),(x+1,top+9)], width=1.1)
-        if mouth == 'grin':
-            p.ellipse((43,77,57,81), palette['red'])
-        else:
-            p.line([(35,79),(46,80),(58,78)], white, 2)
-    elif mouth == 'gasp':
-        p.ellipse((39,65,57 if mood=='hit' else 55,83 if mood=='hit' else 79), black, 1.5)
-        p.ellipse((44,74,53,81), palette['red'])
-        p.poly([(42,68),(52,67),(53,70),(43,71)], white)
-    else:
-        lift = -4 if mouth == 'smirk' else 2 if mouth == 'tooth' else 0
-        p.shape((34,72),[(43,73,54,71,61,69+lift),(63,71+lift),
-            (55,77+lift,45,77,34,75),(34,72)], black)
-        if mouth in ('smirk', 'tooth'):
-            p.poly([(53,73),(59,71+lift),(59,75+lift),(54,76)], white)
-    if mood in ('hurt','hit'):
-        p.line([(28,63),(24,67),(27,70),(21,76)], width=2)
-        p.ellipse((55,57,66,63), tone(palette['purple'], palette['rust'], .35))
-        if mood == 'hurt':
-            p.poly([(21,64),(24,60),(36,68),(33,73)], palette['bandage'], 1.5)
-            p.poly([(25,64),(27,62),(32,67),(30,69)], palette['paper'])
-    if mood == 'hot':
-        p.shape((63,54),[(66,58,71,62,68,67),(65,71,61,66,61,63),(63,54)], palette['cyan'], 1.7)
-        p.line([(65,61),(65,64)], white, 1.2)
-        p.ellipse((25,61,32,65), palette['red'])
-        p.ellipse((54,61,60,65), palette['orange'])
-    if mood == 'cold':
-        for x,y in [(25,57),(63,67),(65,47)]:
-            p.poly(star(x,y,4.5,1.8,4,0), palette['cyan'], 1.2)
-    if mood == 'rust':
-        for x,y in [(24,58),(29,64),(64,62),(63,53)]:
-            p.poly([(x-2,y-1),(x+1,y-2),(x+3,y),(x,y+2)], palette['rust'], 1)
-    face_box = tuple(round(n * pixels / CHARACTER_TILE) for n in FACE_BOX)
-    return p.finish(pixels).crop(face_box), eyes
-
-
-def composed(shell_art, face_art, anchors, palette, gaze=(.7,-.18)):
-    image = shell_art.copy()
-    image.alpha_composite(face_art, tuple(round(n * image.width / CHARACTER_TILE) for n in FACE_BOX[:2]))
-    p = Pen(CHARACTER_TILE, palette)
-    for x,y,room_x,room_y in anchors:
-        x, y = x + 64 + room_x*gaze[0], y + 64 + room_y*gaze[1]
-        p.ellipse((x-3.7,y-4.4,x+3.7,y+4.4), palette['ink'])
-        p.ellipse((x-1.5,y-2.8,x+.1,y-1.15), palette['white'])
-    image.alpha_composite(p.finish(image.width))
-    return image
 
 
 def pupil(palette):
