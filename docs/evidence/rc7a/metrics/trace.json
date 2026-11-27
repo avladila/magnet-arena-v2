@@ -1,0 +1,968 @@
+[
+  {
+    "name": "relaxed",
+    "time": 0.6,
+    "mood": "relaxed",
+    "mass": 400,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 0.978009127214422,
+        "y": 0
+      },
+      {
+        "x": 0.9963933812622077,
+        "y": 0
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "stationary-energy",
+    "time": 1.317,
+    "mood": "excited",
+    "target": "energy",
+    "mass": 400,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 4.052514024703181,
+        "y": -0.6252425527420943
+      },
+      {
+        "x": 4.013730267763253,
+        "y": -0.6192587967214571
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "approaching-rival",
+    "time": 2.9,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 400,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8070,
+      "y": 5048
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 4.068589575972064,
+        "y": 0.4989152469237359
+      },
+      {
+        "x": 4.028498601762541,
+        "y": 0.49399904736030914
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "moving-away",
+    "time": 3.833,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 410,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 1,
+    "pickups": 1,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": -460.0000000000182,
+      "y": 0
+    },
+    "position": {
+      "x": 7511.333333333327,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8018.701592774335,
+      "y": 4863.325733987604
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 4.269095898981135,
+        "y": -1.0041240330076915
+      },
+      {
+        "x": 4.238564954162596,
+        "y": -0.9969429210888774
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "charged-rival",
+    "time": 4.517,
+    "mood": "frightened",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 410,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 1,
+    "pickups": 1,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7258.333333333317,
+      "y": 5000
+    },
+    "bot": {
+      "x": 7564.997954990966,
+      "y": 4990
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 5.545125422926,
+        "y": -0.5044055040094959
+      },
+      {
+        "x": 5.491146563642968,
+        "y": -0.49949538356209167
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "recovering",
+    "time": 6.9,
+    "mood": "worried",
+    "mass": 410,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 1,
+    "pickups": 1,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7258.333333333317,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8137.084986849302,
+      "y": 4932.194913895948
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 2.878938310274931,
+        "y": -0.24104305500682838
+      },
+      {
+        "x": 2.8489819862047296,
+        "y": -0.2385349207252126
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "calm-after-rival",
+    "time": 7.35,
+    "mood": "relaxed",
+    "mass": 410,
+    "botMass": 320,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 1,
+    "pickups": 1,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7258.333333333317,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8343.036318318304,
+      "y": 4911.385082898485
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": -1.0003468022396862,
+        "y": -0.000149473642567932
+      },
+      {
+        "x": -1.0191509544254447,
+        "y": -0.00015228339326427078
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "ordinary-scrap",
+    "time": 9.317,
+    "mood": "curious",
+    "target": "ordinary",
+    "mass": 100,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-2",
+    "pupils": [
+      {
+        "x": 1.9492345335257688,
+        "y": 0
+      },
+      {
+        "x": 1.927299413455403,
+        "y": 9.813652787878991e-16
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "stationary-gold",
+    "time": 10.167,
+    "mood": "excited",
+    "target": "gold",
+    "mass": 100,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-2",
+    "pupils": [
+      {
+        "x": 2.1057834098571315,
+        "y": 0.021011422173215256
+      },
+      {
+        "x": 2.0828628351385525,
+        "y": 0.02078272160049277
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "collection-smile",
+    "time": 10.683,
+    "mood": "satisfied",
+    "mass": 111,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 1,
+    "pickups": 2,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7764.333333333337,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-2",
+    "pupils": [
+      {
+        "x": 0.547377239569978,
+        "y": 0.0026514144259941986
+      },
+      {
+        "x": 0.8933408164338388,
+        "y": 0.004327210846186638
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "giant-frightened",
+    "time": 12.533,
+    "mood": "frightened",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 4352,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8187,
+      "y": 4976
+    },
+    "shell": "player-5",
+    "pupils": [
+      {
+        "x": 18.629606436895465,
+        "y": -0.8817620449684562
+      },
+      {
+        "x": 18.44532917477543,
+        "y": -0.8730399768969397
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "giant-hit",
+    "time": 14.05,
+    "mood": "shocked",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 1051,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 3301,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8187,
+      "y": 4976
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 10.541904906569414,
+        "y": -0.499025088228216
+      },
+      {
+        "x": 10.438913591620443,
+        "y": -0.49414975967188257
+      }
+    ],
+    "opponentMood": "aggressive"
+  },
+  {
+    "name": "injury",
+    "time": 15.5,
+    "mood": "injured",
+    "mass": 1051,
+    "botMass": 1092,
+    "energy": 0,
+    "hits": 0,
+    "lost": 3301,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 1550,
+      "y": 1200
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 0.6715398170521976,
+        "y": -3.924107622637522e-7
+      },
+      {
+        "x": 0.8713332245956561,
+        "y": -5.091589909078904e-7
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "arming",
+    "time": 16.7,
+    "mood": "aggressive",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 400,
+    "botMass": 620,
+    "energy": 100,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8010.957607627911,
+      "y": 5000
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 1.4251732826258685,
+        "y": 0
+      },
+      {
+        "x": 1.862712460931264,
+        "y": 0
+      }
+    ],
+    "opponentMood": "frightened"
+  },
+  {
+    "name": "successful-release",
+    "time": 18.3,
+    "mood": "aggressive",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 400,
+    "botMass": 308,
+    "energy": 0,
+    "hits": 1,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8010.957607627911,
+      "y": 5000
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 1.539707087865771,
+        "y": 0
+      },
+      {
+        "x": 2.0124090268289665,
+        "y": 0
+      }
+    ],
+    "opponentMood": "shocked"
+  },
+  {
+    "name": "overheated",
+    "time": 21.133,
+    "mood": "overheated",
+    "mass": 400,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0.3416666666666667,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 0.7518632614420357,
+        "y": 0
+      },
+      {
+        "x": 1.251257672186282,
+        "y": 0
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "frozen",
+    "time": 24.167,
+    "mood": "frozen",
+    "mass": 400,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 1.1583867230044873,
+        "y": 0
+      },
+      {
+        "x": 1.2365900890136705,
+        "y": 0
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "corroded",
+    "time": 26.517,
+    "mood": "corroded",
+    "mass": 400,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "corrosion": "water",
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 900,
+      "y": 1750
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 0.461453936622862,
+        "y": 0
+      },
+      {
+        "x": 0.7716340911567527,
+        "y": 0
+      }
+    ],
+    "opponentMood": "relaxed"
+  },
+  {
+    "name": "growth-20",
+    "time": 29.267,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 20,
+    "botMass": 20,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 7882,
+      "y": 5020
+    },
+    "shell": "player-0",
+    "pupils": [
+      {
+        "x": 0.9159600435562296,
+        "y": 0.08725321198877597
+      },
+      {
+        "x": 0.9065689108793185,
+        "y": 0.08635862439618563
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "growth-50",
+    "time": 30.767,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 50,
+    "botMass": 50,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 7909.894663844041,
+      "y": 5020
+    },
+    "shell": "player-1",
+    "pupils": [
+      {
+        "x": 1.5110235250400912,
+        "y": 0.13131086648128243
+      },
+      {
+        "x": 1.4953572545358491,
+        "y": 0.12994943727759917
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "growth-100",
+    "time": 32.567,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 100,
+    "botMass": 100,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 7941.33126291999,
+      "y": 5020
+    },
+    "shell": "player-2",
+    "pupils": [
+      {
+        "x": 2.102464532569307,
+        "y": 0.16090230248281195
+      },
+      {
+        "x": 2.080420420402878,
+        "y": 0.15921525932521086
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "growth-400",
+    "time": 33.9,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 400,
+    "botMass": 400,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8048.66252583998,
+      "y": 5020
+    },
+    "shell": "player-3",
+    "pupils": [
+      {
+        "x": 4.078957021829872,
+        "y": 0.22122101256856783
+      },
+      {
+        "x": 4.035367783289522,
+        "y": 0.21885696326984141
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "growth-1500",
+    "time": 35.3,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 1500,
+    "botMass": 1500,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8249.69219381653,
+      "y": 5020
+    },
+    "shell": "player-4",
+    "pupils": [
+      {
+        "x": 7.839118948321784,
+        "y": 0.27481631898765213
+      },
+      {
+        "x": 7.754417717797182,
+        "y": 0.27184694442656376
+      }
+    ],
+    "opponentMood": "worried"
+  },
+  {
+    "name": "growth-4352",
+    "time": 36.733,
+    "mood": "worried",
+    "target": "opponent",
+    "rival": "bot-1",
+    "mass": 4352,
+    "botMass": 4352,
+    "energy": 0,
+    "hits": 0,
+    "lost": 0,
+    "cells": 0,
+    "gold": 0,
+    "pickups": 0,
+    "heat": 0,
+    "brittle": false,
+    "velocity": {
+      "x": 0,
+      "y": 0
+    },
+    "position": {
+      "x": 7680,
+      "y": 5000
+    },
+    "bot": {
+      "x": 8542,
+      "y": 5020
+    },
+    "shell": "player-5",
+    "pupils": [
+      {
+        "x": 13.436061639549147,
+        "y": 0.3109886929854083
+      },
+      {
+        "x": 13.290240100680995,
+        "y": 0.3076135335824302
+      }
+    ],
+    "opponentMood": "worried"
+  }
+]

@@ -39,7 +39,7 @@ npm run build
 npm exec -- tsx scripts/simulate-matches.ts
 ```
 
-The release reports cover the scrapyard art and effects, gameplay and balance, and combat and population. [RC6 Magnetic Chaos](docs/rc6-magnetic-chaos.md) · [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md) · [Visual identity verification](docs/visual-identity.md)
+The release reports cover character acting, the scrapyard art and effects, gameplay and balance, and combat and population. [RC7A Living Faces](docs/rc7a-living-faces.md) · [RC6 Magnetic Chaos](docs/rc6-magnetic-chaos.md) · [RC5 gameplay report](docs/rc5-gameplay-feel.md) · [RC4 report](docs/rc4.md)
 
 ## Growth and balance
 

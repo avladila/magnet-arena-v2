@@ -10,7 +10,9 @@ Use saturated cel color, hard shadow planes, and crisp white or pale-yellow high
 
 ## Characters and play
 
-Keep each character’s signature shape, decal, and expression. Body rotation follows travel, and pupils glance in the direction of travel or toward scrap being collected. Idle and moving characters can briefly blink. The ten expression frames cover idle, movement, pickup, charge, attack, shock, injury, heat, cold, and corrosion. Growth adds steel, rivets, and layered plates across six stages. A severe wound stays visible for a short time and clears sooner as mass returns.
+Keep each character’s signature chassis, decal, and expression. Seat the eyes, brows, and mouth in the chassis faceplate. Its stage-specific socket carries every facial layer through rotation, stretch, recoil, and growth. Pupils share a direction in world space and stay inside their individual eye apertures. They favor visible opponents, then useful resources, then travel. Relaxed and curious characters may blink. Growth adds steel, rivets, and layered plates across six stages.
+
+Use one of twelve expressions to coordinate the eyes, brows and mouth. A rival can prompt concern before a hit. An imminent threat widens the eyes and tightens the pupils. Heat, frost, corrosion, injury, and a weapon’s charge can carry their own visible marks while the character reacts to something else. [Living Faces](rc7a-living-faces.md)
 
 Use a short compression at takeoff, restrained stretch in motion, and a small settle on stopping. A new plate snaps into place at a growth threshold. The arena model supplies movement, damage, and collection geometry. A heavy hit adds a longer crack, recoil, and detached steel plates, while claimable combat salvage keeps its own gold-and-steel shapes. Charge, guard, and damage stay recognizable when they overlap.
 
